@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Version: 2026-01-28 16:30 -->
+<!-- Version: 2026-01-28 16:45 -->
 <html>
 <head>
   <base target="_top">
@@ -160,8 +160,13 @@
                     <label class="cb red"><input type="checkbox" id="chkBj"> <span id="lblBj">Bilan incomplet</span></label>
                     <label class="cb red"><input type="checkbox" id="chkBl"> <span id="lblBl">Pisu incomplet</span></label>
                 </div>
-                <label class="cb"><input type="checkbox" id="chkBh"> <span id="lblBh">Absence erreur / commande PUI</span></label>
-                <label class="cb"><input type="checkbox" id="chkBm"> <span id="lblBm">Absence de traçabilité de la surveillance pendant le transport</span></label>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:4px; margin-bottom:8px;">
+                    <label class="cb"><input type="checkbox" id="chkBh"> <span id="lblBh">Absence erreur</span></label>
+                    <label class="cb"><input type="checkbox" id="chkBm"> <span id="lblBm">PUI commandée</span></label>
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:4px;">
+                    <label class="cb"><input type="checkbox" id="chkBn"> <span id="lblBnSurv">Surveillance transport</span></label>
+                </div>
             </div>
 
             <div class="group">
@@ -302,6 +307,11 @@
        
        document.getElementById("lblBm").textContent = r.bm.label;
        document.getElementById("chkBm").checked = r.bm.checked;
+       
+       if(document.getElementById("chkBn")) {
+           document.getElementById("lblBnSurv").textContent = r.bn ? r.bn.label : "Surveillance transport";
+           document.getElementById("chkBn").checked = r.bn ? r.bn.checked : false;
+       }
 
        // Textes
        document.getElementById("lblBn").textContent = schema.fieldBn.label;
@@ -362,7 +372,8 @@
             bj: document.getElementById("chkBj").checked,
             bk: document.getElementById("chkBk").checked,
             bl: document.getElementById("chkBl").checked,
-            bm: document.getElementById("chkBm").checked
+            bm: document.getElementById("chkBm").checked,
+            bn: document.getElementById("chkBn") ? document.getElementById("chkBn").checked : false
          },
          txtBn: document.getElementById("txtBn").value,
          txtBo: document.getElementById("txtBo").value,

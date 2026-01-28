@@ -1,7 +1,7 @@
 /****************************************************
  * SDIS 66 - SDS | WebApp Dashboard
  * CACHE SÉQUENTIEL + FIXES + LOCK SYSTEM
- * Version: 2026-01-28 16:30
+ * Version: 2026-01-28 16:45
  ****************************************************/
 
 const DASHBOARD_SHEET_NAME = "Dashboard";
@@ -48,13 +48,14 @@ const C_BILAN_OK = 60;
 const C_BILAN_KO = 61; 
 const C_PISU_OK = 62;  
 const C_PISU_KO = 63;  
-const C_BM_TRACAB = 64; // Absence de traçabilité surveillance transport
-const C_BN_TXT = 65;   
-const C_BO_TXT = 66;   
-const C_BP_CLOSE = 67; 
-const C_BS_PROBLEM = 70; // Signaler problème à Brice (checkbox)
-const C_BT_PROBLEM_TXT = 71; // Texte du problème pour Brice
-const C_BU_LOCK = 72; // Timestamp de verrouillage pour éviter doublons     
+const C_BM_TRACAB = 64; // PUI commandée
+const C_BN_SURV = 65;   // Surveillance transport (checkbox)
+const C_TXTBILAN_KO = 66;   // Motif bilan incomplet
+const C_TXTPISU_KO = 67;    // Motif pisu incomplet
+const C_BP_CLOSE = 68; 
+const C_BS_PROBLEM = 71; // Signaler problème à Brice (checkbox)
+const C_BT_PROBLEM_TXT = 72; // Texte du problème pour Brice
+const C_BU_LOCK = 73; // Timestamp de verrouillage pour éviter doublons     
 
 function onOpen() { 
   SpreadsheetApp.getUi().createMenu('⚡ ADMIN').addItem('Mettre à jour Cache', 'updateHistoryCache').addToUi(); 
@@ -691,8 +692,8 @@ function getChefferieNextCase(mode) {
                     pdf: dataApp[i][C_APP_PDF], 
                     infName: dataApp[i][C_APP_NOM], 
                     status: status,
-                    commBN: dataApp[i][C_BN_TXT], 
-                    commBO: dataApp[i][C_BO_TXT]
+                    commBN: dataApp[i][C_TXTBILAN_KO], 
+                    commBO: dataApp[i][C_TXTPISU_KO]
                 };
                 const hAlex = shAlex.getRange(1,1,1,20).getValues()[0];
                 schema = { mode:'app_isp', info:info, checks:[{id:7, label:hAlex[7]}, {id:8, label:hAlex[8]}, {id:9, label:hAlex[9]}, {id:10, label:hAlex[10]}, {id:11, label:hAlex[11]}] };
@@ -889,12 +890,13 @@ function getNextCase(specificRow) {
     
     const resultats = {
         bg: { label: "Réalisation examen clinique", opts: getDropdownList_(shApp, C_BG_EXAM), val: row[C_BG_EXAM] },
-        bh: { label: "Absence erreur / commande PUI", checked: row[C_BH_ABS] === true },
-        bi: { label: "Bilan complet", checked: row[C_BILAN_OK] === true },
+        bh: { label: "Absence erreur", checked: row[C_BH_ABS] === true },
+        bi: { label: "Bilan OK", checked: row[C_BILAN_OK] === true },
         bj: { label: "Bilan incomplet", checked: row[C_BILAN_KO] === true },
-        bk: { label: "Pisu ok", checked: row[C_PISU_OK] === true },
-        bl: { label: "Pisu pas ok", checked: row[C_PISU_KO] === true },
-        bm: { label: "Absence de traçabilité de la surveillance pendant le transport", checked: row[C_BM_TRACAB] === true }
+        bk: { label: "Pisu OK", checked: row[C_PISU_OK] === true },
+        bl: { label: "Pisu incomplet", checked: row[C_PISU_KO] === true },
+        bm: { label: "PUI commandée", checked: row[C_BM_TRACAB] === true },
+        bn: { label: "Surveillance transport", checked: false }
     };
     
     // Récupérer l'ISP Analyse
@@ -906,8 +908,8 @@ function getNextCase(specificRow) {
         protoPedia: protoPedia,
         criteres: criteres,
         resultats: resultats,
-        fieldBn: { label: "Motif bilan incomplet", val: row[C_BN_TXT]||"" },
-        fieldBo: { label: "Motif pisu pas ok", val: row[C_BO_TXT]||"" },
+        fieldBn: { label: "Motif bilan incomplet", val: row[C_TXTBILAN_KO]||"" },
+        fieldBo: { label: "Motif pisu incomplet", val: row[C_TXTPISU_KO]||"" },
         pbCheck: row[C_BS_PROBLEM],
         pbTxt: row[C_BT_PROBLEM_TXT]||""
     };
@@ -978,10 +980,11 @@ function saveCase(form) {
     shApp.getRange(row, C_PISU_OK + 1).setValue(form.resultats.bk ? true : false);
     shApp.getRange(row, C_PISU_KO + 1).setValue(form.resultats.bl ? true : false);
     shApp.getRange(row, C_BM_TRACAB + 1).setValue(form.resultats.bm ? true : false);
+    shApp.getRange(row, C_BN_SURV + 1).setValue(form.resultats.bn ? true : false);
     
     // Textes
-    shApp.getRange(row, C_BN_TXT + 1).setValue(form.txtBn);
-    shApp.getRange(row, C_BO_TXT + 1).setValue(form.txtBo);
+    shApp.getRange(row, C_TXTBILAN_KO + 1).setValue(form.txtBn);
+    shApp.getRange(row, C_TXTPISU_KO + 1).setValue(form.txtBo);
     
     // Clôture
     shApp.getRange(row, C_BP_CLOSE + 1).setValue(true);
