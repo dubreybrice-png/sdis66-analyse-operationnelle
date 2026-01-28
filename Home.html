@@ -459,26 +459,24 @@
                     <div><label id="lblBa">DEVENIR</label><select id="selBa"></select></div>
                 </div>
                 <div class="row2Items">
-                    <div><label id="lblBb">PARTICULARITÉ</label><select id="selBb"></select></div>
+                    <div><label id="lblBb">SOUSAN</label><select id="selBb"></select></div>
                     <div><label id="lblBc">NB VICTIMES</label><input type="text" id="txtBc"></div>
                 </div>
+                <div style="margin-top:8px;"><label id="lblBg">Examen clinique</label><select id="selBg"></select></div>
             </div>
 
             <div class="group">
                 <div class="groupTitle">Résultat</div>
-                <label id="lblBg">Examen Clinique</label>
-                <select id="selBg" style="margin-bottom:6px;"></select>
-
-                <div class="grid-checks">
-                    <label class="cb"><input type="checkbox" id="chkBh"> <span id="lblBh">Absence erreur</span></label>
-                    <div id="biBmBox" style="display:contents;"></div>
+                <div style="margin-bottom:8px;">
+                    <label class="cb"><input type="checkbox" id="chkBh"> <span id="lblBh">Absence / erreur commande PUI</span></label>
                 </div>
+                <div class="grid-checks" id="biBmBox"></div>
             </div>
 
             <div class="group">
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px;">
-                    <div><label id="lblBn">Champ BN</label><textarea id="txtBn"></textarea></div>
-                    <div><label id="lblBo">Champ BO</label><textarea id="txtBo"></textarea></div>
+                    <div><label>Motif bilan incomplet</label><textarea id="txtBn"></textarea></div>
+                    <div><label>Motif pisu pas ok</label><textarea id="txtBo"></textarea></div>
                 </div>
             </div>
 
@@ -742,6 +740,13 @@
          items.forEach(item => {
             const lbl = document.createElement("label");
             lbl.className = "cb";
+            if(item.color === "ok") {
+              lbl.style.borderColor = "rgba(71,209,140,.3)";
+              lbl.style.color = "var(--ok)";
+            } else if(item.color === "orange") {
+              lbl.style.borderColor = "rgba(255,165,0,.3)";
+              lbl.style.color = "#ff8c00";
+            }
             lbl.innerHTML = `<input type="checkbox" name="chk_${item.id}" ${item.checked?'checked':''}> ${item.label}`;
             box.appendChild(lbl);
          });
@@ -759,18 +764,17 @@
        
        document.getElementById("lblBc").textContent = c.bc.label;
        document.getElementById("txtBc").value = c.bc.val;
+       
+       fillSelect("selBg", c.bg.opts, c.bg.val); document.getElementById("lblBg").textContent = c.bg.label;
 
        const r = schema.resultats;
-       fillSelect("selBg", r.bg.opts, r.bg.val); document.getElementById("lblBg").textContent = r.bg.label;
        
        document.getElementById("lblBh").textContent = r.bh.label;
        document.getElementById("chkBh").checked = r.bh.checked;
 
        mkCb("biBmBox", r.checksBiBm);
 
-       document.getElementById("lblBn").textContent = schema.fieldBn.label;
        document.getElementById("txtBn").value = schema.fieldBn.val;
-       document.getElementById("lblBo").textContent = schema.fieldBo.label;
        document.getElementById("txtBo").value = schema.fieldBo.val;
 
        const pbCb = document.getElementById("pbCheck");

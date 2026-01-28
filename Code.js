@@ -1,7 +1,7 @@
 /****************************************************
  * SDIS 66 - SDS | WebApp Dashboard
  * CACHE SÉQUENTIEL + FIXES + LOCK SYSTEM
- * Version: v1.17 | 2026-01-29
+ * Version: v1.18 | 2026-01-29
  ****************************************************/
 
 const DASHBOARD_SHEET_NAME = "Dashboard";
@@ -930,18 +930,20 @@ function getNextCase(specificRow) {
         az: { label: "CCMU", opts: getDropdownList_(shApp, 51), val: row[51] },
         ba: { label: "DEVENIR", opts: getDropdownList_(shApp, 52), val: row[52] },
         bb: { label: "SOUSAN", opts: getDropdownList_(shApp, 53), val: row[53] },
-        bc: { label: "NB VICTIMES", opts: [], val: row[54] }
+        bc: { label: "NB VICTIMES", opts: [], val: row[54] },
+        bg: { label: "Examen clinique", opts: getDropdownList_(shApp, C_BG_EXAM), val: row[C_BG_EXAM] }
     };
     
     const resultats = {
-        bg: { label: "Réalisation examen clinique", opts: getDropdownList_(shApp, C_BG_EXAM), val: row[C_BG_EXAM] },
-        bh: { label: "Absence erreur", checked: isCheckboxChecked(row[C_BH_ABS]) },
-        bi: { label: "Bilan OK", checked: isCheckboxChecked(row[C_BILAN_OK]) },
-        bj: { label: "Bilan incomplet", checked: isCheckboxChecked(row[C_BILAN_KO]) },
-        bk: { label: "Pisu OK", checked: isCheckboxChecked(row[C_PISU_OK]) },
-        bl: { label: "Pisu incomplet", checked: isCheckboxChecked(row[C_PISU_KO]) },
-        bm: { label: "PUI commandée", checked: row[C_BM_TRACAB] === true },
-        bn: { label: "Surveillance transport", checked: false }
+        bh: { label: "Absence / erreur commande PUI", checked: isCheckboxChecked(row[C_BH_ABS]) },
+        checksBiBm: [
+            { id: "bi", label: "Bilan OK", checked: isCheckboxChecked(row[C_BILAN_OK]), color: "ok" },
+            { id: "bk", label: "Pisu OK", checked: isCheckboxChecked(row[C_PISU_OK]), color: "ok" },
+            { id: "bj", label: "Bilan incomplet", checked: isCheckboxChecked(row[C_BILAN_KO]), color: "orange" },
+            { id: "bl", label: "Pisu pas ok", checked: isCheckboxChecked(row[C_PISU_KO]), color: "orange" },
+            { id: "bm", label: "PUI commandée", checked: row[C_BM_TRACAB] === true, color: "" },
+            { id: "bn", label: "Surveillance transport", checked: false, color: "" }
+        ]
     };
     
     // Récupérer l'ISP Analyse
