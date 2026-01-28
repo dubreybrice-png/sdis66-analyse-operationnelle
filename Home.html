@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Version: 2026-01-28 14:32 -->
+<!-- Version: 2026-01-28 14:48 -->
 <html>
 <head>
   <base target="_top">
@@ -276,9 +276,11 @@
                             <h4 style="color:var(--accent3);margin:0 0 5px 0">Etude qualitative des BPV</h4>
                             <div style="font-size:12px;cursor:pointer;text-decoration:underline;" class="text-green" onclick="openErrorList('BilanOk')">Bilan OK: <b id="ispBilOk"></b></div>
                             <div style="font-size:12px;cursor:pointer;text-decoration:underline;" class="text-green" onclick="openErrorList('PisuOk')">Pisu OK: <b id="ispPisuOk"></b></div>
-                            <div style="margin-top:5px;cursor:pointer;text-decoration:underline;" class="text-orange" onclick="openErrorList('Bilan')">Erreur Bilan Légère: <span id="ispErrBil"></span></div>
+                            
+                            <div style="margin-top:8px;cursor:pointer;text-decoration:underline;" class="text-orange" onclick="openErrorList('Bilan')">Erreur Bilan Légère: <span id="ispErrBil"></span></div>
                             <div style="cursor:pointer;text-decoration:underline;" class="text-orange" onclick="openErrorList('Pisu')">Erreur Pisu Légère: <span id="ispErrPisu"></span></div>
-                            <div style="cursor:pointer;text-decoration:underline;" class="text-red" onclick="openErrorList('Lourde')">Erreur Grave: <span id="ispErrLourd"></span></div>
+                            
+                            <div style="margin-top:8px;cursor:pointer;text-decoration:underline;" class="text-red" onclick="openErrorList('Lourde')">Erreur Grave: <span id="ispErrLourd"></span></div>
                         </div>
                     </div>
                     <button class="btnGo" style="width:auto;margin-top:15px;background:#333;color:#fff" onclick="logoutIsp()">Déconnexion</button>
@@ -330,8 +332,8 @@
                     
                     <!-- Fenêtres CIS et Secteurs après -->
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:20px;">
-                        <div class="panel"><div class="panelHead">Interventions par CIS (décroissant)</div><div class="panelScrollWrapper" style="max-height:250px;"><table id="tableAdminCis"><thead><tr><th>CIS</th><th class="num">2026</th><th class="num">2025</th></tr></thead><tbody></tbody></table></div></div>
-                        <div class="panel"><div class="panelHead">Interventions par Secteur (décroissant)</div><div class="panelScrollWrapper" style="max-height:250px;"><table id="tableAdminSect"><thead><tr><th>Secteur</th><th class="num">2026</th><th class="num">2025</th></tr></thead><tbody></tbody></table></div></div>
+                        <div class="panel"><div class="panelHead">Interventions par CIS (décroissant)</div><div class="panelScrollWrapper" style="max-height:250px;"><table id="tableAdminCis"><thead><tr><th>CIS</th><th class="num">2026</th><th class="num">2025 (Date)</th><th class="num">2025 (Total)</th></tr></thead><tbody></tbody></table></div></div>
+                        <div class="panel"><div class="panelHead">Interventions par Secteur (décroissant)</div><div class="panelScrollWrapper" style="max-height:250px;"><table id="tableAdminSect"><thead><tr><th>Secteur</th><th class="num">2026</th><th class="num">2025 (Date)</th><th class="num">2025 (Total)</th></tr></thead><tbody></tbody></table></div></div>
                     </div>
                 </div>
                 </div>

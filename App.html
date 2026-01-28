@@ -97,7 +97,7 @@
         <div class="card">
             <div class="cardHead">
             <div class="interInfos">
-                <div class="interItem"><span class="interLabel">Intervention</span><span class="interVal" id="iNum">—</span></div>
+                <div class="interItem"><span class="interLabel">N° d'intervention</span><span class="interVal" id="iNum">—</span></div>
                 <div class="interItem"><span class="interLabel">Date</span><span class="interVal" id="iDate">—</span></div>
                 <div class="interItem"><span class="interLabel">Infirmier</span><span class="interVal highlight" id="iInf">—</span></div>
                 <div class="interItem"><span class="interLabel">Centre</span><span class="interVal" id="iCis">—</span></div>
@@ -144,26 +144,30 @@
                     <div><label id="lblBa">DEVENIR</label><select id="selBa"></select></div>
                 </div>
                 <div class="row2Items">
-                    <div><label id="lblBb">PARTICULARITÉ</label><select id="selBb"></select></div>
+                    <div><label id="lblBb">SOUSAN</label><select id="selBb"></select></div>
                     <div><label id="lblBc">NB VICTIMES</label><input type="text" id="txtBc"></div>
                 </div>
             </div>
 
             <div class="group">
                 <div class="groupTitle">Résultat</div>
-                <label id="lblBg">Examen Clinique</label>
+                <label id="lblBg">Réalisation examen clinique</label>
                 <select id="selBg" style="margin-bottom:6px;"></select>
 
-                <div class="grid-checks">
-                    <label class="cb"><input type="checkbox" id="chkBh"> <span id="lblBh">Absence erreur</span></label>
-                    <div id="biBmBox" style="display:contents;"></div>
+                <div style="display:grid; grid-template-columns: 1fr; gap:4px;">
+                    <label class="cb"><input type="checkbox" id="chkBh"> <span id="lblBh">Absence erreur / commande PUI</span></label>
+                    <label class="cb" style="border-color: rgba(71,209,140,.3); color: var(--ok);"><input type="checkbox" id="chkBi"> <span id="lblBi">Bilan complet</span></label>
+                    <label class="cb" style="border-color: rgba(71,209,140,.3); color: var(--ok);"><input type="checkbox" id="chkBk"> <span id="lblBk">Pisu ok</span></label>
+                    <label class="cb"><input type="checkbox" id="chkBj"> <span id="lblBj">Bilan incomplet</span></label>
+                    <label class="cb"><input type="checkbox" id="chkBl"> <span id="lblBl">Pisu pas ok</span></label>
+                    <label class="cb"><input type="checkbox" id="chkBm"> <span id="lblBm">Absence de traçabilité de la surveillance pendant le transport</span></label>
                 </div>
             </div>
 
             <div class="group">
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px;">
-                    <div><label id="lblBn">Champ BN</label><textarea id="txtBn"></textarea></div>
-                    <div><label id="lblBo">Champ BO</label><textarea id="txtBo"></textarea></div>
+                    <div><label id="lblBn">Motif bilan incomplet</label><textarea id="txtBn"></textarea></div>
+                    <div><label id="lblBo">Motif pisu pas ok</label><textarea id="txtBo"></textarea></div>
                 </div>
             </div>
 
@@ -275,7 +279,7 @@
        fillSelect("selBb", c.bb.opts, c.bb.val); document.getElementById("lblBb").textContent = c.bb.label;
        
        document.getElementById("lblBc").textContent = c.bc.label;
-       document.getElementById("txtBc").value = c.bc.val;
+       document.getElementById("txtBc").value = c.bc.val || "";
 
        // RESULTATS
        const r = schema.resultats;
@@ -283,9 +287,21 @@
        
        document.getElementById("lblBh").textContent = r.bh.label;
        document.getElementById("chkBh").checked = r.bh.checked;
-
-       // Checks BI-BM
-       mkCb("biBmBox", r.checksBiBm);
+       
+       document.getElementById("lblBi").textContent = r.bi.label;
+       document.getElementById("chkBi").checked = r.bi.checked;
+       
+       document.getElementById("lblBj").textContent = r.bj.label;
+       document.getElementById("chkBj").checked = r.bj.checked;
+       
+       document.getElementById("lblBk").textContent = r.bk.label;
+       document.getElementById("chkBk").checked = r.bk.checked;
+       
+       document.getElementById("lblBl").textContent = r.bl.label;
+       document.getElementById("chkBl").checked = r.bl.checked;
+       
+       document.getElementById("lblBm").textContent = r.bm.label;
+       document.getElementById("chkBm").checked = r.bm.checked;
 
        // Textes
        document.getElementById("lblBn").textContent = schema.fieldBn.label;
@@ -341,10 +357,12 @@
          },
          resultats: {
             bg: document.getElementById("selBg").value,
-            bh: document.getElementById("chkBh").checked
-         },
-         txtBn: document.getElementById("txtBn").value,
-         txtBo: document.getElementById("txtBo").value,
+            bh: document.getElementById("chkBh").checked,
+            bi: document.getElementById("chkBi").checked,
+            bj: document.getElementById("chkBj").checked,
+            bk: document.getElementById("chkBk").checked,
+            bl: document.getElementById("chkBl").checked,
+            bm: document.getElementById("chkBm").checked
          pbCheck: document.getElementById("pbCheck").checked,
          pbTxt: document.getElementById("pbTxt").value
       };

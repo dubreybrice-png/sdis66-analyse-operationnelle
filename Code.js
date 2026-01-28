@@ -1,7 +1,7 @@
 /****************************************************
  * SDIS 66 - SDS | WebApp Dashboard
  * CACHE SÉQUENTIEL + FIXES
- * Version: 2026-01-28 14:32
+ * Version: 2026-01-28 14:48
  ****************************************************/
 
 const DASHBOARD_SHEET_NAME = "Dashboard";
@@ -48,9 +48,11 @@ const C_BILAN_OK = 60;
 const C_BILAN_KO = 61; 
 const C_PISU_OK = 62;  
 const C_PISU_KO = 63;  
+const C_BM_TRACAB = 64; // Absence de traçabilité surveillance transport
 const C_BN_TXT = 65;   
 const C_BO_TXT = 66;   
 const C_BP_CLOSE = 67; 
+const C_BS_PROBLEM = 70; // Signaler problème à Brice
 const C_LOCK = 72;     
 
 function onOpen() { 
@@ -755,18 +757,22 @@ function getNextCase(specificRow) {
     };
     
     const criteres = {
-        ax: { label: "AKIM", opts: getDropdownList_(shApp, 20), val: row[20] },
-        ay: { label: "SMUR", opts: getDropdownList_(shApp, 21), val: row[21] },
-        az: { label: "CCMU", opts: getDropdownList_(shApp, 22), val: row[22] },
-        ba: { label: "DEVENIR", opts: getDropdownList_(shApp, 23), val: row[23] },
-        bb: { label: "PARTICULARITÉ", opts: getDropdownList_(shApp, 24), val: row[24] },
-        bc: { label: "NB VICTIMES", opts: [], val: row[25] }
+        ax: { label: "AKIM", opts: getDropdownList_(shApp, 49), val: row[49] },
+        ay: { label: "SMUR", opts: getDropdownList_(shApp, 50), val: row[50] },
+        az: { label: "CCMU", opts: getDropdownList_(shApp, 51), val: row[51] },
+        ba: { label: "DEVENIR", opts: getDropdownList_(shApp, 52), val: row[52] },
+        bb: { label: "SOUSAN", opts: getDropdownList_(shApp, 53), val: row[53] },
+        bc: { label: "NB VICTIMES", opts: [], val: row[54] }
     };
     
     const resultats = {
-        bg: { label: "Examen Clinique", opts: getDropdownList_(shApp, C_BG_EXAM), val: row[C_BG_EXAM] },
-        bh: { label: "Absence erreur", checked: row[C_BH_ABS] === true },
-        checksBiBm: []
+        bg: { label: "Réalisation examen clinique", opts: getDropdownList_(shApp, C_BG_EXAM), val: row[C_BG_EXAM] },
+        bh: { label: "Absence erreur / commande PUI", checked: row[C_BH_ABS] === true },
+        bi: { label: "Bilan complet", checked: row[C_BILAN_OK] === true },
+        bj: { label: "Bilan incomplet", checked: row[C_BILAN_KO] === true },
+        bk: { label: "Pisu ok", checked: row[C_PISU_OK] === true },
+        bl: { label: "Pisu pas ok", checked: row[C_PISU_KO] === true },
+        bm: { label: "Absence de traçabilité de la surveillance pendant le transport", checked: row[C_BM_TRACAB] === true }
     };
     
     // Récupérer l'ISP Analyse
@@ -778,9 +784,9 @@ function getNextCase(specificRow) {
         protoPedia: protoPedia,
         criteres: criteres,
         resultats: resultats,
-        fieldBn: { label: "Champ BN", val: row[C_BN_TXT]||"" },
-        fieldBo: { label: "Champ BO", val: row[C_BO_TXT]||"" },
-        pbCheck: row[C_BP_CLOSE],
+        fieldBn: { label: "Motif bilan incomplet", val: row[C_BN_TXT]||"" },
+        fieldBo: { label: "Motif pisu pas ok", val: row[C_BO_TXT]||"" },
+        pbCheck: row[C_BS_PROBLEM],
         pbTxt: ""
     };
     
@@ -814,16 +820,21 @@ function saveCase(form) {
     });
     
     // Critères
-    shApp.getRange(row, 21).setValue(form.criteres.ax);
-    shApp.getRange(row, 22).setValue(form.criteres.ay);
-    shApp.getRange(row, 23).setValue(form.criteres.az);
-    shApp.getRange(row, 24).setValue(form.criteres.ba);
-    shApp.getRange(row, 25).setValue(form.criteres.bb);
-    shApp.getRange(row, 26).setValue(form.criteres.bc);
+    shApp.getRange(row, 50).setValue(form.criteres.ax);
+    shApp.getRange(row, 51).setValue(form.criteres.ay);
+    shApp.getRange(row, 52).setValue(form.criteres.az);
+    shApp.getRange(row, 53).setValue(form.criteres.ba);
+    shApp.getRange(row, 54).setValue(form.criteres.bb);
+    shApp.getRange(row, 55).setValue(form.criteres.bc);
     
     // Résultats
     shApp.getRange(row, C_BG_EXAM + 1).setValue(form.resultats.bg);
     shApp.getRange(row, C_BH_ABS + 1).setValue(form.resultats.bh ? true : false);
+    shApp.getRange(row, C_BILAN_OK + 1).setValue(form.resultats.bi ? true : false);
+    shApp.getRange(row, C_BILAN_KO + 1).setValue(form.resultats.bj ? true : false);
+    shApp.getRange(row, C_PISU_OK + 1).setValue(form.resultats.bk ? true : false);
+    shApp.getRange(row, C_PISU_KO + 1).setValue(form.resultats.bl ? true : false);
+    shApp.getRange(row, C_BM_TRACAB + 1).setValue(form.resultats.bm ? true : false);
     
     // Textes
     shApp.getRange(row, C_BN_TXT + 1).setValue(form.txtBn);
@@ -831,6 +842,9 @@ function saveCase(form) {
     
     // Clôture
     shApp.getRange(row, C_BP_CLOSE + 1).setValue(true);
+    
+    // Problème Brice
+    shApp.getRange(row, C_BS_PROBLEM + 1).setValue(form.pbCheck ? true : false);
     
     return { success: true };
 }
