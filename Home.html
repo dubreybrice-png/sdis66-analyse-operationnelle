@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Version: 2026-01-28 15:10 -->
+<!-- Version: 2026-01-28 15:22 -->
 <html>
 <head>
   <base target="_top">
@@ -849,15 +849,22 @@
     function openErrorList(type) {
         if(!window_currentIspData || !window_currentIspData.nom) return;
         let list = [];
-        if(type==='BilanOk') list = window_currentIspData.bilanOkList || [];
-        else if(type==='PisuOk') list = window_currentIspData.pisuOkList || [];
-        else if(type==='Bilan') list = window_currentIspData.errLegereBilan || [];
-        else if(type==='Pisu') list = window_currentIspData.errLegerePisu || [];
-        else list = window_currentIspData.errLourde || [];
+        let filterValue = "";
         
-        const c = document.getElementById("modalListContent"); c.innerHTML="";
-        if(list.length===0) c.innerHTML="<div style='padding:20px;text-align:center;color:gray'>Aucun dossier</div>";
-        list.forEach(x => { c.innerHTML += `<div class="detail-row" onclick="loadInterDetail('${x.id}', '${x.date || ''}', '${(x.motif || '').replace(/'/g, "\\'")}', '${x.status || ''}')" style="padding:12px;border-bottom:1px solid #333;cursor:pointer;"><b>Numéro d'intervention: ${x.id}</b><br><span style="font-size:11px;color:var(--muted)">${x.date ? x.date + ' • ' : ''}${x.motif}</span></div>`; });
+        if(type==='BilanOk') { list = window_currentIspData.bilanOkList || []; filterValue = "Bilan OK"; }
+        else if(type==='PisuOk') { list = window_currentIspData.pisuOkList || []; filterValue = "Pisu OK"; }
+        else if(type==='Bilan') { list = window_currentIspData.errLegereBilan || []; filterValue = "Erreur Bilan Légère"; }
+        else if(type==='Pisu') { list = window_currentIspData.errLegerePisu || []; filterValue = "Erreur Pisu Légère"; }
+        else { list = window_currentIspData.errLourde || []; filterValue = "Erreur Grave"; }
+        
+        // Remplir currentDetailList et initialiser les checkboxes
+        currentDetailList = list;
+        document.querySelectorAll('#filterBox input[type="checkbox"]').forEach(cb => {
+            cb.checked = cb.value === filterValue;
+        });
+        
+        document.getElementById("modalListTitle").textContent = `Dossiers de ${window_currentIspData.nom}`;
+        filterDetails();
         document.getElementById("modalList").style.display="flex";
     }
 
