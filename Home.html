@@ -983,23 +983,31 @@
 
     function openErrorList(type) {
         if(!window_currentIspData || !window_currentIspData.nom) return;
-        let list = [];
-        let filterValue = "";
         
-        if(type==='OK') { list = window_currentIspData.okList || []; filterValue = "Bilan OK"; }
-        else if(type==='Bilan') { list = window_currentIspData.errLegereBilan || []; filterValue = "Erreur Bilan Légère"; }
-        else if(type==='Pisu') { list = window_currentIspData.errLegerePisu || []; filterValue = "Erreur Pisu Légère"; }
-        else { list = window_currentIspData.errLourde || []; filterValue = "Erreur Grave"; }
+        // Récupérer le matricule depuis les inputs
+        const mat = document.getElementById("matInput").value;
+        if(!mat) { toast("Matricule requis"); return; }
         
-        // Remplir currentDetailList et initialiser les checkboxes
-        currentDetailList = list;
-        document.querySelectorAll('#filterBox input[type="checkbox"]').forEach(cb => {
-            cb.checked = cb.value === filterValue;
-        });
-        
-        document.getElementById("modalListTitle").textContent = `Dossiers de ${window_currentIspData.nom}`;
-        filterDetails();
-        document.getElementById("modalList").style.display="flex";
+        // Faire un appel à getIspDetailsAdmin pour avoir les données complètes avec date, engin, etc.
+        google.script.run.withSuccessHandler(fullList => {
+            let list = [];
+            let filterValue = "";
+            
+            if(type==='OK') { list = fullList.filter(x => x.types.includes("Bilan OK")); filterValue = "Bilan OK"; }
+            else if(type==='Bilan') { list = fullList.filter(x => x.types.includes("Erreur Bilan Légère")); filterValue = "Erreur Bilan Légère"; }
+            else if(type==='Pisu') { list = fullList.filter(x => x.types.includes("Erreur Pisu Légère")); filterValue = "Erreur Pisu Légère"; }
+            else { list = fullList.filter(x => x.types.includes("Erreur Grave")); filterValue = "Erreur Grave"; }
+            
+            // Remplir currentDetailList et initialiser les checkboxes
+            currentDetailList = list;
+            document.querySelectorAll('#filterBox input[type="checkbox"]').forEach(cb => {
+                cb.checked = cb.value === filterValue;
+            });
+            
+            document.getElementById("modalListTitle").textContent = `Dossiers de ${window_currentIspData.nom}`;
+            filterDetails();
+            document.getElementById("modalList").style.display="flex";
+        }).getIspDetailsAdmin(mat);
     }
 
     // ADMIN
