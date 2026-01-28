@@ -30,7 +30,8 @@
 
     .main{ padding:25px; overflow-y:auto; height:100vh; }
     .view { display:none; animation:fadeIn 0.3s; }
-    .view.active { display:flex; flex-direction:column; height:100vh; overflow:hidden; }
+    .view.active { display:block; }
+    #viewChefferie.active { display:flex !important; flex-direction:column; height:100vh; overflow:hidden; }
     @keyframes fadeIn { from{opacity:0;transform:translateY(5px);} to{opacity:1;transform:translateY(0);} }
 
     .topbar{ border-bottom:1px solid var(--border); padding-bottom:8px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center; }
