@@ -57,6 +57,13 @@ const C_BS_PROBLEM = 71; // Signaler problème à Brice (checkbox)
 const C_BT_PROBLEM_TXT = 72; // Texte du problème pour Brice
 const C_BU_LOCK = 73; // Timestamp de verrouillage pour éviter doublons     
 
+// === HELPER FUNCTIONS ===
+function isCheckboxChecked(val) {
+  // Google Sheets checkboxes can return: true (boolean), "TRUE" (string), "✓" (checkmark), or other truthy values
+  if(!val) return false;
+  return val === true || String(val).toUpperCase() === "TRUE" || val === "✓";
+}
+
 function onOpen() { 
   SpreadsheetApp.getUi().createMenu('⚡ ADMIN').addItem('Mettre à jour Cache', 'updateHistoryCache').addToUi(); 
 }
@@ -442,8 +449,8 @@ function getIspStats(matriculeInput, dobInput) {
             };
             const nameInApp = String(data[i][C_APP_NOM]).trim().toLowerCase();
             if(nameInApp === myName || nameInApp.includes(myName)) {
-                if(!!data[i][C_BILAN_OK]) bilanConf++;
-                if(!!data[i][C_PISU_OK]) pisuConf++;
+                if(isCheckboxChecked(data[i][C_BILAN_OK])) bilanConf++;
+                if(isCheckboxChecked(data[i][C_PISU_OK])) pisuConf++;
             }
         }
     }
@@ -522,10 +529,10 @@ function getIspStats(matriculeInput, dobInput) {
                     Logger.log("Row " + (i+1) + ": mat=" + rowMat + ", id=" + id + ", C_BILAN_OK val=" + data[i][C_BILAN_OK] + " (type:" + typeof data[i][C_BILAN_OK] + "), C_PISU_OK val=" + data[i][C_PISU_OK] + " (type:" + typeof data[i][C_PISU_OK] + ")");
                 }
                 
-                const hasBilan = !!data[i][C_BILAN_OK];  // Convertir en booléen truthy
-                const hasPisu = !!data[i][C_PISU_OK];   // Convertir en booléen truthy
-                const hasBilanError = !!data[i][C_BILAN_KO];  // Convertir en booléen truthy
-                const hasPisuError = !!data[i][C_PISU_KO];   // Convertir en booléen truthy
+                const hasBilan = isCheckboxChecked(data[i][C_BILAN_OK]);
+                const hasPisu = isCheckboxChecked(data[i][C_PISU_OK]);
+                const hasBilanError = isCheckboxChecked(data[i][C_BILAN_KO]);
+                const hasPisuError = isCheckboxChecked(data[i][C_PISU_KO]);
                 
                 // BOTH Bilan ET Pisu OK = fiche OK
                 if(hasBilan && hasPisu) {
@@ -588,11 +595,11 @@ function getIspStats(matriculeInput, dobInput) {
                 status = (centre === "SD SSSM") ? "De Garde" : "Astreinte / Dispo";
             }
             
-            const hasH = !!data[i][7];  // H = Bilan finalement OK (correction)
-            const hasI = !!data[i][8];  // I = Pisu finalement OK (correction)
-            const hasJ = !!data[i][9];  // J = Erreur bilan légère
-            const hasK = !!data[i][10]; // K = Erreur pisu légère
-            const hasL = !!data[i][11]; // L = Erreur grave
+            const hasH = isCheckboxChecked(data[i][7]);  // H = Bilan finalement OK (correction)
+            const hasI = isCheckboxChecked(data[i][8]);  // I = Pisu finalement OK (correction)
+            const hasJ = isCheckboxChecked(data[i][9]);  // J = Erreur bilan légère
+            const hasK = isCheckboxChecked(data[i][10]); // K = Erreur pisu légère
+            const hasL = isCheckboxChecked(data[i][11]); // L = Erreur grave
             
             // H ET I cochées = fiche revient à OK complètement
             if(hasH && hasI) {
@@ -674,8 +681,8 @@ function getChefferieCounts() {
         
         for(let i=1; i<dAlex.length; i++) {
             const id = String(dAlex[i][0]).trim();
-            if(!!dAlex[i][13]) alexDone.add(id);
-            if(!!dAlex[i][11]) alexHeavy.add(id);
+            if(isCheckboxChecked(dAlex[i][13])) alexDone.add(id);
+            if(isCheckboxChecked(dAlex[i][11])) alexHeavy.add(id);
         }
         for(let i=1; i<dEve.length; i++) {
             const id = String(dEve[i][0]).trim();
@@ -683,7 +690,7 @@ function getChefferieCounts() {
             if((dEve[i][14] || dEve[i][16]) && !dEve[i][18]) evePending.add(id);
         }
         for(let i=1; i<dApp.length; i++) {
-            if(!!dApp[i][C_BILAN_KO] || !!dApp[i][C_PISU_KO]) {
+            if(isCheckboxChecked(dApp[i][C_BILAN_KO]) || isCheckboxChecked(dApp[i][C_PISU_KO])) {
                 if(!alexDone.has(String(dApp[i][C_APP_ID]).trim())) isp++;
             }
         }
@@ -707,11 +714,11 @@ function getChefferieNextCase(mode) {
         const dataAlex = shAlex.getDataRange().getValues(); 
 
         for(let i=1; i<dataApp.length; i++) {
-            const hasError = (!!dataApp[i][C_BILAN_KO] || !!dataApp[i][C_PISU_KO]);
+            const hasError = (isCheckboxChecked(dataApp[i][C_BILAN_KO]) || isCheckboxChecked(dataApp[i][C_PISU_KO]));
             const id = String(dataApp[i][C_APP_ID]).trim();
             let alreadyDone = false;
             for(let j=1; j<dataAlex.length; j++) {
-                if(String(dataAlex[j][0]).trim() === id && !!dataAlex[j][13]) { alreadyDone = true; break; }
+                if(String(dataAlex[j][0]).trim() === id && isCheckboxChecked(dataAlex[j][13])) { alreadyDone = true; break; }
             }
             if(hasError && !alreadyDone) {
                 rowToProcess = i+1;
@@ -739,7 +746,7 @@ function getChefferieNextCase(mode) {
         const dataAlex = shAlex.getDataRange().getValues();
         const dataEve = shEve.getDataRange().getValues();
         for(let i=1; i<dataAlex.length; i++) {
-            if(!!dataAlex[i][11]) { 
+            if(isCheckboxChecked(dataAlex[i][11])) { 
                 const id = String(dataAlex[i][0]).trim();
                 let alreadyDone = false;
                 for(let j=1; j<dataEve.length; j++) {
@@ -747,7 +754,7 @@ function getChefferieNextCase(mode) {
                 }
                 if(!alreadyDone) {
                     rowToProcess = i+1;
-                    schema = { mode:'med_chef', info:{ interId:id, motif:dataAlex[i][1], pdf:dataAlex[i][2], infName:dataAlex[i][4], infos:dataAlex[i][3], status:"Erreur Lourde" } };
+                    schema = { mode:'med_chef', info:{ interId:id, motif:dataAlex[i][1], date:'', pdf:dataAlex[i][2], infName:dataAlex[i][4], cis:'', engin:'', status:"Erreur Lourde" } };
                     break;
                 }
             }
@@ -764,7 +771,7 @@ function getChefferieNextCase(mode) {
                 let pdf = "", nom="", status="Validation";
                 for(let k=1; k<dataAlex.length; k++){ if(String(dataAlex[k][0]).trim() === id) { pdf = dataAlex[k][2]; nom = dataAlex[k][4]; break; } }
                 rowToProcess = i+1;
-                schema = { mode:'valid_final', info:{ interId:id, pdf:pdf, infName:nom, status:status, analyse:dataEve[i][14], actionReq:dataEve[i][16] } };
+                schema = { mode:'valid_final', info:{ interId:id, date:'', pdf:pdf, infName:nom, cis:'', motif:'', engin:'', status:status, analyse:dataEve[i][14], actionReq:dataEve[i][16] } };
                 break;
             }
         }
@@ -922,11 +929,11 @@ function getNextCase(specificRow) {
     
     const resultats = {
         bg: { label: "Réalisation examen clinique", opts: getDropdownList_(shApp, C_BG_EXAM), val: row[C_BG_EXAM] },
-        bh: { label: "Absence erreur", checked: !!row[C_BH_ABS] },
-        bi: { label: "Bilan OK", checked: !!row[C_BILAN_OK] },
-        bj: { label: "Bilan incomplet", checked: !!row[C_BILAN_KO] },
-        bk: { label: "Pisu OK", checked: !!row[C_PISU_OK] },
-        bl: { label: "Pisu incomplet", checked: !!row[C_PISU_KO] },
+        bh: { label: "Absence erreur", checked: isCheckboxChecked(row[C_BH_ABS]) },
+        bi: { label: "Bilan OK", checked: isCheckboxChecked(row[C_BILAN_OK]) },
+        bj: { label: "Bilan incomplet", checked: isCheckboxChecked(row[C_BILAN_KO]) },
+        bk: { label: "Pisu OK", checked: isCheckboxChecked(row[C_PISU_OK]) },
+        bl: { label: "Pisu incomplet", checked: isCheckboxChecked(row[C_PISU_KO]) },
         bm: { label: "PUI commandée", checked: row[C_BM_TRACAB] === true },
         bn: { label: "Surveillance transport", checked: false }
     };
