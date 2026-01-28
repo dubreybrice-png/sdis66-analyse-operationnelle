@@ -1,7 +1,7 @@
 /****************************************************
  * SDIS 66 - SDS | WebApp Dashboard
  * CACHE SÉQUENTIEL + FIXES + LOCK SYSTEM
- * Version: 2026-01-28 15:30
+ * Version: 2026-01-28 15:40
  ****************************************************/
 
 const DASHBOARD_SHEET_NAME = "Dashboard";
@@ -498,7 +498,9 @@ function getIspStats(matriculeInput, dobInput) {
             if(rowName === myName || rowName.includes(myName)) {
                 const id = String(data[i][0]).trim(); 
                 const motif = appDataRef[id] ? appDataRef[id].motif : "?";
-                const item = { id:id, motif:motif, types: [], errorType: "" };
+                const centre = appDataRef[id] ? appDataRef[id].centre : "";
+                const engin = appDataRef[id] ? appDataRef[id].engin : "";
+                const item = { id:id, motif:motif, centre:centre, engin:engin, types: [], errorType: "" };
                 if(data[i][7]===true) { item.types.push("Bilan OK"); bilanOkList.push(item); } 
                 if(data[i][8]===true) { item.types.push("Pisu OK"); pisuOkList.push(item); } 
                 if(data[i][9]===true) { item.types.push("Erreur Bilan Légère"); item.errorType = "Erreur Bilan Légère"; errLegereBilanList.push(item); } 
@@ -968,6 +970,7 @@ function getIspDetailsAdmin(mat) {
             const status = (cis === "SD SSSM") ? "Garde" : "Dispo/Astreinte";
             const date = formatDateHeureFR_(dApp[i][C_APP_DATE]);
             const motif = String(dApp[i][C_APP_MOTIF]||"—").trim();
+            const engin = String(dApp[i][C_APP_ENGIN]||"—").trim();
             const tags = alexTags[id] || {};
             let types = [];
             let errorType = "";
@@ -979,7 +982,9 @@ function getIspDetailsAdmin(mat) {
             list.push({ 
                 id: id, 
                 date: date, 
+                centre: cis,
                 motif: motif, 
+                engin: engin,
                 pdf: dApp[i][C_APP_PDF], 
                 status: status, 
                 types: types, 
@@ -997,14 +1002,24 @@ function getIspDetailsAdmin(mat) {
 // HELPERS
 function getInterventionDetails(interId) {
   const ss = getSS_();
-  let pdfUrl = "", commentChefferie = "", analyseMed = "";
+  let pdfUrl = "", commentChefferie = "", analyseMed = "", centre = "", engin = "";
   const shApp = ss.getSheetByName(APP_SHEET_NAME);
-  if(shApp){ const data = shApp.getDataRange().getValues(); for(let i=1; i<data.length; i++) { if(String(data[i][C_APP_ID]).trim() === String(interId).trim()) { pdfUrl = data[i][C_APP_PDF]; break; } } }
+  if(shApp){ 
+    const data = shApp.getDataRange().getValues(); 
+    for(let i=1; i<data.length; i++) { 
+      if(String(data[i][C_APP_ID]).trim() === String(interId).trim()) { 
+        pdfUrl = data[i][C_APP_PDF];
+        centre = String(data[i][C_APP_CIS]||"").trim();
+        engin = String(data[i][C_APP_ENGIN]||"").trim();
+        break; 
+      } 
+    } 
+  }
   const shAlex = ss.getSheetByName("APP Alex");
   if(shAlex){ const data = shAlex.getDataRange().getValues(); for(let i=1; i<data.length; i++) { if(String(data[i][0]).trim() === String(interId).trim()) { commentChefferie = data[i][12]; break; } } }
   const shEve = ss.getSheetByName("APP Eve");
   if(shEve) { const data = shEve.getDataRange().getValues(); for(let i=1; i<data.length; i++) { if(String(data[i][0]).trim() === String(interId).trim()) { analyseMed = data[i][14]; break; } } }
-  return { pdfUrl, commentChefferie, analyseMed };
+  return { pdfUrl, commentChefferie, analyseMed, centre, engin };
 }
 
 function calcTrend(c,p) { if(!p) return {val:(c>0?"+100%":"0%"), color:"gray", arrow:"="}; const d = ((c-p)/p)*100; return { val: (d>0?"+":"")+d.toFixed(1)+"%", color: d>=0?"#39ff14":"#ff4d4d", arrow: d>=0?"▲":"▼" }; }

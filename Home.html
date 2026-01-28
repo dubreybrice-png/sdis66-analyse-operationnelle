@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Version: 2026-01-28 15:22 -->
+<!-- Version: 2026-01-28 15:40 -->
 <html>
 <head>
   <base target="_top">
@@ -500,7 +500,35 @@
     </div>
   </div>
 
-  <div id="modalDetail" class="modalOverlay" style="z-index:20000;"><div class="modalCard" style="width:95%; max-width:1600px; height:98vh;"><div class="modalHead"><span>Détail</span><button class="closeBtn" onclick="closeModal('modalDetail')">×</button></div><div class="modalBody"><iframe id="modalPdf" style="flex:1; border:0; background:#000;"></iframe><div id="modalPdfInfo"><h4 style="color:var(--accent3);margin:0 0 10px 0">Détails</h4><div style="display:flex;flex-direction:column;gap:10px;font-size:12px;"><div><span style="color:var(--muted)">N° Intervention:</span><br><b id="detailId"></b></div><div><span style="color:var(--muted)">Date:</span><br><b id="detailDate"></b></div><div><span style="color:var(--muted)">Motif:</span><br><b id="detailMotif"></b></div><div><span style="color:var(--muted)">Statut:</span><br><b id="detailStatus"></b></div></div><h4 style="color:var(--accent3);margin:15px 0 10px 0">Commentaire Chefferie</h4><div id="commChef" class="static-box"></div><div id="blockMed" style="margin-top:15px;display:none"><h4 style="color:var(--red);margin:0 0 10px 0">Analyse Médecin</h4><div id="commMed" class="static-box" style="color:var(--red)"></div></div><button class="btnGo" style="margin-top:auto;width:100%" onclick="closeModal('modalDetail')">Fermer</button></div></div></div></div>
+  <div id="modalDetail" class="modalOverlay" style="z-index:20000;">
+    <div class="modalCard" style="width:95%; max-width:1600px; height:98vh;">
+      <div class="modalHead">
+        <span>Détail de l'intervention</span>
+        <button class="closeBtn" onclick="closeModal('modalDetail')">×</button>
+      </div>
+      <div class="modalBody" style="display:flex; gap:0;">
+        <iframe id="modalPdf" style="flex:2.5; border:0; background:#000;"></iframe>
+        <div id="modalPdfInfo" style="flex:1; min-width:350px; background:#1a2245; padding:20px; border-left:1px solid var(--border); overflow-y:auto; display:flex; flex-direction:column; gap:15px;">
+          <h4 style="color:var(--accent3);margin:0 0 15px 0;">Informations</h4>
+          <div style="display:flex;flex-direction:column;gap:12px;font-size:13px;">
+            <div><span style="color:var(--muted);font-size:11px;">N° Intervention</span><br><b id="detailId" style="font-size:15px;color:#fff;"></b></div>
+            <div><span style="color:var(--muted);font-size:11px;">Date</span><br><b id="detailDate"></b></div>
+            <div><span style="color:var(--muted);font-size:11px;">Centre</span><br><b id="detailCentre"></b></div>
+            <div><span style="color:var(--muted);font-size:11px;">Motif d'intervention</span><br><b id="detailMotif"></b></div>
+            <div><span style="color:var(--muted);font-size:11px;">Engin</span><br><b id="detailEngin"></b></div>
+            <div><span style="color:var(--muted);font-size:11px;">Statut</span><br><b id="detailStatus"></b></div>
+          </div>
+          <h4 style="color:var(--accent3);margin:15px 0 10px 0;">Commentaire Chefferie</h4>
+          <div id="commChef" class="static-box"></div>
+          <div id="blockMed" style="display:none;">
+            <h4 style="color:var(--red);margin:15px 0 10px 0;">Analyse Médecin</h4>
+            <div id="commMed" class="static-box" style="color:var(--red);"></div>
+          </div>
+          <button class="btnGo" style="margin-top:auto;width:100%;" onclick="closeModal('modalDetail')">Fermer</button>
+        </div>
+      </div>
+    </div>
+  </div>
   
   <div id="modalList" class="modalOverlay" style="z-index:15000;"><div class="modalCard" style="max-width:800px;height:80vh;"><div class="modalHead"><span id="modalListTitle">Liste des dossiers</span><button class="closeBtn" onclick="closeModal('modalList')">×</button></div>
       <div style="padding:15px;border-bottom:1px solid var(--border);display:flex;gap:15px;flex-wrap:wrap;background:rgba(0,0,0,0.3);" id="filterBox">
@@ -1094,7 +1122,7 @@
             const errorTag = x.errorType ? `<span style="display:inline-block;padding:3px 8px;border-radius:3px;font-size:10px;font-weight:bold;background:${tagBg};color:${tagColor};">${x.errorType}</span>` : '';
             const ispLabel = x.ispName ? `<div style="font-size:10px;color:var(--accent3);margin-top:4px;">ISP: <b>${x.ispName}</b></div>` : '';
             c.innerHTML += `
-                <div class="detail-row" onclick="loadInterDetail('${x.id}', '${x.date || ''}', '${(x.motif || '').replace(/'/g, "\\'")}', '${x.status || ''}')" style="padding:12px;border-bottom:1px solid #333;cursor:pointer;">
+                <div class="detail-row" onclick="loadInterDetail('${x.id}', '${x.date || ''}', '${(x.motif || '').replace(/'/g, "\\'")}', '${x.status || ''}', '${x.centre || ''}', '${x.engin || ''}')" style="padding:12px;border-bottom:1px solid #333;cursor:pointer;">
                     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
                         <div style="flex:1;">
                             <div style="font-weight:bold;color:#39ff14;font-size:13px;">Numéro d'intervention: ${x.id}</div>
@@ -1112,14 +1140,16 @@
         });
     }
     
-    function loadInterDetail(id, date, motif, status) {
+    function loadInterDetail(id, date, motif, status, centre, engin) {
         startLoad();
         google.script.run.withSuccessHandler(res => {
             stopLoad();
             document.getElementById("modalPdf").src = (res.pdfUrl||'').replace('/view','/preview');
             setText("detailId", id);
             setText("detailDate", date || "N/A");
+            setText("detailCentre", centre || res.centre || "N/A");
             setText("detailMotif", motif || "N/A");
+            setText("detailEngin", engin || res.engin || "N/A");
             setText("detailStatus", status || "N/A");
             document.getElementById("commChef").textContent = res.commentChefferie||"Aucun commentaire.";
             const m = document.getElementById("blockMed");
