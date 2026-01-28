@@ -442,8 +442,8 @@ function getIspStats(matriculeInput, dobInput) {
             };
             const nameInApp = String(data[i][C_APP_NOM]).trim().toLowerCase();
             if(nameInApp === myName || nameInApp.includes(myName)) {
-                if(data[i][C_BILAN_OK] === true) bilanConf++;
-                if(data[i][C_PISU_OK] === true) pisuConf++;
+                if(!!data[i][C_BILAN_OK]) bilanConf++;
+                if(!!data[i][C_PISU_OK]) pisuConf++;
             }
         }
     }
@@ -522,10 +522,10 @@ function getIspStats(matriculeInput, dobInput) {
                     Logger.log("Row " + (i+1) + ": mat=" + rowMat + ", id=" + id + ", C_BILAN_OK val=" + data[i][C_BILAN_OK] + " (type:" + typeof data[i][C_BILAN_OK] + "), C_PISU_OK val=" + data[i][C_PISU_OK] + " (type:" + typeof data[i][C_PISU_OK] + ")");
                 }
                 
-                const hasBilan = data[i][C_BILAN_OK] === true;
-                const hasPisu = data[i][C_PISU_OK] === true;
-                const hasBilanError = data[i][C_BILAN_KO] === true;
-                const hasPisuError = data[i][C_PISU_KO] === true;
+                const hasBilan = !!data[i][C_BILAN_OK];  // Convertir en booléen truthy
+                const hasPisu = !!data[i][C_PISU_OK];   // Convertir en booléen truthy
+                const hasBilanError = !!data[i][C_BILAN_KO];  // Convertir en booléen truthy
+                const hasPisuError = !!data[i][C_PISU_KO];   // Convertir en booléen truthy
                 
                 // BOTH Bilan ET Pisu OK = fiche OK
                 if(hasBilan && hasPisu) {
@@ -588,11 +588,11 @@ function getIspStats(matriculeInput, dobInput) {
                 status = (centre === "SD SSSM") ? "De Garde" : "Astreinte / Dispo";
             }
             
-            const hasH = data[i][7] === true;  // H = Bilan finalement OK (correction)
-            const hasI = data[i][8] === true;  // I = Pisu finalement OK (correction)
-            const hasJ = data[i][9] === true;  // J = Erreur bilan légère
-            const hasK = data[i][10] === true; // K = Erreur pisu légère
-            const hasL = data[i][11] === true; // L = Erreur grave
+            const hasH = !!data[i][7];  // H = Bilan finalement OK (correction)
+            const hasI = !!data[i][8];  // I = Pisu finalement OK (correction)
+            const hasJ = !!data[i][9];  // J = Erreur bilan légère
+            const hasK = !!data[i][10]; // K = Erreur pisu légère
+            const hasL = !!data[i][11]; // L = Erreur grave
             
             // H ET I cochées = fiche revient à OK complètement
             if(hasH && hasI) {
@@ -674,8 +674,8 @@ function getChefferieCounts() {
         
         for(let i=1; i<dAlex.length; i++) {
             const id = String(dAlex[i][0]).trim();
-            if(dAlex[i][13] === true) alexDone.add(id);
-            if(dAlex[i][11] === true) alexHeavy.add(id);
+            if(!!dAlex[i][13]) alexDone.add(id);
+            if(!!dAlex[i][11]) alexHeavy.add(id);
         }
         for(let i=1; i<dEve.length; i++) {
             const id = String(dEve[i][0]).trim();
@@ -683,7 +683,7 @@ function getChefferieCounts() {
             if((dEve[i][14] || dEve[i][16]) && !dEve[i][18]) evePending.add(id);
         }
         for(let i=1; i<dApp.length; i++) {
-            if(dApp[i][C_BILAN_KO] === true || dApp[i][C_PISU_KO] === true) {
+            if(!!dApp[i][C_BILAN_KO] || !!dApp[i][C_PISU_KO]) {
                 if(!alexDone.has(String(dApp[i][C_APP_ID]).trim())) isp++;
             }
         }
@@ -707,11 +707,11 @@ function getChefferieNextCase(mode) {
         const dataAlex = shAlex.getDataRange().getValues(); 
 
         for(let i=1; i<dataApp.length; i++) {
-            const hasError = (dataApp[i][C_BILAN_KO] === true || dataApp[i][C_PISU_KO] === true);
+            const hasError = (!!dataApp[i][C_BILAN_KO] || !!dataApp[i][C_PISU_KO]);
             const id = String(dataApp[i][C_APP_ID]).trim();
             let alreadyDone = false;
             for(let j=1; j<dataAlex.length; j++) {
-                if(String(dataAlex[j][0]).trim() === id && dataAlex[j][13] === true) { alreadyDone = true; break; }
+                if(String(dataAlex[j][0]).trim() === id && !!dataAlex[j][13]) { alreadyDone = true; break; }
             }
             if(hasError && !alreadyDone) {
                 rowToProcess = i+1;
@@ -739,7 +739,7 @@ function getChefferieNextCase(mode) {
         const dataAlex = shAlex.getDataRange().getValues();
         const dataEve = shEve.getDataRange().getValues();
         for(let i=1; i<dataAlex.length; i++) {
-            if(dataAlex[i][11] === true) { 
+            if(!!dataAlex[i][11]) { 
                 const id = String(dataAlex[i][0]).trim();
                 let alreadyDone = false;
                 for(let j=1; j<dataEve.length; j++) {
@@ -922,11 +922,11 @@ function getNextCase(specificRow) {
     
     const resultats = {
         bg: { label: "Réalisation examen clinique", opts: getDropdownList_(shApp, C_BG_EXAM), val: row[C_BG_EXAM] },
-        bh: { label: "Absence erreur", checked: row[C_BH_ABS] === true },
-        bi: { label: "Bilan OK", checked: row[C_BILAN_OK] === true },
-        bj: { label: "Bilan incomplet", checked: row[C_BILAN_KO] === true },
-        bk: { label: "Pisu OK", checked: row[C_PISU_OK] === true },
-        bl: { label: "Pisu incomplet", checked: row[C_PISU_KO] === true },
+        bh: { label: "Absence erreur", checked: !!row[C_BH_ABS] },
+        bi: { label: "Bilan OK", checked: !!row[C_BILAN_OK] },
+        bj: { label: "Bilan incomplet", checked: !!row[C_BILAN_KO] },
+        bk: { label: "Pisu OK", checked: !!row[C_PISU_OK] },
+        bl: { label: "Pisu incomplet", checked: !!row[C_PISU_KO] },
         bm: { label: "PUI commandée", checked: row[C_BM_TRACAB] === true },
         bn: { label: "Surveillance transport", checked: false }
     };
