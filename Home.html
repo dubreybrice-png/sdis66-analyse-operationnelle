@@ -513,10 +513,9 @@
           <div style="display:flex;flex-direction:column;gap:12px;font-size:13px;">
             <div><span style="color:var(--muted);font-size:11px;">N° Intervention</span><br><b id="detailId" style="font-size:15px;color:#fff;"></b></div>
             <div><span style="color:var(--muted);font-size:11px;">Date</span><br><b id="detailDate"></b></div>
-            <div><span style="color:var(--muted);font-size:11px;">Centre</span><br><b id="detailCentre"></b></div>
+            <div><span style="color:var(--muted);font-size:11px;">Statut</span><br><b id="detailCentre"></b></div>
             <div><span style="color:var(--muted);font-size:11px;">Motif d'intervention</span><br><b id="detailMotif"></b></div>
             <div><span style="color:var(--muted);font-size:11px;">Engin</span><br><b id="detailEngin"></b></div>
-            <div><span style="color:var(--muted);font-size:11px;">Statut</span><br><b id="detailStatus"></b></div>
           </div>
           <h4 style="color:var(--accent3);margin:15px 0 10px 0;">Commentaire Chefferie</h4>
           <div id="commChef" class="static-box"></div>
@@ -1164,7 +1163,7 @@
                     </div>
                     <div style="font-size:12px;color:#ccc;margin-bottom:6px;"><b>${x.motif || '-'}</b></div>
                     <div style="font-size:10px;color:#888;">${x.status || '-'}</div>
-                    <div style="font-size:10px;color:#888;">Centre: ${x.centre || '-'} | Engin: ${x.engin || '-'}</div>
+                    <div style="font-size:10px;color:#888;">Engin: ${x.engin || '-'}</div>
                     ${ispLabel}
                     ${x.commChef ? `<div style="font-size:10px;color:var(--accent3);margin-top:4px;">Chef: ${x.commChef}</div>` : ''}
                     ${x.commMed ? `<div style="font-size:10px;color:var(--red);">Med: ${x.commMed}</div>` : ''}
@@ -1179,11 +1178,10 @@
             stopLoad();
             document.getElementById("modalPdf").src = (res.pdfUrl||'').replace('/view','/preview');
             setText("detailId", id);
-            setText("detailDate", date || "N/A");
-            setText("detailCentre", centre || res.centre || "N/A");
-            setText("detailMotif", motif || "N/A");
-            setText("detailEngin", engin || res.engin || "N/A");
-            setText("detailStatus", status || "N/A");
+            setText("detailDate", date || "-");
+            setText("detailCentre", status || "-");
+            setText("detailMotif", motif || "-");
+            setText("detailEngin", engin || res.engin || "-");
             document.getElementById("commChef").textContent = res.commentChefferie||"Aucun commentaire.";
             const m = document.getElementById("blockMed");
             if(res.analyseMed) { m.style.display="block"; document.getElementById("commMed").textContent=res.analyseMed; } else m.style.display="none";
