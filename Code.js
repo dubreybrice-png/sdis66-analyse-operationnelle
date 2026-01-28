@@ -1,7 +1,7 @@
 /****************************************************
  * SDIS 66 - SDS | WebApp Dashboard
  * CACHE SÉQUENTIEL + FIXES + LOCK SYSTEM
- * Version: 2026-01-28 16:45
+ * Version: 2026-01-28 17:00
  ****************************************************/
 
 const DASHBOARD_SHEET_NAME = "Dashboard";
@@ -546,14 +546,23 @@ function getIspStats(matriculeInput, dobInput) {
             const rowName = String(data[i][4]).trim().toLowerCase(); 
             if(rowName === myName || rowName.includes(myName)) {
                 const id = String(data[i][0]).trim();
-                // Vérifier que la fiche existe en APP
-                if(!appDataRef[id]) continue;
                 
-                const motif = appDataRef[id].motif || "?";
-                const centre = appDataRef[id].centre || "";
-                const engin = appDataRef[id].engin || "";
-                const date = appDataRef[id].date || "";
-                const status = appDataRef[id].status || "";
+                // Récupérer les infos depuis APP Alex ou appDataRef
+                let motif = "", centre = "", engin = "", date = "", status = "";
+                if(appDataRef[id]) {
+                    motif = appDataRef[id].motif || "?";
+                    centre = appDataRef[id].centre || "";
+                    engin = appDataRef[id].engin || "";
+                    date = appDataRef[id].date || "";
+                    status = appDataRef[id].status || "";
+                } else {
+                    // Si pas dans appDataRef, utiliser les données d'APP Alex directement
+                    motif = String(data[i][2]||"?").trim();
+                    centre = String(data[i][1]||"").trim();
+                    engin = String(data[i][5]||"").trim();
+                    date = formatDateHeureFR_(data[i][6]);
+                    status = (centre === "SD SSSM") ? "De Garde" : "Astreinte / Dispo";
+                }
                 
                 const hasH = data[i][7] === true;  // H = Bilan finalement OK (correction)
                 const hasI = data[i][8] === true;  // I = Pisu finalement OK (correction)

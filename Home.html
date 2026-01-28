@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Version: 2026-01-28 16:30 -->
+<!-- Version: 2026-01-28 17:00 -->
 <html>
 <head>
   <base target="_top">
@@ -124,7 +124,7 @@
 
     .wrap{ padding:10px; max-width: 100%; margin:0 auto; height: calc(100vh - 50px); display:flex; gap:10px; }
     .leftCol { flex: 2.5; display:flex; flex-direction:column; gap:10px; height:100%; min-width:0; }
-    .rightCol { flex: 2; display:flex; flex-direction:column; height:100%; min-width:550px; }
+    .rightCol { flex: 2.2; display:flex; flex-direction:column; height:100%; min-width:500px; }
 
     .card{ background: linear-gradient(180deg, rgba(16,26,51,.95), rgba(15,24,48,.95)); border:1px solid var(--border); border-radius: var(--radius); box-shadow: 0 18px 50px rgba(0,0,0,.35); overflow:hidden; display:flex; flex-direction:column; flex:1; }
     .cardHead{ padding:8px 12px; border-bottom:1px solid var(--border); background: rgba(255,255,255,.02); flex-shrink:0; }
@@ -274,7 +274,7 @@
                         </div>
                         <div>
                             <h4 style="color:var(--accent3);margin:0 0 5px 0">Etude qualitative des BPV</h4>
-                            <div style="font-size:12px;cursor:pointer;text-decoration:underline;" class="text-green" onclick="openErrorList('OK')">OK (Bilan et/ou Pisu): <b id="ispOk"></b></div>
+                            <div style="font-size:12px;cursor:pointer;text-decoration:underline;" class="text-green" onclick="openErrorList('OK')">Bilan OK: <b id="ispOk"></b></div>
                             
                             <div style="margin-top:8px;cursor:pointer;text-decoration:underline;" class="text-orange" onclick="openErrorList('Bilan')">Erreur Bilan Légère: <span id="ispErrBil"></span></div>
                             <div style="cursor:pointer;text-decoration:underline;" class="text-orange" onclick="openErrorList('Pisu')">Erreur Pisu Légère: <span id="ispErrPisu"></span></div>
@@ -358,26 +358,28 @@
               </button>
           </div>
 
-          <div id="chefFormArea" style="display:block;"></div>
-          
-          <div id="globalListArea" style="display:none;margin-top:20px;">
-              <div class="panel">
-                  <div class="panelBody" style="max-height:75vh;overflow:auto;">
-                      <div style="display:flex;gap:15px;align-items:center;padding:10px;background:rgba(255,255,255,0.05);margin-bottom:10px;border-radius:8px;font-size:11px;">
-                          <div style="flex:0 0 auto;">Cliquez sur un ISP pour voir ses fiches.</div>
-                          <button class="btnGo" style="width:auto;padding:6px 12px;font-size:11px;" onclick="loadAllGraveErrors()">Voir toutes les fiches</button>
+          <div style="overflow-y:auto; height:calc(100vh - 140px);">
+              <div id="chefFormArea" style="display:block;"></div>
+              
+              <div id="globalListArea" style="display:none;margin-top:20px;">
+                  <div class="panel">
+                      <div class="panelBody" style="max-height:75vh;overflow:auto;">
+                          <div style="display:flex;gap:15px;align-items:center;padding:10px;background:rgba(255,255,255,0.05);margin-bottom:10px;border-radius:8px;font-size:11px;">
+                              <div style="flex:0 0 auto;">Cliquez sur un ISP pour voir ses fiches.</div>
+                              <button class="btnGo" style="width:auto;padding:6px 12px;font-size:11px;" onclick="loadAllGraveErrors()">Voir toutes les fiches</button>
+                          </div>
+                          <table id="globalTable">
+                              <thead><tr>
+                                  <th onclick="sortGlobal(0)">Nom ISP <span id="sortIcon0">↕</span></th>
+                                  <th onclick="sortGlobal(1)">Bilan OK <span id="sortIcon1">↕</span></th>
+                                  <th onclick="sortGlobal(2)">Pisu OK <span id="sortIcon2">↕</span></th>
+                                  <th onclick="sortGlobal(3)">Erreur Bilan Lég. <span id="sortIcon3">↕</span></th>
+                                  <th onclick="sortGlobal(4)">Erreur Pisu Lég. <span id="sortIcon4">↕</span></th>
+                                  <th onclick="sortGlobal(5)">Erreur Grave <span id="sortIcon5">↕</span></th>
+                              </tr></thead>
+                              <tbody id="globalTbody"></tbody>
+                          </table>
                       </div>
-                      <table id="globalTable">
-                          <thead><tr>
-                              <th onclick="sortGlobal(0)">Nom ISP <span id="sortIcon0">↕</span></th>
-                              <th onclick="sortGlobal(1)">Bilan OK <span id="sortIcon1">↕</span></th>
-                              <th onclick="sortGlobal(2)">Pisu OK <span id="sortIcon2">↕</span></th>
-                              <th onclick="sortGlobal(3)">Erreur Bilan Lég. <span id="sortIcon3">↕</span></th>
-                              <th onclick="sortGlobal(4)">Erreur Pisu Lég. <span id="sortIcon4">↕</span></th>
-                              <th onclick="sortGlobal(5)">Erreur Grave <span id="sortIcon5">↕</span></th>
-                          </tr></thead>
-                          <tbody id="globalTbody"></tbody>
-                      </table>
                   </div>
               </div>
           </div>
@@ -923,13 +925,36 @@
             renderAdminTable();
             document.getElementById("adminSollTbody").innerHTML = res.sollicitation.map(s => `<tr><td>${s.nom}</td><td class="num"><b>${s.tx}</b></td></tr>`).join('');
             
-            // Remplir tableaux CIS et Secteurs depuis les données déjà chargées
-            google.script.run.withSuccessHandler(stats => {
-                const cisSorted = (stats.cis || []).sort((a,b) => b.v26 - a.v26);
-                const sectSorted = (stats.secteurs || []).sort((a,b) => b.v26 - a.v26);
-                document.querySelector("#tableAdminCis tbody").innerHTML = cisSorted.map(x => `<tr><td>${x.name}</td><td class="num"><b>${x.v26}</b></td><td class="num" style="color:gray">${x.v25}</td><td class="num" style="color:gray">${x.v25tot}</td></tr>`).join('');
-                document.querySelector("#tableAdminSect tbody").innerHTML = sectSorted.map(x => `<tr><td>${x.name}</td><td class="num"><b>${x.v26}</b></td><td class="num" style="color:gray">${x.v25}</td><td class="num" style="color:gray">${x.v25tot}</td></tr>`).join('');
-            }).getStats2026();
+            // Remplir tableaux CIS et Secteurs depuis getStats2025() pour avoir les bonnes données YTD
+            google.script.run.withSuccessHandler(stats25 => {
+                // Récupérer les comptages 2025 YTD depuis cisMap et sectMap
+                const cisNames = Object.keys(stats25.cisMap || {});
+                const sectNames = Object.keys(stats25.sectMap || {});
+                
+                // Récupérer aussi les totaux 2026 et 2025 total depuis getStats2026
+                google.script.run.withSuccessHandler(stats26 => {
+                    // Combiner les données: cisMap pour 2025 YTD, cis array pour 2026 et 2025 total
+                    const cisData = (stats26.cis || []).map(x => ({
+                        name: x.name,
+                        v26: x.v26,
+                        v25ytd: stats25.cisMap[x.name] || 0,
+                        v25tot: x.v25tot
+                    }));
+                    const sectData = (stats26.secteurs || []).map(x => ({
+                        name: x.name,
+                        v26: x.v26,
+                        v25ytd: stats25.sectMap[x.name] || 0,
+                        v25tot: x.v25tot
+                    }));
+                    
+                    // Trier par 2026 décroissant
+                    const cisSorted = cisData.sort((a,b) => b.v26 - a.v26);
+                    const sectSorted = sectData.sort((a,b) => b.v26 - a.v26);
+                    
+                    document.querySelector("#tableAdminCis tbody").innerHTML = cisSorted.map(x => `<tr><td>${x.name}</td><td class="num"><b>${x.v26}</b></td><td class="num" style="color:gray">${x.v25ytd}</td><td class="num" style="color:gray">${x.v25tot}</td></tr>`).join('');
+                    document.querySelector("#tableAdminSect tbody").innerHTML = sectSorted.map(x => `<tr><td>${x.name}</td><td class="num"><b>${x.v26}</b></td><td class="num" style="color:gray">${x.v25ytd}</td><td class="num" style="color:gray">${x.v25tot}</td></tr>`).join('');
+                }).getStats2026();
+            }).getStats2025();
         }).withFailureHandler(e => {
             clearInterval(i);
             toast("Erreur: " + e.message);
