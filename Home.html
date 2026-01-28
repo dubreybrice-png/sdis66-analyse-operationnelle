@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Version: 2026-01-28 13:57 -->
+<!-- Version: 2026-01-28 14:10 -->
 <html>
 <head>
   <base target="_top">
@@ -300,12 +300,6 @@
                 <div id="adminData" style="display:none;margin-top:10px;">
                     <input type="text" id="adminSearch" class="inp" placeholder="Filtrer (séparer par ;)" style="width:100%;margin-bottom:10px;" onkeyup="filterAdmin()">
                     
-                    <!-- Nouvelles fenêtres CIS et Secteurs -->
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px;">
-                        <div class="panel"><div class="panelHead">Interventions par CIS (décroissant)</div><div class="panelScrollWrapper" style="max-height:250px;"><table id="tableAdminCis"><thead><tr><th>CIS</th><th class="num">2026</th><th class="num">2025</th></tr></thead><tbody></tbody></table></div></div>
-                        <div class="panel"><div class="panelHead">Interventions par Secteur (décroissant)</div><div class="panelScrollWrapper" style="max-height:250px;"><table id="tableAdminSect"><thead><tr><th>Secteur</th><th class="num">2026</th><th class="num">2025</th></tr></thead><tbody></tbody></table></div></div>
-                    </div>
-                    
                     <div class="adminSplit">
                         <div class="adminLeft">
                             <div class="table-title">Données par ISP</div>
@@ -328,6 +322,17 @@
                         </div>
                         <div class="adminRight">
                             <div class="table-title">Taux sollicitation</div>
+                            <div class="admin-scroll">
+                                <table><thead><tr><th>Nom</th><th>Taux</th></tr></thead><tbody id="adminSollTbody"></tbody></table>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Fenêtres CIS et Secteurs après -->
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:20px;">
+                        <div class="panel"><div class="panelHead">Interventions par CIS (décroissant)</div><div class="panelScrollWrapper" style="max-height:250px;"><table id="tableAdminCis"><thead><tr><th>CIS</th><th class="num">2026</th><th class="num">2025</th></tr></thead><tbody></tbody></table></div></div>
+                        <div class="panel"><div class="panelHead">Interventions par Secteur (décroissant)</div><div class="panelScrollWrapper" style="max-height:250px;"><table id="tableAdminSect"><thead><tr><th>Secteur</th><th class="num">2026</th><th class="num">2025</th></tr></thead><tbody></tbody></table></div></div>
+                    </div>
                             <div class="admin-scroll">
                                 <table><thead><tr><th>Nom</th><th>Taux</th></tr></thead><tbody id="adminSollTbody"></tbody></table>
                             </div>
@@ -584,6 +589,7 @@
         // Gestion flèche scroll
         const checkScroll = () => {
             const scrollArrow = document.getElementById('scrollArrow');
+            if (!scrollArrow) return;
             const scrolled = window.scrollY;
             const windowHeight = window.innerHeight;
             const docHeight = document.documentElement.scrollHeight;
@@ -598,7 +604,12 @@
         
         window.addEventListener('scroll', checkScroll);
         window.addEventListener('resize', checkScroll);
-        setTimeout(checkScroll, 1000);
+        // Appel initial après chargement
+        setTimeout(() => {
+            checkScroll();
+            // Rappel périodique pour s'assurer que la flèche apparaît
+            setInterval(checkScroll, 2000);
+        }, 2000);
     };
 
     function askPass(target) {

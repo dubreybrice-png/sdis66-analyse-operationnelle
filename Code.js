@@ -1,7 +1,7 @@
 /****************************************************
  * SDIS 66 - SDS | WebApp Dashboard
  * CACHE SÉQUENTIEL + FIXES
- * Version: 2026-01-28 13:30
+ * Version: 2026-01-28 14:10
  ****************************************************/
 
 const DASHBOARD_SHEET_NAME = "Dashboard";
@@ -700,8 +700,8 @@ function getNextCase(specificRow) {
     const row = data[rowIdx];
     
     // Récupérer les listes de dropdown
-    const protoAdultList = getDropdownList_(shApp, C_PROTO_START);
-    const protoPediaList = getDropdownList_(shApp, C_PROTO_START + 10);
+    const protoAdultList = getDropdownList_(shApp, C_PROTO_START) || [];
+    const protoPediaList = getDropdownList_(shApp, C_PROTO_START + 10) || [];
     
     // Récupérer les critères et résultats
     const info = {
@@ -713,8 +713,8 @@ function getNextCase(specificRow) {
         engin: String(row[C_APP_ENGIN]||"").trim()
     };
     
-    const protoAdult = protoAdultList.map(p => ({ id: p, label: p, checked: row[C_PROTO_START] === p }));
-    const protoPedia = protoPediaList.map(p => ({ id: p, label: p, checked: row[C_PROTO_START+10] === p }));
+    const protoAdult = protoAdultList.length > 0 ? protoAdultList.map(p => ({ id: p, label: p, checked: row[C_PROTO_START] === p })) : [];
+    const protoPedia = protoPediaList.length > 0 ? protoPediaList.map(p => ({ id: p, label: p, checked: row[C_PROTO_START+10] === p })) : [];
     
     const criteres = {
         ax: { label: "AKIM", opts: getDropdownList_(shApp, 20), val: row[20] },
