@@ -470,13 +470,13 @@
                 <div style="margin-bottom:8px;">
                     <label class="cb"><input type="checkbox" id="chkBh"> <span id="lblBh">Absence / erreur commande PUI</span></label>
                 </div>
-                <div class="grid-checks" id="biBmBox"></div>
+                <div id="biBmBox" style="display:grid; grid-template-columns: 1fr 1fr; gap:6px; word-wrap:break-word; word-break:break-word;"></div>
             </div>
 
-            <div class="group">
+            <div class="group" id="motifContainer" style="display:none;">
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px;">
-                    <div><label>Motif bilan incomplet</label><textarea id="txtBn"></textarea></div>
-                    <div><label>Motif pisu pas ok</label><textarea id="txtBo"></textarea></div>
+                    <div id="motifBilanDiv"><label>Motif bilan incomplet</label><textarea id="txtBn"></textarea></div>
+                    <div id="motifPisuDiv"><label>Motif pisu pas ok</label><textarea id="txtBo"></textarea></div>
                 </div>
             </div>
 
@@ -780,6 +780,46 @@
        pbCb.checked = !!schema.pbCheck;
        document.getElementById("pbTxt").value = schema.pbTxt; 
        document.getElementById("pbDetails").style.display = schema.pbCheck ? "block" : "none";
+
+       // Ajouter logique conditionnelle pour afficher/masquer les motifs
+       updateMotifVisibility();
+       
+       // Ajouter event listeners sur les checkboxes du résultat
+       const checkboxes = document.querySelectorAll('#biBmBox input[type="checkbox"]');
+       checkboxes.forEach(cb => {
+           cb.addEventListener('change', updateMotifVisibility);
+       });
+    }
+
+    function updateMotifVisibility() {
+       // Récupérer les checkboxes de biBmBox
+       const checkboxes = document.querySelectorAll('#biBmBox input[type="checkbox"]');
+       let hasBilanIncomplet = false;
+       let hasPisuPasOk = false;
+       
+       checkboxes.forEach(cb => {
+           const label = cb.nextElementSibling ? cb.nextElementSibling.textContent : '';
+           if(label && label.toLowerCase().includes('bilan')) {
+               if(cb.checked) hasBilanIncomplet = true;
+           }
+           if(label && label.toLowerCase().includes('pisu')) {
+               if(cb.checked) hasPisuPasOk = true;
+           }
+       });
+       
+       // Afficher/masquer le conteneur des motifs
+       const motifContainer = document.getElementById("motifContainer");
+       if(hasBilanIncomplet || hasPisuPasOk) {
+           motifContainer.style.display = "block";
+       } else {
+           motifContainer.style.display = "none";
+       }
+       
+       // Afficher/masquer les motifs individuels
+       const motifBilanDiv = document.getElementById("motifBilanDiv");
+       const motifPisuDiv = document.getElementById("motifPisuDiv");
+       if(motifBilanDiv) motifBilanDiv.style.display = hasBilanIncomplet ? "block" : "none";
+       if(motifPisuDiv) motifPisuDiv.style.display = hasPisuPasOk ? "block" : "none";
     }
 
     function fillSelect(id, opts, currentVal) {
