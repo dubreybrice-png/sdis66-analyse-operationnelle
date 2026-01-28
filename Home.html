@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Version: 2026-01-28 14:08 -->
+<!-- Version: 2026-01-28 14:20 -->
 <html>
 <head>
   <base target="_top">
@@ -123,8 +123,8 @@
     .btnTop:hover{ background: rgba(255,255,255,.08); }
 
     .wrap{ padding:10px; max-width: 100%; margin:0 auto; height: calc(100vh - 50px); display:flex; gap:10px; }
-    .leftCol { flex: 2.5; display:flex; flex-direction:column; gap:10px; height:100%; min-width:0; }
-    .rightCol { flex: 1.2; display:flex; flex-direction:column; height:100%; min-width:400px; }
+    .leftCol { flex: 3; display:flex; flex-direction:column; gap:10px; height:100%; min-width:0; }
+    .rightCol { flex: 1.5; display:flex; flex-direction:column; height:100%; min-width:450px; }
 
     .card{ background: linear-gradient(180deg, rgba(16,26,51,.95), rgba(15,24,48,.95)); border:1px solid var(--border); border-radius: var(--radius); box-shadow: 0 18px 50px rgba(0,0,0,.35); overflow:hidden; display:flex; flex-direction:column; flex:1; }
     .cardHead{ padding:8px 12px; border-bottom:1px solid var(--border); background: rgba(255,255,255,.02); flex-shrink:0; }
@@ -188,7 +188,7 @@
   </div>
 
   <!-- Flèche de scroll -->
-  <div class="scroll-arrow" id="scrollArrow" onclick="window.scrollTo({top: document.body.scrollHeight, behavior: 'smooth'});">↓</div>
+  <div class="scroll-arrow" id="scrollArrow" onclick="document.querySelector('.main').scrollTo({top: document.querySelector('.main').scrollHeight, behavior: 'smooth'});">↓</div>
 
   <!-- VUE DASHBOARD -->
   <div class="app" id="viewContainer">
@@ -589,10 +589,11 @@
         // Gestion flèche scroll
         const checkScroll = () => {
             const scrollArrow = document.getElementById('scrollArrow');
-            if (!scrollArrow) return;
-            const scrolled = window.scrollY;
-            const windowHeight = window.innerHeight;
-            const docHeight = document.documentElement.scrollHeight;
+            const mainEl = document.querySelector('.main');
+            if (!scrollArrow || !mainEl) return;
+            const scrolled = mainEl.scrollTop;
+            const windowHeight = mainEl.clientHeight;
+            const docHeight = mainEl.scrollHeight;
             const isAtBottom = (scrolled + windowHeight) >= (docHeight - 50);
             
             if (docHeight > windowHeight && !isAtBottom) {
@@ -602,14 +603,15 @@
             }
         };
         
-        window.addEventListener('scroll', checkScroll);
-        window.addEventListener('resize', checkScroll);
-        // Appel initial après chargement
-        setTimeout(() => {
-            checkScroll();
-            // Rappel périodique pour s'assurer que la flèche apparaît
-            setInterval(checkScroll, 2000);
-        }, 2000);
+        const mainEl = document.querySelector('.main');
+        if(mainEl) {
+            mainEl.addEventListener('scroll', checkScroll);
+            window.addEventListener('resize', checkScroll);
+            setTimeout(() => {
+                checkScroll();
+                setInterval(checkScroll, 2000);
+            }, 2000);
+        }
     };
 
     function askPass(target) {
@@ -649,7 +651,21 @@
       if(isAppSubmitting) return;
       setStatus("Recherche..."); setButtons(true);
       
+      // Afficher loader
+      document.getElementById("loadingBox").style.display="flex";
+      let w=0; 
+      const loadInt = setInterval(()=>{ 
+          if(w<90) w+=5; 
+          document.getElementById("loadFill").style.width=w+"%"; 
+          document.getElementById("loadPct").textContent=Math.floor(w)+"%"; 
+      }, 100);
+      
       google.script.run.withSuccessHandler(res=>{
+        clearInterval(loadInt);
+        document.getElementById("loadFill").style.width="100%";
+        document.getElementById("loadPct").textContent="100%";
+        setTimeout(()=>document.getElementById("loadingBox").style.display="none", 300);
+        
         setButtons(false);
         document.getElementById("remainingPill").textContent = "Reste : "+(res.remaining||0);
 
@@ -681,6 +697,8 @@
         renderForm(res.schema, res.ispList);
 
       }).withFailureHandler(err=>{ 
+        clearInterval(loadInt);
+        document.getElementById("loadingBox").style.display="none";
         setStatus("Erreur"); toast(err.message,"err"); setButtons(false); 
       }).getNextCase(specificRow);
     }
@@ -795,7 +813,11 @@
       }).saveCase(payload);
     }
 
-    function skipApp(){ if(!currentAppRow) return; loadNext(); }
+    function skipApp(){ 
+        if(!currentAppRow) return; 
+        currentAppRow = null;
+        loadNext(); 
+    }
 
     // ISP
     let window_currentIspData = {};
@@ -899,6 +921,10 @@
     function filterAdmin() {
         const terms = document.getElementById("adminSearch").value.toLowerCase().split(';').map(t=>t.trim()).filter(t=>t);
         document.querySelectorAll("#adminTbody tr").forEach(r => {
+            const txt = r.innerText.toLowerCase();
+            r.style.display = (terms.length===0 || terms.some(t => txt.includes(t))) ? "" : "none";
+        });
+        document.querySelectorAll("#adminSollTbody tr").forEach(r => {
             const txt = r.innerText.toLowerCase();
             r.style.display = (terms.length===0 || terms.some(t => txt.includes(t))) ? "" : "none";
         });
