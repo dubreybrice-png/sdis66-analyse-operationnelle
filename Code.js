@@ -1,7 +1,7 @@
 /****************************************************
  * SDIS 66 - SDS | WebApp Dashboard
  * CACHE SÉQUENTIEL + FIXES + LOCK SYSTEM
- * Version: v1.20 | 2026-01-29
+ * Version: v1.21 | 2026-01-29
  ****************************************************/
 
 const DASHBOARD_SHEET_NAME = "Dashboard";
@@ -48,14 +48,14 @@ const C_BILAN_OK = 60;
 const C_BILAN_KO = 61; 
 const C_PISU_OK = 62;  
 const C_PISU_KO = 63;  
-const C_BM_TRACAB = 64; // PUI commandée
-const C_BN_SURV = 65;   // Surveillance transport (checkbox)
-const C_TXTBILAN_KO = 66;   // Motif bilan incomplet
-const C_TXTPISU_KO = 67;    // Motif pisu incomplet
+const C_BM_TRANSPORT = 64; // Absence traçabilité transport (checkbox)
+const C_TXTBILAN_KO = 65;   // Motif bilan incomplet (texte)
+const C_TXTPISU_KO = 66;    // Motif pisu pas ok (texte)
+const C_BQ = 67; // Colonne BQ
 const C_BP_CLOSE = 68; 
-const C_BS_PROBLEM = 71; // Signaler problème à Brice (checkbox)
-const C_BT_PROBLEM_TXT = 72; // Texte du problème pour Brice
-const C_BU_LOCK = 73; // Timestamp de verrouillage pour éviter doublons     
+const C_BS_PROBLEM = 70; // Signaler problème à Brice (checkbox)
+const C_BT_PROBLEM_TXT = 71; // Texte du problème pour Brice
+const C_BU_LOCK = 72; // Timestamp de verrouillage pour éviter doublons     
 
 // === HELPER FUNCTIONS ===
 function isCheckboxChecked(val) {
@@ -941,8 +941,7 @@ function getNextCase(specificRow) {
             { id: "bk", label: "Pisu OK", checked: isCheckboxChecked(row[C_PISU_OK]), color: "ok" },
             { id: "bj", label: "Bilan incomplet", checked: isCheckboxChecked(row[C_BILAN_KO]), color: "orange" },
             { id: "bl", label: "Pisu pas ok", checked: isCheckboxChecked(row[C_PISU_KO]), color: "orange" },
-            { id: "bm", label: "PUI commandée", checked: row[C_BM_TRACAB] === true, color: "" },
-            { id: "bn", label: "Surveillance transport", checked: false, color: "" }
+            { id: "bm", label: "Absence traçabilité transport", checked: isCheckboxChecked(row[C_BM_TRANSPORT]), color: "" }
         ]
     };
     
@@ -1026,8 +1025,7 @@ function saveCase(form) {
     shApp.getRange(row, C_BILAN_KO + 1).setValue(form.resultats.bj ? true : false);
     shApp.getRange(row, C_PISU_OK + 1).setValue(form.resultats.bk ? true : false);
     shApp.getRange(row, C_PISU_KO + 1).setValue(form.resultats.bl ? true : false);
-    shApp.getRange(row, C_BM_TRACAB + 1).setValue(form.resultats.bm ? true : false);
-    shApp.getRange(row, C_BN_SURV + 1).setValue(form.resultats.bn ? true : false);
+    shApp.getRange(row, C_BM_TRANSPORT + 1).setValue(form.resultats.bm ? true : false);
     
     // Textes
     shApp.getRange(row, C_TXTBILAN_KO + 1).setValue(form.txtBn);
