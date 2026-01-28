@@ -513,6 +513,14 @@ function getIspStats(matriculeInput, dobInput) {
     // 1. Parcourir APP pour les fiches OK directes (BI ET BK cochées ensemble)
     if(shApp) {
         const data = shApp.getDataRange().getValues();
+        const shAlex = ss.getSheetByName("APP Alex");
+        const dAlex = shAlex ? shAlex.getDataRange().getValues() : [];
+        let alexTags = {};
+        for(let i=1; i<dAlex.length; i++) {
+            const id = String(dAlex[i][0]).trim();
+            alexTags[id] = { errBilL: dAlex[i][9], errPisuL: dAlex[i][10], errGrave: dAlex[i][11], reqBilOk: dAlex[i][7], reqPisuOk: dAlex[i][8] };
+        }
+        
         for(let i=1; i<data.length; i++) {
             // Filtrer par MATRICULE, pas par nom
             const rowMat = normalizeMat(data[i][C_APP_MAT]);
@@ -524,26 +532,24 @@ function getIspStats(matriculeInput, dobInput) {
                 const date = formatDateHeureFR_(data[i][C_APP_DATE]);
                 const status = (cis === "SD SSSM") ? "De Garde" : "Astreinte / Dispo";
                 
-                // DEBUG: Log pour voir les vrais valeurs
-                if(id && (i < 15)) {
-                    Logger.log("Row " + (i+1) + ": mat=" + rowMat + ", id=" + id + ", C_BILAN_OK val=" + data[i][C_BILAN_OK] + " (type:" + typeof data[i][C_BILAN_OK] + "), C_PISU_OK val=" + data[i][C_PISU_OK] + " (type:" + typeof data[i][C_PISU_OK] + ")");
-                }
+                const tags = alexTags[id] || {};
                 
-                const hasBilan = isCheckboxChecked(data[i][C_BILAN_OK]);
-                const hasPisu = isCheckboxChecked(data[i][C_PISU_OK]);
-                const hasBilanError = isCheckboxChecked(data[i][C_BILAN_KO]);
-                const hasPisuError = isCheckboxChecked(data[i][C_PISU_KO]);
+                // Utiliser la même logique que getIspDetailsAdmin qui FONCTIONNE
+                const bilanOk = data[i][C_BILAN_OK] || tags.reqBilOk;
+                const pisuOk = data[i][C_PISU_OK] || tags.reqPisuOk;
+                const bilanError = data[i][C_BILAN_KO] || tags.errBilL || tags.errGrave;
+                const pisuError = data[i][C_PISU_KO] || tags.errPisuL || tags.errGrave;
                 
                 // BOTH Bilan ET Pisu OK = fiche OK
-                if(hasBilan && hasPisu) {
+                if(bilanOk && pisuOk) {
                     okById[id] = { id:id, motif:motif, centre:cis, engin:engin, date:date, status:status, types: ["Bilan OK", "Pisu OK"], errorType: "" };
                 }
                 // Seulement Bilan OK OU seulement Pisu OK = Erreur légère
-                else if(hasBilan && !hasPisu && hasPisuError) {
+                else if(bilanOk && !pisuOk && pisuError) {
                     const item = { id:id, motif:motif, centre:cis, engin:engin, date:date, status:status, types: ["Erreur Pisu Légère"], errorType: "Erreur Pisu Légère" };
                     errLegerePisuList.push(item);
                 }
-                else if(hasPisu && !hasBilan && hasBilanError) {
+                else if(pisuOk && !bilanOk && bilanError) {
                     const item = { id:id, motif:motif, centre:cis, engin:engin, date:date, status:status, types: ["Erreur Bilan Légère"], errorType: "Erreur Bilan Légère" };
                     errLegereBilanList.push(item);
                 }
