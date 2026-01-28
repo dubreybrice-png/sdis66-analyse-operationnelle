@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Version: v1.25 | 2026-01-29 -->
+<!-- Version: v1.26 | 2026-01-29 -->
 <html>
 <head>
   <base target="_top">
@@ -294,10 +294,10 @@
                 <div id="adminLogin" style="display:flex;gap:10px;align-items:center;">
                     <input type="password" id="adminPwd" class="inp" placeholder="Code...">
                     <button class="btnGo" style="width:auto;margin:0" onclick="loadAdmin()">Valider</button>
-                    <div id="adminLoadBox" class="mini-load-box">
-                       <div class="mini-load-text"><span id="adminPct">0</span>%</div>
-                       <div class="mini-load-track"><div id="adminFill" class="mini-load-fill"></div></div>
-                    </div>
+                </div>
+                <div id="adminLoadBox" class="mini-load-box" style="margin-top:10px;">
+                   <div class="mini-load-text"><span id="adminPct">0</span>%</div>
+                   <div class="mini-load-track"><div id="adminFill" class="mini-load-fill"></div></div>
                 </div>
                 <div id="adminData" style="display:none;margin-top:10px;">
                     <input type="text" id="adminSearch" class="inp" placeholder="Filtrer (séparer par ;)" style="width:100%;margin-bottom:10px;" onkeyup="filterAdmin()">
@@ -1008,7 +1008,7 @@
         if(document.getElementById("adminPwd").value!=="0007") { toast("Erreur code"); return; }
         
         document.getElementById("adminLogin").style.display="none";
-        document.getElementById("adminLoadBox").style.display="inline-block";
+        document.getElementById("adminLoadBox").style.display="block";
         
         let w=0; 
         const i=setInterval(()=>{ 
