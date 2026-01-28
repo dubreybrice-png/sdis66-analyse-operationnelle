@@ -1,7 +1,7 @@
 /****************************************************
  * SDIS 66 - SDS | WebApp Dashboard
  * CACHE SÉQUENTIEL + FIXES + LOCK SYSTEM
- * Version: 2026-01-28 15:50
+ * Version: 2026-01-28 15:55
  ****************************************************/
 
 const DASHBOARD_SHEET_NAME = "Dashboard";
@@ -429,7 +429,14 @@ function getIspStats(matriculeInput, dobInput) {
                 if(cis !== "SD SSSM") interHg26++; 
             }
             const id = String(data[i][C_APP_ID]).trim();
-            appDataRef[id] = { motif: data[i][C_APP_MOTIF] };
+            const cis = String(data[i][C_APP_CIS]||"").trim();
+            appDataRef[id] = { 
+                motif: data[i][C_APP_MOTIF],
+                date: formatDateHeureFR_(data[i][C_APP_DATE]),
+                centre: cis,
+                engin: String(data[i][C_APP_ENGIN]||"").trim(),
+                status: (cis === "SD SSSM") ? "De Garde" : "Astreinte / Dispo"
+            };
             const nameInApp = String(data[i][C_APP_NOM]).trim().toLowerCase();
             if(nameInApp === myName || nameInApp.includes(myName)) {
                 if(data[i][C_BILAN_OK] === true) bilanConf++;
@@ -501,25 +508,27 @@ function getIspStats(matriculeInput, dobInput) {
                 const motif = appDataRef[id] ? appDataRef[id].motif : "?";
                 const centre = appDataRef[id] ? appDataRef[id].centre : "";
                 const engin = appDataRef[id] ? appDataRef[id].engin : "";
+                const date = appDataRef[id] ? appDataRef[id].date : "";
+                const status = appDataRef[id] ? appDataRef[id].status : "";
                 
                 if(data[i][7]===true) { 
-                    const item = { id:id, motif:motif, centre:centre, engin:engin, types: ["Bilan OK"], errorType: "" };
+                    const item = { id:id, motif:motif, centre:centre, engin:engin, date:date, status:status, types: ["Bilan OK"], errorType: "" };
                     bilanOkList.push(item); 
                 } 
                 if(data[i][8]===true) { 
-                    const item = { id:id, motif:motif, centre:centre, engin:engin, types: ["Pisu OK"], errorType: "" };
+                    const item = { id:id, motif:motif, centre:centre, engin:engin, date:date, status:status, types: ["Pisu OK"], errorType: "" };
                     pisuOkList.push(item); 
                 } 
                 if(data[i][9]===true) { 
-                    const item = { id:id, motif:motif, centre:centre, engin:engin, types: ["Erreur Bilan Légère"], errorType: "Erreur Bilan Légère" };
+                    const item = { id:id, motif:motif, centre:centre, engin:engin, date:date, status:status, types: ["Erreur Bilan Légère"], errorType: "Erreur Bilan Légère" };
                     errLegereBilanList.push(item); 
                 } 
                 if(data[i][10]===true) { 
-                    const item = { id:id, motif:motif, centre:centre, engin:engin, types: ["Erreur Pisu Légère"], errorType: "Erreur Pisu Légère" };
+                    const item = { id:id, motif:motif, centre:centre, engin:engin, date:date, status:status, types: ["Erreur Pisu Légère"], errorType: "Erreur Pisu Légère" };
                     errLegerePisuList.push(item); 
                 } 
                 if(data[i][11]===true) { 
-                    const item = { id:id, motif:motif, centre:centre, engin:engin, types: ["Erreur Grave"], errorType: "Erreur Grave" };
+                    const item = { id:id, motif:motif, centre:centre, engin:engin, date:date, status:status, types: ["Erreur Grave"], errorType: "Erreur Grave" };
                     errLourdeList.push(item); 
                 } 
             }
