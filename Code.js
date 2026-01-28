@@ -1,7 +1,7 @@
 /****************************************************
  * SDIS 66 - SDS | WebApp Dashboard
  * CACHE SÉQUENTIEL + FIXES + LOCK SYSTEM
- * Version: 2026-01-28 17:00
+ * Version: 2026-01-28 17:15
  ****************************************************/
 
 const DASHBOARD_SHEET_NAME = "Dashboard";
@@ -507,8 +507,8 @@ function getIspStats(matriculeInput, dobInput) {
     if(shApp) {
         const data = shApp.getDataRange().getValues();
         for(let i=1; i<data.length; i++) {
-            const nameInApp = String(data[i][C_APP_NOM]).trim().toLowerCase();
-            if(nameInApp === myName || nameInApp.includes(myName)) {
+            // Filtrer par MATRICULE, pas par nom
+            if(normalizeMat(data[i][C_APP_MAT]) === mat) {
                 const id = String(data[i][C_APP_ID]).trim();
                 const motif = String(data[i][C_APP_MOTIF]||"").trim();
                 const cis = String(data[i][C_APP_CIS]||"").trim();
@@ -543,65 +543,82 @@ function getIspStats(matriculeInput, dobInput) {
     if(shAlex) {
         const data = shAlex.getDataRange().getValues();
         for(let i=1; i<data.length; i++) {
-            const rowName = String(data[i][4]).trim().toLowerCase(); 
-            if(rowName === myName || rowName.includes(myName)) {
-                const id = String(data[i][0]).trim();
-                
-                // Récupérer les infos depuis APP Alex ou appDataRef
-                let motif = "", centre = "", engin = "", date = "", status = "";
-                if(appDataRef[id]) {
-                    motif = appDataRef[id].motif || "?";
-                    centre = appDataRef[id].centre || "";
-                    engin = appDataRef[id].engin || "";
-                    date = appDataRef[id].date || "";
-                    status = appDataRef[id].status || "";
-                } else {
-                    // Si pas dans appDataRef, utiliser les données d'APP Alex directement
-                    motif = String(data[i][2]||"?").trim();
-                    centre = String(data[i][1]||"").trim();
-                    engin = String(data[i][5]||"").trim();
-                    date = formatDateHeureFR_(data[i][6]);
-                    status = (centre === "SD SSSM") ? "De Garde" : "Astreinte / Dispo";
+            const id = String(data[i][0]).trim();
+            
+            // Vérifier si cet ID correspond à notre matricule dans APP
+            let isMyIntervention = false;
+            if(appDataRef[id]) {
+                // Si on a déjà cet ID dans appDataRef, c'est qu'il vient de notre matricule
+                isMyIntervention = true;
+            } else {
+                // Sinon, chercher dans APP pour vérifier le matricule
+                if(shApp) {
+                    const appData = shApp.getDataRange().getValues();
+                    for(let k=1; k<appData.length; k++) {
+                        if(String(appData[k][C_APP_ID]).trim() === id && normalizeMat(appData[k][C_APP_MAT]) === mat) {
+                            isMyIntervention = true;
+                            break;
+                        }
+                    }
                 }
-                
-                const hasH = data[i][7] === true;  // H = Bilan finalement OK (correction)
-                const hasI = data[i][8] === true;  // I = Pisu finalement OK (correction)
-                const hasJ = data[i][9] === true;  // J = Erreur bilan légère
-                const hasK = data[i][10] === true; // K = Erreur pisu légère
-                const hasL = data[i][11] === true; // L = Erreur grave
-                
-                // H ET I cochées = fiche revient à OK complètement
-                if(hasH && hasI) {
-                    okById[id] = { id:id, motif:motif, centre:centre, engin:engin, date:date, status:status, types: ["Bilan OK", "Pisu OK"], errorType: "" };
-                }
-                // Seulement H OU seulement I = Correction partielle, pas OK
-                else if(hasH && !hasI) {
-                    const item = { id:id, motif:motif, centre:centre, engin:engin, date:date, status:status, types: ["Erreur Pisu Légère"], errorType: "Erreur Pisu Légère" };
-                    errLegerePisuList.push(item);
-                }
-                else if(hasI && !hasH) {
-                    const item = { id:id, motif:motif, centre:centre, engin:engin, date:date, status:status, types: ["Erreur Bilan Légère"], errorType: "Erreur Bilan Légère" };
-                    errLegereBilanList.push(item);
-                }
-                
-                // J cochée = Erreur bilan légère
-                if(hasJ) { 
-                    const item = { id:id, motif:motif, centre:centre, engin:engin, date:date, status:status, types: ["Erreur Bilan Légère"], errorType: "Erreur Bilan Légère" };
-                    errLegereBilanList.push(item); 
-                } 
-                
-                // K cochée = Erreur pisu légère
-                if(hasK) { 
-                    const item = { id:id, motif:motif, centre:centre, engin:engin, date:date, status:status, types: ["Erreur Pisu Légère"], errorType: "Erreur Pisu Légère" };
-                    errLegerePisuList.push(item); 
-                } 
-                
-                // L cochée = Erreur grave
-                if(hasL) { 
-                    const item = { id:id, motif:motif, centre:centre, engin:engin, date:date, status:status, types: ["Erreur Grave"], errorType: "Erreur Grave" };
-                    errLourdeList.push(item); 
-                } 
             }
+            
+            if(!isMyIntervention) continue;
+            
+            // Récupérer les infos depuis APP Alex ou appDataRef
+            let motif = "", centre = "", engin = "", date = "", status = "";
+            if(appDataRef[id]) {
+                motif = appDataRef[id].motif || "?";
+                centre = appDataRef[id].centre || "";
+                engin = appDataRef[id].engin || "";
+                date = appDataRef[id].date || "";
+                status = appDataRef[id].status || "";
+            } else {
+                // Si pas dans appDataRef, utiliser les données d'APP Alex directement
+                motif = String(data[i][2]||"?").trim();
+                centre = String(data[i][1]||"").trim();
+                engin = String(data[i][5]||"").trim();
+                date = formatDateHeureFR_(data[i][6]);
+                status = (centre === "SD SSSM") ? "De Garde" : "Astreinte / Dispo";
+            }
+            
+            const hasH = data[i][7] === true;  // H = Bilan finalement OK (correction)
+            const hasI = data[i][8] === true;  // I = Pisu finalement OK (correction)
+            const hasJ = data[i][9] === true;  // J = Erreur bilan légère
+            const hasK = data[i][10] === true; // K = Erreur pisu légère
+            const hasL = data[i][11] === true; // L = Erreur grave
+            
+            // H ET I cochées = fiche revient à OK complètement
+            if(hasH && hasI) {
+                okById[id] = { id:id, motif:motif, centre:centre, engin:engin, date:date, status:status, types: ["Bilan OK", "Pisu OK"], errorType: "" };
+            }
+            // Seulement H OU seulement I = Correction partielle, pas OK
+            else if(hasH && !hasI) {
+                const item = { id:id, motif:motif, centre:centre, engin:engin, date:date, status:status, types: ["Erreur Pisu Légère"], errorType: "Erreur Pisu Légère" };
+                errLegerePisuList.push(item);
+            }
+            else if(hasI && !hasH) {
+                const item = { id:id, motif:motif, centre:centre, engin:engin, date:date, status:status, types: ["Erreur Bilan Légère"], errorType: "Erreur Bilan Légère" };
+                errLegereBilanList.push(item);
+            }
+            
+            // J cochée = Erreur bilan légère
+            if(hasJ) { 
+                const item = { id:id, motif:motif, centre:centre, engin:engin, date:date, status:status, types: ["Erreur Bilan Légère"], errorType: "Erreur Bilan Légère" };
+                errLegereBilanList.push(item); 
+            } 
+            
+            // K cochée = Erreur pisu légère
+            if(hasK) { 
+                const item = { id:id, motif:motif, centre:centre, engin:engin, date:date, status:status, types: ["Erreur Pisu Légère"], errorType: "Erreur Pisu Légère" };
+                errLegerePisuList.push(item); 
+            } 
+            
+            // L cochée = Erreur grave
+            if(hasL) { 
+                const item = { id:id, motif:motif, centre:centre, engin:engin, date:date, status:status, types: ["Erreur Grave"], errorType: "Erreur Grave" };
+                errLourdeList.push(item); 
+            } 
         }
     }
     

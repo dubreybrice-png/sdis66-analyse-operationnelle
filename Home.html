@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Version: 2026-01-28 17:00 -->
+<!-- Version: 2026-01-28 17:15 -->
 <html>
 <head>
   <base target="_top">
@@ -30,7 +30,7 @@
 
     .main{ padding:25px; overflow-y:auto; height:100vh; }
     .view { display:none; animation:fadeIn 0.3s; }
-    .view.active { display:block; }
+    .view.active { display:flex; flex-direction:column; height:100vh; overflow:hidden; }
     @keyframes fadeIn { from{opacity:0;transform:translateY(5px);} to{opacity:1;transform:translateY(0);} }
 
     .topbar{ border-bottom:1px solid var(--border); padding-bottom:8px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center; }
@@ -341,9 +341,9 @@
       </div>
 
       <div id="viewChefferie" class="view">
-          <div class="topbar"><button class="btnGo" style="width:auto;margin:0" onclick="goHome()">← Retour Dashboard</button><h1 style="display:inline-block;margin-left:15px;">Espace Chefferie ISP</h1></div>
+          <div class="topbar" style="flex-shrink:0;"><button class="btnGo" style="width:auto;margin:0" onclick="goHome()">← Retour Dashboard</button><h1 style="display:inline-block;margin-left:15px;">Espace Chefferie ISP</h1></div>
           
-          <div class="btn-row">
+          <div class="btn-row" style="flex-shrink:0;">
               <button class="c-btn" onclick="loadChefCase('app_isp');hideGlobal()">
                   <h3>Faire APP Chefferie <span class="badgeBtn" id="btnBadgeIspG">0</span></h3>
                   <p>Côter les BPV après passage ISP d'analyse</p>
@@ -358,12 +358,12 @@
               </button>
           </div>
 
-          <div style="overflow-y:auto; height:calc(100vh - 140px);">
+          <div style="overflow-y:auto; flex:1; padding:20px;">
               <div id="chefFormArea" style="display:block;"></div>
               
-              <div id="globalListArea" style="display:none;margin-top:20px;">
+              <div id="globalListArea" style="display:none;">
                   <div class="panel">
-                      <div class="panelBody" style="max-height:75vh;overflow:auto;">
+                      <div class="panelBody" style="max-height:none;overflow:visible;">
                           <div style="display:flex;gap:15px;align-items:center;padding:10px;background:rgba(255,255,255,0.05);margin-bottom:10px;border-radius:8px;font-size:11px;">
                               <div style="flex:0 0 auto;">Cliquez sur un ISP pour voir ses fiches.</div>
                               <button class="btnGo" style="width:auto;padding:6px 12px;font-size:11px;" onclick="loadAllGraveErrors()">Voir toutes les fiches</button>
