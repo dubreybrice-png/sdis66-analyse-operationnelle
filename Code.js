@@ -1,7 +1,7 @@
 /****************************************************
  * SDIS 66 - SDS | WebApp Dashboard
  * CACHE SÉQUENTIEL + FIXES + LOCK SYSTEM
- * Version: 2026-01-28 16:20
+ * Version: 2026-01-28 16:30
  ****************************************************/
 
 const DASHBOARD_SHEET_NAME = "Dashboard";
@@ -84,10 +84,12 @@ function getStats2026() {
 
   const cisNames = dash.getRange("E17:E47").getDisplayValues().flat();
   const cisCounts2026 = dash.getRange("F17:F47").getValues().flat();
+  const cisCounts2025ytd = dash.getRange("H17:H47").getValues().flat();
   const cisTotals2025 = dash.getRange("G17:G47").getValues().flat();
   
   const sectNames = dash.getRange("I17:I23").getDisplayValues().flat();
   const sectCounts2026 = dash.getRange("J17:J23").getValues().flat();
+  const sectCounts2025ytd = dash.getRange("L17:L23").getValues().flat();
   const sectTotals2025 = dash.getRange("K17:K23").getValues().flat();
 
   let countApp = 0;
@@ -105,8 +107,8 @@ function getStats2026() {
   return {
     date: formatDateFR_(lastDate),
     psud: psud2026, total: total2026, sect: secteur2026, ast: astreintes2026,
-    cis: cisNames.map((n, i) => ({ name:n, v26:Number(cisCounts2026[i])||0, v25tot:Number(cisTotals2025[i])||0 })),
-    secteurs: sectNames.map((n, i) => ({ name:n, v26:Number(sectCounts2026[i])||0, v25tot:Number(sectTotals2025[i])||0 })),
+    cis: cisNames.map((n, i) => ({ name:n, v26:Number(cisCounts2026[i])||0, v25:Number(cisCounts2025ytd[i])||0, v25tot:Number(cisTotals2025[i])||0 })),
+    secteurs: sectNames.map((n, i) => ({ name:n, v26:Number(sectCounts2026[i])||0, v25:Number(sectCounts2025ytd[i])||0, v25tot:Number(sectTotals2025[i])||0 })),
     cntApp: countApp, cntIspG: counts.isp, cntIspR: counts.valid, cntMed: counts.med
   };
 }
@@ -542,12 +544,15 @@ function getIspStats(matriculeInput, dobInput) {
         for(let i=1; i<data.length; i++) {
             const rowName = String(data[i][4]).trim().toLowerCase(); 
             if(rowName === myName || rowName.includes(myName)) {
-                const id = String(data[i][0]).trim(); 
-                const motif = appDataRef[id] ? appDataRef[id].motif : "?";
-                const centre = appDataRef[id] ? appDataRef[id].centre : "";
-                const engin = appDataRef[id] ? appDataRef[id].engin : "";
-                const date = appDataRef[id] ? appDataRef[id].date : "";
-                const status = appDataRef[id] ? appDataRef[id].status : "";
+                const id = String(data[i][0]).trim();
+                // Vérifier que la fiche existe en APP
+                if(!appDataRef[id]) continue;
+                
+                const motif = appDataRef[id].motif || "?";
+                const centre = appDataRef[id].centre || "";
+                const engin = appDataRef[id].engin || "";
+                const date = appDataRef[id].date || "";
+                const status = appDataRef[id].status || "";
                 
                 const hasH = data[i][7] === true;  // H = Bilan finalement OK (correction)
                 const hasI = data[i][8] === true;  // I = Pisu finalement OK (correction)

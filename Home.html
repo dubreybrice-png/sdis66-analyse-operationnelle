@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Version: 2026-01-28 16:25 -->
+<!-- Version: 2026-01-28 16:30 -->
 <html>
 <head>
   <base target="_top">
@@ -65,7 +65,7 @@
     .adminRight { flex:1; }
     .admin-scroll { max-height:400px; overflow:auto; border:1px solid var(--border); border-radius:10px; }
 
-    .btn-row { display:flex; gap:15px; margin-bottom:20px; }
+    .btn-row { display:flex; gap:15px; margin-bottom:20px; position:sticky; top:35px; z-index:10; background:rgba(11,15,31,0.95); padding:15px 0; border-bottom:1px solid var(--border); }
     .c-btn { flex:1; padding:15px; background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:12px; color:#fff; cursor:pointer; text-align:left; transition:0.2s; }
     .c-btn:hover { background:rgba(255,255,255,.08); border-color:var(--accent3); }
     .c-btn h3 { margin:0 0 5px 0; font-size:14px; display:flex; justify-content:space-between; }
