@@ -1,7 +1,7 @@
 /****************************************************
  * SDIS 66 - SDS | WebApp Dashboard
  * CACHE SÉQUENTIEL + FIXES + LOCK SYSTEM
- * Version: 2026-01-28 16:05
+ * Version: 2026-01-28 16:10
  ****************************************************/
 
 const DASHBOARD_SHEET_NAME = "Dashboard";
@@ -499,27 +499,7 @@ function getIspStats(matriculeInput, dobInput) {
     const errLegereBilanList = [], errLegerePisuList = [], errLourdeList = [];
     const bilanOkList = [], pisuOkList = [];
     
-    // D'abord parcourir APP Alex pour mapper les corrections
-    const alexCorrections = {}; // { interId: { bilanCorrection: bool, pisuCorrection: bool, errBilan: bool, errPisu: bool, errGrave: bool } }
-    const shAlex = ss.getSheetByName("APP Alex");
-    if(shAlex) {
-        const data = shAlex.getDataRange().getValues();
-        for(let i=1; i<data.length; i++) {
-            const id = String(data[i][0]).trim();
-            const rowName = String(data[i][4]).trim().toLowerCase();
-            if(rowName === myName || rowName.includes(myName)) {
-                alexCorrections[id] = {
-                    bilanCorrection: data[i][7] === true,  // Colonne H (index 7)
-                    pisuCorrection: data[i][8] === true,   // Colonne I (index 8) 
-                    errBilan: data[i][9] === true,         // Colonne J (index 9)
-                    errPisu: data[i][10] === true,         // Colonne K (index 10)
-                    errGrave: data[i][11] === true         // Colonne L (index 11)
-                };
-            }
-        }
-    }
-    
-    // Ensuite parcourir APP pour créer les listes avec la logique correcte
+    // 1. Parcourir APP pour les fiches OK directes (BI et BK cochées)
     if(shApp) {
         const data = shApp.getDataRange().getValues();
         for(let i=1; i<data.length; i++) {
@@ -532,21 +512,14 @@ function getIspStats(matriculeInput, dobInput) {
                 const date = formatDateHeureFR_(data[i][C_APP_DATE]);
                 const status = (cis === "SD SSSM") ? "De Garde" : "Astreinte / Dispo";
                 
-                const biOk = data[i][C_BILAN_OK] === true;     // BI cochée
-                const bjKo = data[i][C_BILAN_KO] === true;     // BJ cochée
-                const bkOk = data[i][C_PISU_OK] === true;      // BK cochée
-                const blKo = data[i][C_PISU_KO] === true;      // BL cochée
-                
-                const corrections = alexCorrections[id] || {};
-                
-                // Bilan OK = BI cochée OU (BJ cochée ET correction H de APP Alex)
-                if(biOk || (bjKo && corrections.bilanCorrection)) {
+                // Bilan OK direct (BI cochée) - fiche reste dans APP
+                if(data[i][C_BILAN_OK] === true) {
                     const item = { id:id, motif:motif, centre:cis, engin:engin, date:date, status:status, types: ["Bilan OK"], errorType: "" };
                     bilanOkList.push(item);
                 }
                 
-                // Pisu OK = BK cochée OU (BL cochée ET correction I de APP Alex)
-                if(bkOk || (blKo && corrections.pisuCorrection)) {
+                // Pisu OK direct (BK cochée) - fiche reste dans APP
+                if(data[i][C_PISU_OK] === true) {
                     const item = { id:id, motif:motif, centre:cis, engin:engin, date:date, status:status, types: ["Pisu OK"], errorType: "" };
                     pisuOkList.push(item);
                 }
@@ -554,26 +527,50 @@ function getIspStats(matriculeInput, dobInput) {
         }
     }
     
-    // Créer les listes d'erreurs depuis APP Alex
-    for(const id in alexCorrections) {
-        const corrections = alexCorrections[id];
-        const motif = appDataRef[id] ? appDataRef[id].motif : "?";
-        const centre = appDataRef[id] ? appDataRef[id].centre : "";
-        const engin = appDataRef[id] ? appDataRef[id].engin : "";
-        const date = appDataRef[id] ? appDataRef[id].date : "";
-        const status = appDataRef[id] ? appDataRef[id].status : "";
-        
-        if(corrections.errBilan) {
-            const item = { id:id, motif:motif, centre:centre, engin:engin, date:date, status:status, types: ["Erreur Bilan Légère"], errorType: "Erreur Bilan Légère" };
-            errLegereBilanList.push(item);
-        }
-        if(corrections.errPisu) {
-            const item = { id:id, motif:motif, centre:centre, engin:engin, date:date, status:status, types: ["Erreur Pisu Légère"], errorType: "Erreur Pisu Légère" };
-            errLegerePisuList.push(item);
-        }
-        if(corrections.errGrave) {
-            const item = { id:id, motif:motif, centre:centre, engin:engin, date:date, status:status, types: ["Erreur Grave"], errorType: "Erreur Grave" };
-            errLourdeList.push(item);
+    // 2. Parcourir APP Alex pour les fiches avec BJ/BL envoyées à révision
+    const shAlex = ss.getSheetByName("APP Alex");
+    if(shAlex) {
+        const data = shAlex.getDataRange().getValues();
+        for(let i=1; i<data.length; i++) {
+            const rowName = String(data[i][4]).trim().toLowerCase(); 
+            if(rowName === myName || rowName.includes(myName)) {
+                const id = String(data[i][0]).trim(); 
+                const motif = appDataRef[id] ? appDataRef[id].motif : "?";
+                const centre = appDataRef[id] ? appDataRef[id].centre : "";
+                const engin = appDataRef[id] ? appDataRef[id].engin : "";
+                const date = appDataRef[id] ? appDataRef[id].date : "";
+                const status = appDataRef[id] ? appDataRef[id].status : "";
+                
+                // H cochée = Bilan finalement OK après révision
+                if(data[i][7] === true) {
+                    const item = { id:id, motif:motif, centre:centre, engin:engin, date:date, status:status, types: ["Bilan OK"], errorType: "" };
+                    bilanOkList.push(item);
+                }
+                
+                // I cochée = Pisu finalement OK après révision
+                if(data[i][8] === true) {
+                    const item = { id:id, motif:motif, centre:centre, engin:engin, date:date, status:status, types: ["Pisu OK"], errorType: "" };
+                    pisuOkList.push(item);
+                }
+                
+                // J cochée = Erreur bilan légère
+                if(data[i][9] === true) { 
+                    const item = { id:id, motif:motif, centre:centre, engin:engin, date:date, status:status, types: ["Erreur Bilan Légère"], errorType: "Erreur Bilan Légère" };
+                    errLegereBilanList.push(item); 
+                } 
+                
+                // K cochée = Erreur pisu légère
+                if(data[i][10] === true) { 
+                    const item = { id:id, motif:motif, centre:centre, engin:engin, date:date, status:status, types: ["Erreur Pisu Légère"], errorType: "Erreur Pisu Légère" };
+                    errLegerePisuList.push(item); 
+                } 
+                
+                // L cochée = Erreur grave
+                if(data[i][11] === true) { 
+                    const item = { id:id, motif:motif, centre:centre, engin:engin, date:date, status:status, types: ["Erreur Grave"], errorType: "Erreur Grave" };
+                    errLourdeList.push(item); 
+                } 
+            }
         }
     }
 
