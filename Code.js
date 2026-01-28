@@ -1,7 +1,7 @@
 /****************************************************
  * SDIS 66 - SDS | WebApp Dashboard
  * CACHE SÉQUENTIEL + FIXES
- * Version: 2026-01-28 14:20
+ * Version: 2026-01-28 14:32
  ****************************************************/
 
 const DASHBOARD_SHEET_NAME = "Dashboard";
@@ -688,10 +688,18 @@ function getNextCase(specificRow) {
     // Si specificRow n'est pas spécifié, chercher la première ligne sans PDF ou non clôturée
     if(!specificRow) {
         for(let i=1; i<data.length; i++) {
-            if(String(data[i][C_APP_PDF]) && !data[i][C_BP_CLOSE]) {
+            const pdfVal = String(data[i][C_APP_PDF]);
+            // Ignorer les fiches avec #N/A ou vides
+            if(pdfVal && pdfVal !== "#N/A" && !pdfVal.includes("#N/A") && !data[i][C_BP_CLOSE]) {
                 rowToProcess = i+1;
                 break;
             }
+        }
+    } else {
+        // Si specificRow est fourni, vérifier qu'il n'a pas #N/A
+        const pdfVal = String(data[specificRow-1][C_APP_PDF]);
+        if(pdfVal && pdfVal !== "#N/A" && !pdfVal.includes("#N/A")) {
+            rowToProcess = specificRow;
         }
     }
     

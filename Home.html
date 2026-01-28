@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Version: 2026-01-28 14:20 -->
+<!-- Version: 2026-01-28 14:32 -->
 <html>
 <head>
   <base target="_top">
@@ -123,8 +123,8 @@
     .btnTop:hover{ background: rgba(255,255,255,.08); }
 
     .wrap{ padding:10px; max-width: 100%; margin:0 auto; height: calc(100vh - 50px); display:flex; gap:10px; }
-    .leftCol { flex: 3; display:flex; flex-direction:column; gap:10px; height:100%; min-width:0; }
-    .rightCol { flex: 1.5; display:flex; flex-direction:column; height:100%; min-width:450px; }
+    .leftCol { flex: 2.5; display:flex; flex-direction:column; gap:10px; height:100%; min-width:0; }
+    .rightCol { flex: 2; display:flex; flex-direction:column; height:100%; min-width:550px; }
 
     .card{ background: linear-gradient(180deg, rgba(16,26,51,.95), rgba(15,24,48,.95)); border:1px solid var(--border); border-radius: var(--radius); box-shadow: 0 18px 50px rgba(0,0,0,.35); overflow:hidden; display:flex; flex-direction:column; flex:1; }
     .cardHead{ padding:8px 12px; border-bottom:1px solid var(--border); background: rgba(255,255,255,.02); flex-shrink:0; }
@@ -171,8 +171,8 @@
     .appContainer.active { display:flex; flex-direction:column; height:100%; }
     
     /* Flèche scroll clignotante */
-    .scroll-arrow { position:fixed; bottom:20px; left:20px; width:40px; height:40px; background:linear-gradient(135deg, rgba(110,168,254,.2), rgba(71,209,140,.2)); border:2px solid var(--accent3); border-radius:50%; display:none; align-items:center; justify-content:center; font-size:20px; color:var(--accent3); cursor:pointer; animation:pulse 2s infinite; box-shadow:0 0 20px rgba(79,195,247,0.4); z-index:5000; }
-    @keyframes pulse { 0%, 100% { opacity:1; transform:scale(1); } 50% { opacity:0.7; transform:scale(1.1); } }
+    .scroll-arrow { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); width:40px; height:40px; background:linear-gradient(135deg, rgba(110,168,254,.2), rgba(71,209,140,.2)); border:2px solid var(--accent3); border-radius:50%; display:none; align-items:center; justify-content:center; font-size:20px; color:var(--accent3); cursor:pointer; animation:pulse 2s infinite; box-shadow:0 0 20px rgba(79,195,247,0.4); z-index:5000; }
+    @keyframes pulse { 0%, 100% { opacity:1; transform:translateX(-50%) scale(1); } 50% { opacity:0.7; transform:translateX(-50%) scale(1.1); } }
     .scroll-arrow:hover { background:linear-gradient(135deg, rgba(110,168,254,.4), rgba(71,209,140,.4)); }
   </style>
 </head>
@@ -273,7 +273,7 @@
                             <div style="font-size:11px;color:var(--muted)">Comparatif 2025 à date: <span id="ispInter25Ytd"></span> | Total 2025: <span id="ispInter25Tot"></span></div>
                         </div>
                         <div>
-                            <h4 style="color:var(--ok);margin:0 0 5px 0">Qualité</h4>
+                            <h4 style="color:var(--accent3);margin:0 0 5px 0">Etude qualitative des BPV</h4>
                             <div style="font-size:12px;cursor:pointer;text-decoration:underline;" class="text-green" onclick="openErrorList('BilanOk')">Bilan OK: <b id="ispBilOk"></b></div>
                             <div style="font-size:12px;cursor:pointer;text-decoration:underline;" class="text-green" onclick="openErrorList('PisuOk')">Pisu OK: <b id="ispPisuOk"></b></div>
                             <div style="margin-top:5px;cursor:pointer;text-decoration:underline;" class="text-orange" onclick="openErrorList('Bilan')">Erreur Bilan Légère: <span id="ispErrBil"></span></div>
@@ -333,11 +333,7 @@
                         <div class="panel"><div class="panelHead">Interventions par CIS (décroissant)</div><div class="panelScrollWrapper" style="max-height:250px;"><table id="tableAdminCis"><thead><tr><th>CIS</th><th class="num">2026</th><th class="num">2025</th></tr></thead><tbody></tbody></table></div></div>
                         <div class="panel"><div class="panelHead">Interventions par Secteur (décroissant)</div><div class="panelScrollWrapper" style="max-height:250px;"><table id="tableAdminSect"><thead><tr><th>Secteur</th><th class="num">2026</th><th class="num">2025</th></tr></thead><tbody></tbody></table></div></div>
                     </div>
-                            <div class="admin-scroll">
-                                <table><thead><tr><th>Nom</th><th>Taux</th></tr></thead><tbody id="adminSollTbody"></tbody></table>
-                            </div>
-                        </div>
-                    </div>
+                </div>
                 </div>
             </div>
         </div>
