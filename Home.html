@@ -798,11 +798,20 @@
        let hasPisuPasOk = false;
        
        checkboxes.forEach(cb => {
-           const label = cb.nextElementSibling ? cb.nextElementSibling.textContent : '';
-           if(label && label.toLowerCase().includes('bilan')) {
+           // Chercher le texte du label - peut être dans un span ou directement après l'input
+           let labelText = '';
+           const parent = cb.closest('label');
+           if(parent) {
+               labelText = parent.textContent;
+           } else if(cb.nextElementSibling) {
+               labelText = cb.nextElementSibling.textContent;
+           }
+           
+           labelText = labelText.toLowerCase();
+           if(labelText.includes('bilan') && labelText.includes('incomplet')) {
                if(cb.checked) hasBilanIncomplet = true;
            }
-           if(label && label.toLowerCase().includes('pisu')) {
+           if(labelText.includes('pisu') && labelText.includes('pas ok')) {
                if(cb.checked) hasPisuPasOk = true;
            }
        });

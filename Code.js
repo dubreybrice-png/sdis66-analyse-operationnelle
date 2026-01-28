@@ -936,11 +936,11 @@ function getNextCase(specificRow) {
     const resultats = {
         bh: { label: "Absence / erreur commande PUI", checked: isCheckboxChecked(row[C_BH_ABS]) },
         checksBiBm: [
+            { id: "bm", label: "Absence traçabilité surveillance transport", checked: isCheckboxChecked(row[C_BM_SURV_TRANSPORT]), color: "" },
             { id: "bi", label: "Bilan OK", checked: isCheckboxChecked(row[C_BILAN_OK]), color: "ok" },
             { id: "bk", label: "Pisu OK", checked: isCheckboxChecked(row[C_PISU_OK]), color: "ok" },
             { id: "bj", label: "Bilan incomplet", checked: isCheckboxChecked(row[C_BILAN_KO]), color: "orange" },
-            { id: "bl", label: "Pisu pas ok", checked: isCheckboxChecked(row[C_PISU_KO]), color: "orange" },
-            { id: "bm", label: "Absence traçabilité surveillance transport", checked: isCheckboxChecked(row[C_BM_SURV_TRANSPORT]), color: "" }
+            { id: "bl", label: "Pisu pas ok", checked: isCheckboxChecked(row[C_PISU_KO]), color: "orange" }
         ]
     };
     
