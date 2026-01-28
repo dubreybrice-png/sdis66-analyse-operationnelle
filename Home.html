@@ -711,12 +711,12 @@
         setStatus("Fiche prête");
         
         const info = res.info;
-        document.getElementById("iNum").textContent = info.interId;
-        document.getElementById("iDate").textContent = info.date;
-        document.getElementById("iInf").textContent = info.infName;
-        document.getElementById("iCis").textContent = info.cis;
-        document.getElementById("iMotif").textContent = info.motif;
-        document.getElementById("iEngin").textContent = info.engin;
+        setText("iNum", info.interId);
+        setText("iDate", info.date);
+        setText("iInf", info.infName);
+        setText("iCis", info.cis);
+        setText("iMotif", info.motif);
+        setText("iEngin", info.engin);
 
         const pdfUrl = buildPdfEmbed(res.url);
         document.getElementById("pdfFrame").src = pdfUrl; 

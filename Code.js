@@ -508,13 +508,19 @@ function getIspStats(matriculeInput, dobInput) {
         const data = shApp.getDataRange().getValues();
         for(let i=1; i<data.length; i++) {
             // Filtrer par MATRICULE, pas par nom
-            if(normalizeMat(data[i][C_APP_MAT]) === mat) {
+            const rowMat = normalizeMat(data[i][C_APP_MAT]);
+            if(rowMat === mat) {
                 const id = String(data[i][C_APP_ID]).trim();
                 const motif = String(data[i][C_APP_MOTIF]||"").trim();
                 const cis = String(data[i][C_APP_CIS]||"").trim();
                 const engin = String(data[i][C_APP_ENGIN]||"").trim();
                 const date = formatDateHeureFR_(data[i][C_APP_DATE]);
                 const status = (cis === "SD SSSM") ? "De Garde" : "Astreinte / Dispo";
+                
+                // DEBUG: Log pour voir les vrais valeurs
+                if(id && (i < 15)) {
+                    Logger.log("Row " + (i+1) + ": mat=" + rowMat + ", id=" + id + ", C_BILAN_OK val=" + data[i][C_BILAN_OK] + " (type:" + typeof data[i][C_BILAN_OK] + "), C_PISU_OK val=" + data[i][C_PISU_OK] + " (type:" + typeof data[i][C_PISU_OK] + ")");
+                }
                 
                 const hasBilan = data[i][C_BILAN_OK] === true;
                 const hasPisu = data[i][C_PISU_OK] === true;
