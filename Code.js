@@ -1,7 +1,7 @@
 /****************************************************
  * SDIS 66 - SDS | WebApp Dashboard
  * CACHE SÉQUENTIEL + FIXES + LOCK SYSTEM
- * Version: 2026-01-28 15:05
+ * Version: 2026-01-28 15:15
  ****************************************************/
 
 const DASHBOARD_SHEET_NAME = "Dashboard";
@@ -732,15 +732,19 @@ function getNextCase(specificRow) {
     
     // Récupérer les correspondances de protocoles depuis le fichier externe
     let protoLabels = {};
+    let protoMapping = {}; // Mappe colonne APP → index de colonne
     try {
         const ssProto = SpreadsheetApp.openById(ID_PROTOCOLES_CORRESP);
         const shProto = ssProto.getSheets()[0];
-        const header = shProto.getRange(1, 1, 2, shProto.getLastColumn()).getValues();
+        // Charger les 3 lignes : code (1), nom (2), colonne APP (3)
+        const header = shProto.getRange(1, 1, 3, shProto.getLastColumn()).getValues();
         for(let i = 0; i < header[0].length; i++) {
-            const colName = String(header[0][i]).trim();
+            const code = String(header[0][i]).trim();
             const displayName = String(header[1][i]).trim();
-            if(colName && displayName) {
-                protoLabels[colName] = displayName;
+            const colRef = String(header[2][i]).trim();
+            if(code && displayName && colRef) {
+                protoLabels[code] = displayName;
+                protoMapping[colRef] = code; // Mappe colonne APP (ex: "V") à code (ex: "1A")
             }
         }
     } catch(e) {
@@ -754,7 +758,9 @@ function getNextCase(specificRow) {
     for(let colIdx = C_PROTO_START; colIdx <= C_PROTO_END; colIdx++) {
         const colHeader = String(sheetHeaders[colIdx] || "").trim();
         if(colHeader) {
-            const displayLabel = protoLabels[colHeader] || colHeader;
+            // Utiliser le mapping pour trouver le code du protocole
+            const protoCode = protoMapping[colHeader] || colHeader;
+            const displayLabel = protoLabels[protoCode] || colHeader;
             // Charger l'état réel de la case depuis la feuille
             const isChecked = row[colIdx] === "✓" || row[colIdx] === true;
             protoList.push({ id: colIdx, label: displayLabel, checked: isChecked });
