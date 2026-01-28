@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Version: v1.24 | 2026-01-29 -->
+<!-- Version: v1.25 | 2026-01-29 -->
 <html>
 <head>
   <base target="_top">
@@ -739,19 +739,28 @@
          
          // Pour biBmBox, créer un layout groupé
          if(boxId === "biBmBox") {
-            // Créer un conteneur wrapper pour gérer le layout
             let currentRow = null;
             let itemsInRow = 0;
             
             items.forEach((item, idx) => {
-               // Déterminer le nombre d'items par ligne
-               const itemsPerRow = item.label.includes("Absence traçabilité") ? 1 : 2;
+               // "Absence traçabilité" seule sur sa ligne
+               const isAbsenceTracabilite = item.label.includes("Absence traçabilité");
+               const itemsPerRow = isAbsenceTracabilite ? 1 : 2;
                
                // Créer une nouvelle ligne si nécessaire
-               if(itemsInRow === 0 || itemsInRow >= itemsPerRow) {
+               if(itemsInRow === 0) {
                   currentRow = document.createElement("div");
                   currentRow.style.display = "grid";
                   currentRow.style.gridTemplateColumns = itemsPerRow === 1 ? "1fr" : "1fr 1fr";
+                  currentRow.style.gap = "6px";
+                  currentRow.style.marginBottom = "6px";
+                  box.appendChild(currentRow);
+                  itemsInRow = 0;
+               } else if(itemsInRow >= 2) {
+                  // Si on a 2 items et qu'on en ajoute un 3e, créer une nouvelle ligne
+                  currentRow = document.createElement("div");
+                  currentRow.style.display = "grid";
+                  currentRow.style.gridTemplateColumns = "1fr 1fr";
                   currentRow.style.gap = "6px";
                   currentRow.style.marginBottom = "6px";
                   box.appendChild(currentRow);
@@ -770,6 +779,11 @@
                lbl.innerHTML = `<input type="checkbox" name="chk_${item.id}" ${item.checked?'checked':''}> ${item.label}`;
                currentRow.appendChild(lbl);
                itemsInRow++;
+               
+               // Si c'est "Absence traçabilité", reset pour la prochaine ligne
+               if(isAbsenceTracabilite) {
+                  itemsInRow = 0;
+               }
             });
          } else {
             // Layout standard pour autres
@@ -994,10 +1008,7 @@
         if(document.getElementById("adminPwd").value!=="0007") { toast("Erreur code"); return; }
         
         document.getElementById("adminLogin").style.display="none";
-        const adminLoadBox = document.getElementById("adminLoadBox");
-        adminLoadBox.style.display="block";
-        adminLoadBox.style.marginLeft="0";
-        adminLoadBox.style.marginTop="10px";
+        document.getElementById("adminLoadBox").style.display="inline-block";
         
         let w=0; 
         const i=setInterval(()=>{ 
