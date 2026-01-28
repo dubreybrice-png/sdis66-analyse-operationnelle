@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Version: 2026-01-28 16:20 -->
+<!-- Version: 2026-01-28 16:25 -->
 <html>
 <head>
   <base target="_top">
@@ -21,7 +21,7 @@
     .sideLogo{ width:50px; height:50px; border-radius:12px; overflow:hidden; border:1px solid var(--border); }
     .sideLogo img{ width:100%; height:100%; object-fit:cover; }
     .sideTitle{ line-height:1.2; } .sideTitle b{ color:#fff; font-size:14px; }
-    .sideBtns{ display:flex; flex-direction:column; gap:10px; order:-1; }
+    .sideBtns{ display:flex; flex-direction:column; gap:10px; }
     .sideBtn{ width:100%; text-align:left; background:rgba(255,255,255,.03); border:1px solid var(--border); color:var(--text); padding:12px; border-radius:12px; cursor:pointer; font-weight:600; display:flex; justify-content:space-between; align-items:center; transition:0.2s; }
     .sideBtn:hover{ background:rgba(255,255,255,.08); border-color:rgba(255,255,255,.3); }
     .sideBtn.primary{ background:rgba(57,255,20,0.05); border-color:rgba(57,255,20,0.3); color:#fff; }
@@ -867,8 +867,8 @@
             setText("ispInter26", res.inter2026); setText("ispInter25Ytd", res.inter2025_ytd); setText("ispInter25Tot", res.inter2025_tot);
             document.getElementById("ispInterTrend").innerHTML = getTrendHtml(res.inter2026, res.inter2025_ytd);
             
-            setText("ispOk", res.okList.length);
-            setText("ispErrBil", res.errLegereBilan.length); setText("ispErrPisu", res.errLegerePisu.length); setText("ispErrLourd", res.errLourde.length);
+            setText("ispOk", (res.okList||[]).length);
+            setText("ispErrBil", (res.errLegereBilan||[]).length); setText("ispErrPisu", (res.errLegerePisu||[]).length); setText("ispErrLourd", (res.errLourde||[]).length);
             window_currentIspData = res;
         }).getIspStats(m, d);
     }
@@ -927,8 +927,8 @@
             google.script.run.withSuccessHandler(stats => {
                 const cisSorted = (stats.cis || []).sort((a,b) => b.v26 - a.v26);
                 const sectSorted = (stats.secteurs || []).sort((a,b) => b.v26 - a.v26);
-                document.querySelector("#tableAdminCis tbody").innerHTML = cisSorted.map(x => `<tr><td>${x.name}</td><td class="num"><b>${x.v26}</b></td><td class="num" style="color:gray">${x.v25tot}</td></tr>`).join('');
-                document.querySelector("#tableAdminSect tbody").innerHTML = sectSorted.map(x => `<tr><td>${x.name}</td><td class="num"><b>${x.v26}</b></td><td class="num" style="color:gray">${x.v25tot}</td></tr>`).join('');
+                document.querySelector("#tableAdminCis tbody").innerHTML = cisSorted.map(x => `<tr><td>${x.name}</td><td class="num"><b>${x.v26}</b></td><td class="num" style="color:gray">${x.v25}</td><td class="num" style="color:gray">${x.v25tot}</td></tr>`).join('');
+                document.querySelector("#tableAdminSect tbody").innerHTML = sectSorted.map(x => `<tr><td>${x.name}</td><td class="num"><b>${x.v26}</b></td><td class="num" style="color:gray">${x.v25}</td><td class="num" style="color:gray">${x.v25tot}</td></tr>`).join('');
             }).getStats2026();
         }).withFailureHandler(e => {
             clearInterval(i);
