@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Version: 2026-01-28 16:10 -->
+<!-- Version: 2026-01-28 16:15 -->
 <html>
 <head>
   <base target="_top">
@@ -274,8 +274,7 @@
                         </div>
                         <div>
                             <h4 style="color:var(--accent3);margin:0 0 5px 0">Etude qualitative des BPV</h4>
-                            <div style="font-size:12px;cursor:pointer;text-decoration:underline;" class="text-green" onclick="openErrorList('BilanOk')">Bilan OK: <b id="ispBilOk"></b></div>
-                            <div style="font-size:12px;cursor:pointer;text-decoration:underline;" class="text-green" onclick="openErrorList('PisuOk')">Pisu OK: <b id="ispPisuOk"></b></div>
+                            <div style="font-size:12px;cursor:pointer;text-decoration:underline;" class="text-green" onclick="openErrorList('OK')">OK (Bilan et/ou Pisu): <b id="ispOk"></b></div>
                             
                             <div style="margin-top:8px;cursor:pointer;text-decoration:underline;" class="text-orange" onclick="openErrorList('Bilan')">Erreur Bilan Légère: <span id="ispErrBil"></span></div>
                             <div style="cursor:pointer;text-decoration:underline;" class="text-orange" onclick="openErrorList('Pisu')">Erreur Pisu Légère: <span id="ispErrPisu"></span></div>
@@ -868,7 +867,7 @@
             setText("ispInter26", res.inter2026); setText("ispInter25Ytd", res.inter2025_ytd); setText("ispInter25Tot", res.inter2025_tot);
             document.getElementById("ispInterTrend").innerHTML = getTrendHtml(res.inter2026, res.inter2025_ytd);
             
-            setText("ispBilOk", res.bilanConf); setText("ispPisuOk", res.pisuConf);
+            setText("ispOk", res.okList.length);
             setText("ispErrBil", res.errLegereBilan.length); setText("ispErrPisu", res.errLegerePisu.length); setText("ispErrLourd", res.errLourde.length);
             window_currentIspData = res;
         }).getIspStats(m, d);
@@ -880,8 +879,7 @@
         let list = [];
         let filterValue = "";
         
-        if(type==='BilanOk') { list = window_currentIspData.bilanOkList || []; filterValue = "Bilan OK"; }
-        else if(type==='PisuOk') { list = window_currentIspData.pisuOkList || []; filterValue = "Pisu OK"; }
+        if(type==='OK') { list = window_currentIspData.okList || []; filterValue = "Bilan OK"; }
         else if(type==='Bilan') { list = window_currentIspData.errLegereBilan || []; filterValue = "Erreur Bilan Légère"; }
         else if(type==='Pisu') { list = window_currentIspData.errLegerePisu || []; filterValue = "Erreur Pisu Légère"; }
         else { list = window_currentIspData.errLourde || []; filterValue = "Erreur Grave"; }
@@ -1112,15 +1110,18 @@
         const filtered = currentDetailList.filter(x => x.types.some(t => filters.includes(t)));
         if(filtered.length===0) c.innerHTML="<div style='padding:20px;text-align:center;color:gray'>Aucun dossier</div>";
         filtered.forEach(x => {
-            let tagBg = "#47d18c", tagColor = "white";
-            if(x.errorType && x.errorType.includes("Grave")) {
-                tagBg = "#d32f2f";
-                tagColor = "white";
-            } else if(x.errorType && x.errorType.includes("Légère")) {
-                tagBg = "#ff9800";
-                tagColor = "white";
-            }
-            const errorTag = x.errorType ? `<span style="display:inline-block;padding:3px 8px;border-radius:3px;font-size:10px;font-weight:bold;background:${tagBg};color:${tagColor};">${x.errorType}</span>` : '';
+            // Créer les tags pour chaque type (peut être "Bilan OK", "Pisu OK", "Erreur Grave", etc.)
+            const tagHtml = x.types.map(t => {
+                let tagBg = "#47d18c", tagColor = "white";
+                if(t.includes("Grave")) {
+                    tagBg = "#d32f2f";
+                    tagColor = "white";
+                } else if(t.includes("Légère")) {
+                    tagBg = "#ff9800";
+                    tagColor = "white";
+                }
+                return `<span style="display:inline-block;padding:3px 8px;border-radius:3px;font-size:10px;font-weight:bold;background:${tagBg};color:${tagColor};margin-left:4px;">${t}</span>`;
+            }).join('');
             const ispLabel = x.ispName ? `<div style="font-size:10px;color:var(--accent3);margin-top:4px;">ISP: <b>${x.ispName}</b></div>` : '';
             c.innerHTML += `
                 <div class="detail-row" onclick="loadInterDetail('${x.id}', '${x.date || ''}', '${(x.motif || '').replace(/'/g, "\\'")}', '${x.status || ''}', '${x.centre || ''}', '${x.engin || ''}')" style="padding:12px;border-bottom:1px solid #333;cursor:pointer;">
@@ -1129,7 +1130,7 @@
                             <div style="font-weight:bold;color:#39ff14;font-size:13px;">Numéro d'intervention: ${x.id}</div>
                             <div style="font-size:10px;color:#aaa;margin-top:3px;">${x.date}</div>
                         </div>
-                        <div style="margin-left:10px;">${errorTag}</div>
+                        <div style="margin-left:10px;">${tagHtml}</div>
                     </div>
                     <div style="font-size:12px;color:#ccc;margin-bottom:6px;"><b>${x.motif}</b></div>
                     <div style="font-size:10px;color:#888;">${x.status}</div>

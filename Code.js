@@ -1,7 +1,7 @@
 /****************************************************
  * SDIS 66 - SDS | WebApp Dashboard
  * CACHE SÉQUENTIEL + FIXES + LOCK SYSTEM
- * Version: 2026-01-28 16:10
+ * Version: 2026-01-28 16:15
  ****************************************************/
 
 const DASHBOARD_SHEET_NAME = "Dashboard";
@@ -497,7 +497,8 @@ function getIspStats(matriculeInput, dobInput) {
 
     // Erreurs et confirmations
     const errLegereBilanList = [], errLegerePisuList = [], errLourdeList = [];
-    const bilanOkList = [], pisuOkList = [];
+    const okList = []; // Liste combinée pour Bilan OK ET Pisu OK
+    const okById = {}; // Map pour combiner les deux
     
     // 1. Parcourir APP pour les fiches OK directes (BI et BK cochées)
     if(shApp) {
@@ -512,22 +513,22 @@ function getIspStats(matriculeInput, dobInput) {
                 const date = formatDateHeureFR_(data[i][C_APP_DATE]);
                 const status = (cis === "SD SSSM") ? "De Garde" : "Astreinte / Dispo";
                 
-                // Bilan OK direct (BI cochée) - fiche reste dans APP
-                if(data[i][C_BILAN_OK] === true) {
-                    const item = { id:id, motif:motif, centre:cis, engin:engin, date:date, status:status, types: ["Bilan OK"], errorType: "" };
-                    bilanOkList.push(item);
-                }
+                const hasBilan = data[i][C_BILAN_OK] === true;
+                const hasPisu = data[i][C_PISU_OK] === true;
                 
-                // Pisu OK direct (BK cochée) - fiche reste dans APP
-                if(data[i][C_PISU_OK] === true) {
-                    const item = { id:id, motif:motif, centre:cis, engin:engin, date:date, status:status, types: ["Pisu OK"], errorType: "" };
-                    pisuOkList.push(item);
+                // Si au moins l'un des deux est OK
+                if(hasBilan || hasPisu) {
+                    if(!okById[id]) {
+                        okById[id] = { id:id, motif:motif, centre:cis, engin:engin, date:date, status:status, types: [], errorType: "" };
+                    }
+                    if(hasBilan && !okById[id].types.includes("Bilan OK")) okById[id].types.push("Bilan OK");
+                    if(hasPisu && !okById[id].types.includes("Pisu OK")) okById[id].types.push("Pisu OK");
                 }
             }
         }
     }
     
-    // 2. Parcourir APP Alex pour les fiches avec BJ/BL envoyées à révision
+    // 2. Parcourir APP Alex pour les fiches avec corrections (H et I) ou erreurs (J, K, L)
     const shAlex = ss.getSheetByName("APP Alex");
     if(shAlex) {
         const data = shAlex.getDataRange().getValues();
@@ -541,37 +542,45 @@ function getIspStats(matriculeInput, dobInput) {
                 const date = appDataRef[id] ? appDataRef[id].date : "";
                 const status = appDataRef[id] ? appDataRef[id].status : "";
                 
-                // H cochée = Bilan finalement OK après révision
-                if(data[i][7] === true) {
-                    const item = { id:id, motif:motif, centre:centre, engin:engin, date:date, status:status, types: ["Bilan OK"], errorType: "" };
-                    bilanOkList.push(item);
-                }
+                const hasH = data[i][7] === true;  // H = Bilan finalement OK
+                const hasI = data[i][8] === true;  // I = Pisu finalement OK
+                const hasJ = data[i][9] === true;  // J = Erreur bilan légère
+                const hasK = data[i][10] === true; // K = Erreur pisu légère
+                const hasL = data[i][11] === true; // L = Erreur grave
                 
-                // I cochée = Pisu finalement OK après révision
-                if(data[i][8] === true) {
-                    const item = { id:id, motif:motif, centre:centre, engin:engin, date:date, status:status, types: ["Pisu OK"], errorType: "" };
-                    pisuOkList.push(item);
+                // Corrections = repassent dans la liste OK
+                if(hasH || hasI) {
+                    if(!okById[id]) {
+                        okById[id] = { id:id, motif:motif, centre:centre, engin:engin, date:date, status:status, types: [], errorType: "" };
+                    }
+                    if(hasH && !okById[id].types.includes("Bilan OK")) okById[id].types.push("Bilan OK");
+                    if(hasI && !okById[id].types.includes("Pisu OK")) okById[id].types.push("Pisu OK");
                 }
                 
                 // J cochée = Erreur bilan légère
-                if(data[i][9] === true) { 
+                if(hasJ) { 
                     const item = { id:id, motif:motif, centre:centre, engin:engin, date:date, status:status, types: ["Erreur Bilan Légère"], errorType: "Erreur Bilan Légère" };
                     errLegereBilanList.push(item); 
                 } 
                 
                 // K cochée = Erreur pisu légère
-                if(data[i][10] === true) { 
+                if(hasK) { 
                     const item = { id:id, motif:motif, centre:centre, engin:engin, date:date, status:status, types: ["Erreur Pisu Légère"], errorType: "Erreur Pisu Légère" };
                     errLegerePisuList.push(item); 
                 } 
                 
                 // L cochée = Erreur grave
-                if(data[i][11] === true) { 
+                if(hasL) { 
                     const item = { id:id, motif:motif, centre:centre, engin:engin, date:date, status:status, types: ["Erreur Grave"], errorType: "Erreur Grave" };
                     errLourdeList.push(item); 
                 } 
             }
         }
+    }
+    
+    // Convertir la map en tableau
+    for(const id in okById) {
+        okList.push(okById[id]);
     }
 
     const result = {
@@ -580,8 +589,7 @@ function getIspStats(matriculeInput, dobInput) {
         garde2026: hGarde26, garde2025_ytd: hGarde25_ytd, garde2025_tot: hGarde25_tot,
         inter2026: interHg26, inter2025_ytd: interHg25_ytd, inter2025_tot: interHg25_tot,
         bilanConf, pisuConf,
-        bilanOkList: bilanOkList,
-        pisuOkList: pisuOkList,
+        okList: okList,
         errLegereBilan: errLegereBilanList,
         errLegerePisu: errLegerePisuList,
         errLourde: errLourdeList
