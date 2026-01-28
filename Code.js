@@ -1,7 +1,7 @@
 /****************************************************
  * SDIS 66 - SDS | WebApp Dashboard
  * CACHE SÉQUENTIEL + FIXES + LOCK SYSTEM
- * Version: 2026-01-28 15:40
+ * Version: 2026-01-28 15:50
  ****************************************************/
 
 const DASHBOARD_SHEET_NAME = "Dashboard";
@@ -95,7 +95,8 @@ function getStats2026() {
      const shApp = ss.getSheetByName(APP_SHEET_NAME);
      const data = shApp.getDataRange().getValues();
      for(let i=1; i<data.length; i++) {
-         if(String(data[i][C_APP_PDF]) && !data[i][C_BP_CLOSE]) countApp++;
+         const pdf = String(data[i][C_APP_PDF]).trim();
+         if(pdf && pdf !== "#N/A" && !pdf.includes("#N/A") && !data[i][C_BP_CLOSE]) countApp++;
      }
   } catch(e){}
 
@@ -500,12 +501,27 @@ function getIspStats(matriculeInput, dobInput) {
                 const motif = appDataRef[id] ? appDataRef[id].motif : "?";
                 const centre = appDataRef[id] ? appDataRef[id].centre : "";
                 const engin = appDataRef[id] ? appDataRef[id].engin : "";
-                const item = { id:id, motif:motif, centre:centre, engin:engin, types: [], errorType: "" };
-                if(data[i][7]===true) { item.types.push("Bilan OK"); bilanOkList.push(item); } 
-                if(data[i][8]===true) { item.types.push("Pisu OK"); pisuOkList.push(item); } 
-                if(data[i][9]===true) { item.types.push("Erreur Bilan Légère"); item.errorType = "Erreur Bilan Légère"; errLegereBilanList.push(item); } 
-                if(data[i][10]===true) { item.types.push("Erreur Pisu Légère"); item.errorType = "Erreur Pisu Légère"; errLegerePisuList.push(item); } 
-                if(data[i][11]===true) { item.types.push("Erreur Grave"); item.errorType = "Erreur Grave"; errLourdeList.push(item); } 
+                
+                if(data[i][7]===true) { 
+                    const item = { id:id, motif:motif, centre:centre, engin:engin, types: ["Bilan OK"], errorType: "" };
+                    bilanOkList.push(item); 
+                } 
+                if(data[i][8]===true) { 
+                    const item = { id:id, motif:motif, centre:centre, engin:engin, types: ["Pisu OK"], errorType: "" };
+                    pisuOkList.push(item); 
+                } 
+                if(data[i][9]===true) { 
+                    const item = { id:id, motif:motif, centre:centre, engin:engin, types: ["Erreur Bilan Légère"], errorType: "Erreur Bilan Légère" };
+                    errLegereBilanList.push(item); 
+                } 
+                if(data[i][10]===true) { 
+                    const item = { id:id, motif:motif, centre:centre, engin:engin, types: ["Erreur Pisu Légère"], errorType: "Erreur Pisu Légère" };
+                    errLegerePisuList.push(item); 
+                } 
+                if(data[i][11]===true) { 
+                    const item = { id:id, motif:motif, centre:centre, engin:engin, types: ["Erreur Grave"], errorType: "Erreur Grave" };
+                    errLourdeList.push(item); 
+                } 
             }
         }
     }
@@ -823,7 +839,28 @@ function getNextCase(specificRow) {
         pbTxt: row[C_BT_PROBLEM_TXT]||""
     };
     
-    const remaining = data.length - rowToProcess;
+    // Compter les fiches restantes (avec PDF valides, non clôturées, non lockées)
+    let remaining = 0;
+    const now = new Date();
+    const lockTimeoutMinutes = 30;
+    for(let i=rowToProcess; i<data.length; i++) {
+        const pdfVal = String(data[i][C_APP_PDF]).trim();
+        const isClosed = data[i][C_BP_CLOSE];
+        const lockTimestamp = data[i][C_BU_LOCK];
+        
+        let isLocked = false;
+        if(lockTimestamp) {
+            const lockDate = new Date(lockTimestamp);
+            const diffMinutes = (now - lockDate) / (1000 * 60);
+            if(diffMinutes < lockTimeoutMinutes) {
+                isLocked = true;
+            }
+        }
+        
+        if(pdfVal && pdfVal !== "#N/A" && !pdfVal.includes("#N/A") && !isClosed && !isLocked) {
+            remaining++;
+        }
+    }
     
     return {
         done: false,

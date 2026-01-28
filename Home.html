@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Version: 2026-01-28 15:40 -->
+<!-- Version: 2026-01-28 15:50 -->
 <html>
 <head>
   <base target="_top">
@@ -203,7 +203,7 @@
       </div>
       <div class="sideBtns">
         <button class="sideBtn primary" id="btnAppAccess" onclick="openAppView()"><span>Accès APP</span><span class="badgeBtn" id="cntAppBadge">...</span></button>
-        <button class="sideBtn" onclick="askPass('chef')"><span>Accès chefferie ISP</span><div><span class="badgeBtn" id="cntIspGBadge">...</span> / <span class="badgeBtn red" id="cntIspRBadge">...</span></div></button>
+        <button class="sideBtn" onclick="askPass('chef')"><span>Accès chefferie ISP</span><span class="badgeBtn" id="cntIspGBadge">...</span><span style="font-size:11px;color:var(--muted);">/ <span class="badgeBtn red" id="cntIspRBadge">...</span></span></button>
         <button class="sideBtn" onclick="askPass('med')"><span>Accès médecin cheffe</span><span class="badgeBtn" id="cntMedBadge">...</span></button>
       </div>
     </aside>
@@ -236,7 +236,7 @@
         </div>
 
         <div class="panel" style="margin-bottom:20px;"><div class="panelBody" style="display:flex;align-items:center;gap:40px;">
-            <div><div style="font-size:11px;color:var(--muted)">Astreintes / Dispo 2026</div><div style="font-size:24px;font-weight:bold" id="hrs2026">...</div></div>
+            <div><div style="font-size:11px;color:var(--muted)">Astreintes / Dispo 2026</div><div style="font-size:24px;font-weight:bold" id="hrs2026">...</div><div style="font-size:9px;color:var(--muted);margin-top:4px;">Comparaison du 1er janvier au <span id="cutoffCompAst">...</span></div></div>
             <div><div style="font-size:11px;color:var(--muted)">Total 2025</div><div class="badge" id="hrs2025Badge">...</div></div>
         </div></div>
 
@@ -578,6 +578,7 @@
             setText("cutoffCompPsud", d.date);
             setText("cutoffCompSect", d.date);
             setText("cutoffCompTotal", d.date);
+            setText("cutoffCompAst", d.date);
             setText("psud2026", d.psud); setText("total2026", d.total);
             setText("secteur2026", d.sect); setText("hrs2026", d.ast+" h");
             
