@@ -1,7 +1,7 @@
 /****************************************************
  * SDIS 66 - SDS | WebApp Dashboard
  * CACHE SÉQUENTIEL + FIXES + LOCK SYSTEM
- * Version: 2026-01-28 15:15
+ * Version: 2026-01-28 15:30
  ****************************************************/
 
 const DASHBOARD_SHEET_NAME = "Dashboard";
@@ -487,8 +487,9 @@ function getIspStats(matriculeInput, dobInput) {
         }
     } catch(e) {}
 
-    // Erreurs
+    // Erreurs et confirmations
     const errLegereBilanList = [], errLegerePisuList = [], errLourdeList = [];
+    const bilanOkList = [], pisuOkList = [];
     const shAlex = ss.getSheetByName("APP Alex");
     if(shAlex) {
         const data = shAlex.getDataRange().getValues();
@@ -497,10 +498,12 @@ function getIspStats(matriculeInput, dobInput) {
             if(rowName === myName || rowName.includes(myName)) {
                 const id = String(data[i][0]).trim(); 
                 const motif = appDataRef[id] ? appDataRef[id].motif : "?";
-                const item = { id:id, motif:motif };
-                if(data[i][9]===true) errLegereBilanList.push(item); 
-                if(data[i][10]===true) errLegerePisuList.push(item); 
-                if(data[i][11]===true) errLourdeList.push(item); 
+                const item = { id:id, motif:motif, types: [], errorType: "" };
+                if(data[i][7]===true) { item.types.push("Bilan OK"); bilanOkList.push(item); } 
+                if(data[i][8]===true) { item.types.push("Pisu OK"); pisuOkList.push(item); } 
+                if(data[i][9]===true) { item.types.push("Erreur Bilan Légère"); item.errorType = "Erreur Bilan Légère"; errLegereBilanList.push(item); } 
+                if(data[i][10]===true) { item.types.push("Erreur Pisu Légère"); item.errorType = "Erreur Pisu Légère"; errLegerePisuList.push(item); } 
+                if(data[i][11]===true) { item.types.push("Erreur Grave"); item.errorType = "Erreur Grave"; errLourdeList.push(item); } 
             }
         }
     }
@@ -511,6 +514,8 @@ function getIspStats(matriculeInput, dobInput) {
         garde2026: hGarde26, garde2025_ytd: hGarde25_ytd, garde2025_tot: hGarde25_tot,
         inter2026: interHg26, inter2025_ytd: interHg25_ytd, inter2025_tot: interHg25_tot,
         bilanConf, pisuConf,
+        bilanOkList: bilanOkList,
+        pisuOkList: pisuOkList,
         errLegereBilan: errLegereBilanList,
         errLegerePisu: errLegerePisuList,
         errLourde: errLourdeList
