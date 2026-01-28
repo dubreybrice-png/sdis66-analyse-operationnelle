@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Version: v1.26 | 2026-01-29 -->
+<!-- Version: v1.27 | 2026-01-29 -->
 <html>
 <head>
   <base target="_top">
@@ -1258,13 +1258,13 @@
                     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
                         <div style="flex:1;">
                             <div style="font-weight:bold;color:#39ff14;font-size:13px;">Numéro d'intervention: ${x.id}</div>
-                            <div style="font-size:10px;color:#aaa;margin-top:3px;">${x.date || '-'}</div>
+                            <div style="font-size:10px;color:#aaa;margin-top:3px;">Date: <b>${x.date || '-'}</b></div>
                         </div>
                         <div style="margin-left:10px;">${tagHtml}</div>
                     </div>
-                    <div style="font-size:12px;color:#ccc;margin-bottom:6px;"><b>${x.motif || '-'}</b></div>
-                    <div style="font-size:10px;color:#888;">${x.status || '-'}</div>
-                    <div style="font-size:10px;color:#888;">Engin: ${x.engin || '-'}</div>
+                    <div style="font-size:12px;color:#ccc;margin-bottom:6px;"><b>Motif: ${x.motif || '-'}</b></div>
+                    <div style="font-size:10px;color:#aaa;margin-bottom:3px;">Type: <b>${x.status || '-'}</b></div>
+                    <div style="font-size:10px;color:#aaa;">Engin: <b>${x.engin || '-'}</b></div>
                     ${ispLabel}
                     ${x.commChef ? `<div style="font-size:10px;color:var(--accent3);margin-top:4px;">Chef: ${x.commChef}</div>` : ''}
                     ${x.commMed ? `<div style="font-size:10px;color:var(--red);">Med: ${x.commMed}</div>` : ''}
