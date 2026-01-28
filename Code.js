@@ -1,7 +1,7 @@
 /****************************************************
  * SDIS 66 - SDS | WebApp Dashboard
  * CACHE SÉQUENTIEL + FIXES + LOCK SYSTEM
- * Version: 2026-01-28 15:55
+ * Version: 2026-01-28 16:00
  ****************************************************/
 
 const DASHBOARD_SHEET_NAME = "Dashboard";
@@ -495,9 +495,36 @@ function getIspStats(matriculeInput, dobInput) {
         }
     } catch(e) {}
 
-    // Erreurs et confirmations
+    // Erreurs et confirmations depuis feuille APP
     const errLegereBilanList = [], errLegerePisuList = [], errLourdeList = [];
     const bilanOkList = [], pisuOkList = [];
+    
+    // D'abord créer bilanOkList et pisuOkList depuis APP (validés par l'ISP)
+    if(shApp) {
+        const data = shApp.getDataRange().getValues();
+        for(let i=1; i<data.length; i++) {
+            const nameInApp = String(data[i][C_APP_NOM]).trim().toLowerCase();
+            if(nameInApp === myName || nameInApp.includes(myName)) {
+                const id = String(data[i][C_APP_ID]).trim();
+                const motif = String(data[i][C_APP_MOTIF]||"").trim();
+                const cis = String(data[i][C_APP_CIS]||"").trim();
+                const engin = String(data[i][C_APP_ENGIN]||"").trim();
+                const date = formatDateHeureFR_(data[i][C_APP_DATE]);
+                const status = (cis === "SD SSSM") ? "De Garde" : "Astreinte / Dispo";
+                
+                if(data[i][C_BILAN_OK] === true) {
+                    const item = { id:id, motif:motif, centre:cis, engin:engin, date:date, status:status, types: ["Bilan OK"], errorType: "" };
+                    bilanOkList.push(item);
+                }
+                if(data[i][C_PISU_OK] === true) {
+                    const item = { id:id, motif:motif, centre:cis, engin:engin, date:date, status:status, types: ["Pisu OK"], errorType: "" };
+                    pisuOkList.push(item);
+                }
+            }
+        }
+    }
+    
+    // Ensuite créer les listes d'erreurs depuis APP Alex (validées par chef)
     const shAlex = ss.getSheetByName("APP Alex");
     if(shAlex) {
         const data = shAlex.getDataRange().getValues();
@@ -511,14 +538,6 @@ function getIspStats(matriculeInput, dobInput) {
                 const date = appDataRef[id] ? appDataRef[id].date : "";
                 const status = appDataRef[id] ? appDataRef[id].status : "";
                 
-                if(data[i][7]===true) { 
-                    const item = { id:id, motif:motif, centre:centre, engin:engin, date:date, status:status, types: ["Bilan OK"], errorType: "" };
-                    bilanOkList.push(item); 
-                } 
-                if(data[i][8]===true) { 
-                    const item = { id:id, motif:motif, centre:centre, engin:engin, date:date, status:status, types: ["Pisu OK"], errorType: "" };
-                    pisuOkList.push(item); 
-                } 
                 if(data[i][9]===true) { 
                     const item = { id:id, motif:motif, centre:centre, engin:engin, date:date, status:status, types: ["Erreur Bilan Légère"], errorType: "Erreur Bilan Légère" };
                     errLegereBilanList.push(item); 
