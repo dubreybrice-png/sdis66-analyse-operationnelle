@@ -1,0 +1,369 @@
+<!doctype html>
+<!-- Version: 2026-01-28 13:30 -->
+<html>
+<head>
+  <base target="_top">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script>
+    const SCRIPT_URL = "<?= scriptUrl ?>";
+  </script>
+  <style>
+    :root{ --bg:#0b1220; --card:#101a33; --text:#e8eefc; --muted:#aab6d6; --accent:#6ea8fe; --danger:#ff6b6b; --ok:#47d18c; --border:rgba(255,255,255,.08); --shadow: 0 18px 50px rgba(0,0,0,.35); --radius: 18px; --selectBg:#0e1730; }
+    *{ box-sizing:border-box; }
+    body{ margin:0; font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; background: radial-gradient(1000px 600px at 20% 10%, rgba(110,168,254,.15), transparent 60%), radial-gradient(900px 700px at 90% 20%, rgba(71,209,140,.1), transparent 55%), var(--bg); color:var(--text); overflow:hidden; /* NO BODY SCROLL */ height: 100vh; }
+    
+    header{ padding:8px 16px; display:flex; align-items:center; justify-content:space-between; gap:12px; background: rgba(16,26,51,.8); backdrop-filter: blur(10px); border-bottom:1px solid var(--border); height: 50px; flex-shrink:0; }
+    .brand{ display:flex; align-items:center; gap:10px; }
+    .logo{ width:28px;height:28px;border-radius:8px; background: linear-gradient(135deg, rgba(110,168,254,.9), rgba(71,209,140,.85)); box-shadow: var(--shadow); cursor:pointer; }
+    h1{ font-size:16px; margin:0; font-weight:700; } 
+    .rightHead{ display:flex; align-items:center; gap:8px; }
+    .pill{ font-size:11px; padding:4px 10px; border-radius: 999px; border:1px solid var(--border); color:var(--muted); background: rgba(255,255,255,.03); white-space:nowrap; }
+    .btnTop{ border:1px solid var(--border); background: rgba(255,255,255,.03); color: var(--text); padding:6px 10px; border-radius: 999px; cursor:pointer; font-weight:600; font-size:11px; transition: background .2s; }
+    .btnTop:hover{ background: rgba(255,255,255,.08); }
+
+    /* LAYOUT COMPACT */
+    .wrap{ padding:10px; max-width: 99%; margin:0 auto; height: calc(100vh - 50px); display:flex; gap:10px; }
+    
+    .leftCol { flex: 2.2; display:flex; flex-direction:column; gap:10px; height:100%; min-width:0; }
+    .rightCol { flex: 1; display:flex; flex-direction:column; height:100%; min-width:350px; }
+
+    /* CARD STYLE */
+    .card{ background: linear-gradient(180deg, rgba(16,26,51,.95), rgba(15,24,48,.95)); border:1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); overflow:hidden; display:flex; flex-direction:column; flex:1; }
+    .cardHead{ padding:8px 12px; border-bottom:1px solid var(--border); background: rgba(255,255,255,.02); flex-shrink:0; }
+    
+    .interInfos { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; font-size: 11px; }
+    .interItem { display:flex; flex-direction:column; }
+    .interLabel { color: var(--muted); font-size:9px; text-transform:uppercase; letter-spacing:0.5px; }
+    .interVal { font-weight:600; color:#fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size:11px; }
+    .interVal.highlight { color: var(--accent); }
+
+    .pdfBox{ flex:1; background: rgba(0,0,0,.2); position:relative; overflow:hidden; }
+    iframe{ width:100%; height:100%; border:0; position:absolute; top:0; left:0; }
+
+    .form{ padding:10px; display:flex; flex-direction:column; gap:8px; overflow-y:auto; flex:1; }
+    /* Scrollbar */
+    .form::-webkit-scrollbar { width: 5px; }
+    .form::-webkit-scrollbar-track { background: transparent; }
+    .form::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+    
+    label{ font-size:10px; color:var(--muted); display:block; margin-bottom:2px; margin-top:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .group{ padding:8px; border-radius: 10px; border:1px solid var(--border); background: rgba(255,255,255,.02); }
+    .groupTitle { font-size:11px; font-weight:800; color:var(--accent); margin-bottom:6px; text-transform:uppercase; letter-spacing:0.5px; border-bottom:1px solid rgba(255,255,255,.05); padding-bottom:2px; }
+
+    select, input[type="text"], textarea { padding:4px 6px; border-radius: 6px; border:1px solid var(--border); background: var(--selectBg); color: var(--text); outline:none; width:100%; font-family:inherit; font-size:11px; transition: border-color .2s; }
+    select:focus, input:focus, textarea:focus { border-color: var(--accent); }
+    textarea { resize: vertical; min-height: 30px; }
+
+    /* CHECKBOX COMPACTE AVEC WRAP */
+    .cb{ display:flex; align-items:flex-start; gap:4px; padding:3px 5px; border-radius: 4px; border:1px solid rgba(255,255,255,.05); background: rgba(255,255,255,.01); cursor:pointer; user-select:none; font-size:10px; transition: background .2s; line-height:1.1; }
+    .cb:hover { background: rgba(255,255,255,.05); }
+    .cb.red { border-color: rgba(255,107,107,.3); color: var(--danger); }
+    
+    input[type="checkbox"]{ width:12px;height:12px; accent-color: var(--accent); cursor:pointer; flex-shrink:0; margin-top:1px; }
+    input[type="checkbox"].danger-cb { accent-color: var(--danger); }
+
+    .actions{ margin-top:auto; padding-top:6px; display:flex; gap:8px; flex-shrink:0; }
+    .btn{ border:1px solid var(--border); background: rgba(255,255,255,.03); color: var(--text); padding:8px; border-radius: 8px; cursor:pointer; font-weight:700; flex:1; font-size:12px; }
+    .btn.ok{ border-color: rgba(71,209,140,.45); background: linear-gradient(135deg, rgba(71,209,140,.25), rgba(71,209,140,.10)); color: #8affc1; }
+    .btn.warn{ border-color: rgba(255,107,107,.35); background: linear-gradient(135deg, rgba(255,107,107,.16), rgba(255,107,107,.06)); }
+
+    /* GRID PROTOCOLS */
+    .grid-checks { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 4px; }
+    
+    /* 4 COLUMNS FOR DROPDOWNS */
+    .grid-selects { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+    
+    .row2Items { display: grid; grid-template-columns: 2fr 1fr; gap:6px; margin-top:6px; }
+
+    .toast{ position: fixed; right: 20px; bottom: 20px; padding: 10px 14px; border-radius: 10px; border:1px solid var(--border); background: rgba(10,16,32,.95); box-shadow: var(--shadow); color: var(--text); font-size: 12px; max-width: 350px; display:none; z-index: 999; }
+    .toast.ok{ border-left: 4px solid var(--ok); } .toast.err{ border-left: 4px solid var(--danger); }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <div class="logo" title="Retour accueil" onclick="goHome()"></div>
+      <h1>APP par ISP</h1>
+    </div>
+    <div class="rightHead">
+      <div class="pill" id="statusPill">Chargement…</div>
+      <button class="btnTop" onclick="loadNext(currentRow)">Recharger</button>
+      <button class="btnTop" onclick="goHome()">Accueil</button>
+    </div>
+  </header>
+
+  <div class="wrap">
+      <div class="leftCol">
+        <div class="card">
+            <div class="cardHead">
+            <div class="interInfos">
+                <div class="interItem"><span class="interLabel">Intervention</span><span class="interVal" id="iNum">—</span></div>
+                <div class="interItem"><span class="interLabel">Date</span><span class="interVal" id="iDate">—</span></div>
+                <div class="interItem"><span class="interLabel">Infirmier</span><span class="interVal highlight" id="iInf">—</span></div>
+                <div class="interItem"><span class="interLabel">Centre</span><span class="interVal" id="iCis">—</span></div>
+                <div class="interItem"><span class="interLabel">Motif</span><span class="interVal" id="iMotif">—</span></div>
+                <div class="interItem"><span class="interLabel">Engin</span><span class="interVal" id="iEngin">—</span></div>
+            </div>
+            </div>
+            <div class="pdfBox">
+            <iframe id="pdfFrame" src=""></iframe>
+            <div id="pdfPlaceholder" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:var(--muted);">Chargement PDF...</div>
+            </div>
+            <div style="padding:4px; text-align:center; border-top:1px solid var(--border); background:rgba(0,0,0,0.3); font-size:10px;">
+            <a id="openPdfLink" href="#" target="_blank" style="color:var(--accent); text-decoration:none;">Ouvrir dans Drive ↗</a> 
+            <span class="pill" id="remainingPill" style="margin-left:10px; font-size:9px; padding:2px 6px;">Reste : —</span>
+            </div>
+        </div>
+      </div>
+
+      <div class="rightCol">
+        <div class="card">
+            <div class="form" id="mainForm">
+            
+            <div class="group" style="padding:6px;">
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <label style="margin:0;">ISP Analyse :</label>
+                    <select id="ispSelect" style="flex:1;"><option value="">Chargement...</option></select>
+                </div>
+            </div>
+
+            <div class="group">
+                <div class="groupTitle">Protocoles</div>
+                <div style="margin-bottom:2px;font-size:10px;color:var(--muted);font-weight:700;">Adultes</div>
+                <div class="grid-checks" id="protoAdultBox"></div>
+                <div style="margin:6px 0 2px;font-size:10px;color:var(--muted);font-weight:700;border-top:1px solid rgba(255,255,255,.05);padding-top:4px;">Pédiatriques</div>
+                <div class="grid-checks" id="protoPediaBox"></div>
+            </div>
+
+            <div class="group">
+                <div class="groupTitle">Critères</div>
+                <div class="grid-selects">
+                    <div><label id="lblAx">AKIM</label><select id="selAx"></select></div>
+                    <div><label id="lblAy">SMUR</label><select id="selAy"></select></div>
+                    <div><label id="lblAz">CCMU</label><select id="selAz"></select></div>
+                    <div><label id="lblBa">DEVENIR</label><select id="selBa"></select></div>
+                </div>
+                <div class="row2Items">
+                    <div><label id="lblBb">PARTICULARITÉ</label><select id="selBb"></select></div>
+                    <div><label id="lblBc">NB VICTIMES</label><input type="text" id="txtBc"></div>
+                </div>
+            </div>
+
+            <div class="group">
+                <div class="groupTitle">Résultat</div>
+                <label id="lblBg">Examen Clinique</label>
+                <select id="selBg" style="margin-bottom:6px;"></select>
+
+                <div class="grid-checks">
+                    <label class="cb"><input type="checkbox" id="chkBh"> <span id="lblBh">Absence erreur</span></label>
+                    <div id="biBmBox" style="display:contents;"></div>
+                </div>
+            </div>
+
+            <div class="group">
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px;">
+                    <div><label id="lblBn">Champ BN</label><textarea id="txtBn"></textarea></div>
+                    <div><label id="lblBo">Champ BO</label><textarea id="txtBo"></textarea></div>
+                </div>
+            </div>
+
+            <div class="group" style="border-color: rgba(255,107,107,.3); padding:4px;">
+                <label class="cb red" style="margin:0;">
+                    <input type="checkbox" id="pbCheck" class="danger-cb">
+                    Signaler un problème à Brice
+                </label>
+                <div id="pbDetails" style="margin-top:4px; display:none;">
+                    <input type="text" id="pbTxt" placeholder="Précisez..." style="width:100%;">
+                </div>
+            </div>
+
+            <div class="actions">
+                <button class="btn ok" id="sendBtn" onclick="send()">Envoyer et Clôturer</button>
+                <button class="btn warn" id="skipBtn" onclick="skip()">Ignorer</button>
+            </div>
+            </div>
+        </div>
+      </div>
+  </div>
+  <div class="toast" id="toast"></div>
+
+  <script>
+    let currentRow = null;
+    let isSubmitting = false;
+
+    window.onload = () => loadNext();
+    
+    function goHome(){ window.open(SCRIPT_URL + "?page=home", "_top"); }
+    function setStatus(t){ document.getElementById("statusPill").textContent=t; }
+    function toast(m,t="ok"){ const e=document.getElementById("toast"); e.className="toast "+t; e.textContent=m; e.style.display="block"; setTimeout(()=>e.style.display="none",3500); }
+    
+    function extractDriveFileId(u){ if(!u)return ""; const m=String(u).match(/\/file\/d\/([^\/\?]+)/i); return (m&&m[1])?m[1]:""; }
+    function buildPdfEmbed(u){ const id=extractDriveFileId(u); return id ? "https://drive.google.com/file/d/"+id+"/preview" : ""; }
+
+    function setButtons(d){ ["sendBtn","skipBtn"].forEach(i=>document.getElementById(i).disabled=d); }
+
+    document.getElementById("pbCheck").addEventListener("change", (e)=>{
+       document.getElementById("pbDetails").style.display = e.target.checked ? "block" : "none";
+    });
+
+    function loadNext(specificRow){
+      if(isSubmitting) return;
+      setStatus("Recherche..."); setButtons(true);
+      
+      google.script.run.withSuccessHandler(res=>{
+        setButtons(false);
+        document.getElementById("remainingPill").textContent = "Reste : "+(res.remaining||0);
+
+        if(res.done){
+          setStatus("Terminé"); 
+          toast(res.message);
+          document.getElementById("mainForm").innerHTML = `<div style="text-align:center;color:var(--muted);margin-top:50px;">${res.message}</div>`;
+          document.getElementById("pdfFrame").src="";
+          return;
+        }
+
+        currentRow = res.rowNumber;
+        setStatus("Fiche prête");
+        
+        // Infos
+        const info = res.info;
+        document.getElementById("iNum").textContent = info.interId;
+        document.getElementById("iDate").textContent = info.date;
+        document.getElementById("iInf").textContent = info.infName;
+        document.getElementById("iCis").textContent = info.cis;
+        document.getElementById("iMotif").textContent = info.motif;
+        document.getElementById("iEngin").textContent = info.engin;
+
+        // PDF
+        const pdfUrl = buildPdfEmbed(res.url);
+        document.getElementById("pdfFrame").src = pdfUrl; 
+        document.getElementById("openPdfLink").href = res.url || "#";
+        document.getElementById("pdfPlaceholder").style.display = pdfUrl ? "none" : "block";
+
+        renderForm(res.schema, res.ispList);
+
+      }).withFailureHandler(err=>{ 
+        setStatus("Erreur"); toast(err.message,"err"); setButtons(false); 
+      }).getNextCase(specificRow);
+    }
+
+    function renderForm(schema, ispList) {
+       // ISP List
+       fillSelect("ispSelect", ispList, schema.ispVal);
+
+       // Checkbox Helpers
+       const mkCb = (boxId, items) => {
+         const box = document.getElementById(boxId);
+         box.innerHTML = "";
+         items.forEach(item => {
+            const lbl = document.createElement("label");
+            lbl.className = "cb";
+            lbl.innerHTML = `<input type="checkbox" name="chk_${item.id}" ${item.checked?'checked':''}> ${item.label}`;
+            box.appendChild(lbl);
+         });
+       };
+
+       mkCb("protoAdultBox", schema.protoAdult);
+       mkCb("protoPediaBox", schema.protoPedia);
+       
+       // CRITERES (Dropdowns)
+       const c = schema.criteres;
+       fillSelect("selAx", c.ax.opts, c.ax.val); document.getElementById("lblAx").textContent = c.ax.label;
+       fillSelect("selAy", c.ay.opts, c.ay.val); document.getElementById("lblAy").textContent = c.ay.label;
+       fillSelect("selAz", c.az.opts, c.az.val); document.getElementById("lblAz").textContent = c.az.label;
+       fillSelect("selBa", c.ba.opts, c.ba.val); document.getElementById("lblBa").textContent = c.ba.label;
+       fillSelect("selBb", c.bb.opts, c.bb.val); document.getElementById("lblBb").textContent = c.bb.label;
+       
+       document.getElementById("lblBc").textContent = c.bc.label;
+       document.getElementById("txtBc").value = c.bc.val;
+
+       // RESULTATS
+       const r = schema.resultats;
+       fillSelect("selBg", r.bg.opts, r.bg.val); document.getElementById("lblBg").textContent = r.bg.label;
+       
+       document.getElementById("lblBh").textContent = r.bh.label;
+       document.getElementById("chkBh").checked = r.bh.checked;
+
+       // Checks BI-BM
+       mkCb("biBmBox", r.checksBiBm);
+
+       // Textes
+       document.getElementById("lblBn").textContent = schema.fieldBn.label;
+       document.getElementById("txtBn").value = schema.fieldBn.val;
+       document.getElementById("lblBo").textContent = schema.fieldBo.label;
+       document.getElementById("txtBo").value = schema.fieldBo.val;
+
+       // Problem
+       const pbCb = document.getElementById("pbCheck");
+       pbCb.checked = !!schema.pbCheck;
+       document.getElementById("pbTxt").value = schema.pbTxt; 
+       document.getElementById("pbDetails").style.display = schema.pbCheck ? "block" : "none";
+    }
+
+    function fillSelect(id, opts, currentVal) {
+       const s = document.getElementById(id);
+       s.innerHTML = '<option value="">—</option>';
+       if(opts) {
+           opts.forEach(o => {
+               const op = document.createElement("option");
+               op.value = o; op.textContent = o;
+               if(String(o) === String(currentVal)) op.selected = true;
+               s.appendChild(op);
+           });
+       }
+    }
+
+    function send(){
+      if(!currentRow){ toast("Erreur: aucune fiche","err"); return; }
+      const isp = document.getElementById("ispSelect").value;
+      if(!isp) { toast("Veuillez sélectionner l'ISP Analyse","err"); return; }
+
+      isSubmitting = true;
+      setStatus("Enregistrement..."); setButtons(true);
+
+      const checks = {};
+      document.querySelectorAll('input[type="checkbox"][name^="chk_"]').forEach(cb => {
+         const id = cb.name.split('_')[1];
+         checks[id] = cb.checked;
+      });
+
+      const payload = {
+         rowNumber: currentRow,
+         isp: isp,
+         checks: checks,
+         criteres: {
+            ax: document.getElementById("selAx").value,
+            ay: document.getElementById("selAy").value,
+            az: document.getElementById("selAz").value,
+            ba: document.getElementById("selBa").value,
+            bb: document.getElementById("selBb").value,
+            bc: document.getElementById("txtBc").value
+         },
+         resultats: {
+            bg: document.getElementById("selBg").value,
+            bh: document.getElementById("chkBh").checked
+         },
+         txtBn: document.getElementById("txtBn").value,
+         txtBo: document.getElementById("txtBo").value,
+         pbCheck: document.getElementById("pbCheck").checked,
+         pbTxt: document.getElementById("pbTxt").value
+      };
+
+      google.script.run.withSuccessHandler(()=>{ 
+          isSubmitting = false;
+          setStatus("Sauvegardé"); 
+          toast("Enregistré et Clôturé ✅"); 
+          loadNext(); 
+      })
+      .withFailureHandler(e=>{ 
+          isSubmitting = false;
+          setStatus("Erreur"); 
+          toast(e.message,"err"); 
+          setButtons(false); 
+      }).saveCase(payload);
+    }
+
+    function skip(){ if(!currentRow) return; loadNext(); }
+  </script>
+</body>
+</html>
