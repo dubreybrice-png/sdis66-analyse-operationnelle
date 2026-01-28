@@ -1,7 +1,7 @@
 /****************************************************
  * SDIS 66 - SDS | WebApp Dashboard
- * CACHE SÉQUENTIEL + FIXES
- * Version: 2026-01-28 14:48
+ * CACHE SÉQUENTIEL + FIXES + LOCK SYSTEM
+ * Version: 2026-01-28 14:54
  ****************************************************/
 
 const DASHBOARD_SHEET_NAME = "Dashboard";
@@ -52,8 +52,9 @@ const C_BM_TRACAB = 64; // Absence de traçabilité surveillance transport
 const C_BN_TXT = 65;   
 const C_BO_TXT = 66;   
 const C_BP_CLOSE = 67; 
-const C_BS_PROBLEM = 70; // Signaler problème à Brice
-const C_LOCK = 72;     
+const C_BS_PROBLEM = 70; // Signaler problème à Brice (checkbox)
+const C_BT_PROBLEM_TXT = 71; // Texte du problème pour Brice
+const C_BU_LOCK = 72; // Timestamp de verrouillage pour éviter doublons     
 
 function onOpen() { 
   SpreadsheetApp.getUi().createMenu('⚡ ADMIN').addItem('Mettre à jour Cache', 'updateHistoryCache').addToUi(); 
@@ -689,10 +690,26 @@ function getNextCase(specificRow) {
     
     // Si specificRow n'est pas spécifié, chercher la première ligne sans PDF ou non clôturée
     if(!specificRow) {
+        const now = new Date();
+        const lockTimeoutMinutes = 30; // Timeout de 30 minutes pour le lock
+        
         for(let i=1; i<data.length; i++) {
             const pdfVal = String(data[i][C_APP_PDF]);
-            // Ignorer les fiches avec #N/A ou vides
-            if(pdfVal && pdfVal !== "#N/A" && !pdfVal.includes("#N/A") && !data[i][C_BP_CLOSE]) {
+            const isClosed = data[i][C_BP_CLOSE];
+            const lockTimestamp = data[i][C_BU_LOCK];
+            
+            // Vérifier si la fiche est lockée par quelqu'un d'autre
+            let isLocked = false;
+            if(lockTimestamp) {
+                const lockDate = new Date(lockTimestamp);
+                const diffMinutes = (now - lockDate) / (1000 * 60);
+                if(diffMinutes < lockTimeoutMinutes) {
+                    isLocked = true;
+                }
+            }
+            
+            // Ignorer les fiches avec #N/A, vides, clôturées ou lockées
+            if(pdfVal && pdfVal !== "#N/A" && !pdfVal.includes("#N/A") && !isClosed && !isLocked) {
                 rowToProcess = i+1;
                 break;
             }
@@ -706,6 +723,9 @@ function getNextCase(specificRow) {
     }
     
     if(rowToProcess === -1) return { done: true, message: "Tous les dossiers sont traités." };
+    
+    // Écrire le timestamp de lock
+    shApp.getRange(rowToProcess, C_BU_LOCK + 1).setValue(new Date());
     
     const rowIdx = rowToProcess - 1;
     const row = data[rowIdx];
@@ -787,7 +807,7 @@ function getNextCase(specificRow) {
         fieldBn: { label: "Motif bilan incomplet", val: row[C_BN_TXT]||"" },
         fieldBo: { label: "Motif pisu pas ok", val: row[C_BO_TXT]||"" },
         pbCheck: row[C_BS_PROBLEM],
-        pbTxt: ""
+        pbTxt: row[C_BT_PROBLEM_TXT]||""
     };
     
     const remaining = data.length - rowToProcess;
@@ -845,6 +865,18 @@ function saveCase(form) {
     
     // Problème Brice
     shApp.getRange(row, C_BS_PROBLEM + 1).setValue(form.pbCheck ? true : false);
+    shApp.getRange(row, C_BT_PROBLEM_TXT + 1).setValue(form.pbTxt || "");
+    
+    return { success: true };
+}
+
+function skipCase(rowNumber) {
+    const ss = getSS_();
+    const shApp = ss.getSheetByName(APP_SHEET_NAME);
+    if(!shApp) return { success: false };
+    
+    // Effacer le lock pour permettre à quelqu'un d'autre de prendre cette fiche
+    shApp.getRange(rowNumber, C_BU_LOCK + 1).setValue("");
     
     return { success: true };
 }

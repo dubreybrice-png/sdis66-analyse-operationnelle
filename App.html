@@ -363,6 +363,9 @@
             bk: document.getElementById("chkBk").checked,
             bl: document.getElementById("chkBl").checked,
             bm: document.getElementById("chkBm").checked
+         },
+         txtBn: document.getElementById("txtBn").value,
+         txtBo: document.getElementById("txtBo").value,
          pbCheck: document.getElementById("pbCheck").checked,
          pbTxt: document.getElementById("pbTxt").value
       };
@@ -381,7 +384,15 @@
       }).saveCase(payload);
     }
 
-    function skip(){ if(!currentRow) return; loadNext(); }
+    function skip(){ 
+        if(!currentRow) return; 
+        google.script.run.withSuccessHandler(()=>{ 
+            loadNext(); 
+        }).withFailureHandler(e=>{ 
+            toast(e.message,"err"); 
+            loadNext(); 
+        }).skipCase(currentRow);
+    }
   </script>
 </body>
 </html>
