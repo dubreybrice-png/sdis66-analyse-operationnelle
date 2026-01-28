@@ -147,21 +147,21 @@
                     <div><label id="lblBb">SOUSAN</label><select id="selBb"></select></div>
                     <div><label id="lblBc">NB VICTIMES</label><input type="text" id="txtBc"></div>
                 </div>
+                <div style="margin-top:8px;"><label id="lblBg" style="margin-bottom:4px;">Réalisation examen clinique</label><select id="selBg"></select></div>
             </div>
 
             <div class="group">
                 <div class="groupTitle">Résultat</div>
-                <label id="lblBg">Réalisation examen clinique</label>
-                <select id="selBg" style="margin-bottom:6px;"></select>
-
-                <div style="display:grid; grid-template-columns: 1fr; gap:4px;">
-                    <label class="cb"><input type="checkbox" id="chkBh"> <span id="lblBh">Absence erreur / commande PUI</span></label>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:4px; margin-bottom:8px;">
                     <label class="cb" style="border-color: rgba(71,209,140,.3); color: var(--ok);"><input type="checkbox" id="chkBi"> <span id="lblBi">Bilan complet</span></label>
                     <label class="cb" style="border-color: rgba(71,209,140,.3); color: var(--ok);"><input type="checkbox" id="chkBk"> <span id="lblBk">Pisu ok</span></label>
-                    <label class="cb"><input type="checkbox" id="chkBj"> <span id="lblBj">Bilan incomplet</span></label>
-                    <label class="cb"><input type="checkbox" id="chkBl"> <span id="lblBl">Pisu pas ok</span></label>
-                    <label class="cb"><input type="checkbox" id="chkBm"> <span id="lblBm">Absence de traçabilité de la surveillance pendant le transport</span></label>
                 </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:4px; margin-bottom:8px;">
+                    <label class="cb red"><input type="checkbox" id="chkBj"> <span id="lblBj">Bilan incomplet</span></label>
+                    <label class="cb red"><input type="checkbox" id="chkBl"> <span id="lblBl">Pisu pas ok</span></label>
+                </div>
+                <label class="cb"><input type="checkbox" id="chkBh"> <span id="lblBh">Absence erreur / commande PUI</span></label>
+                <label class="cb"><input type="checkbox" id="chkBm"> <span id="lblBm">Absence de traçabilité de la surveillance pendant le transport</span></label>
             </div>
 
             <div class="group">

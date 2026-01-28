@@ -1,7 +1,7 @@
 /****************************************************
  * SDIS 66 - SDS | WebApp Dashboard
  * CACHE SÉQUENTIEL + FIXES + LOCK SYSTEM
- * Version: 2026-01-28 14:54
+ * Version: 2026-01-28 15:05
  ****************************************************/
 
 const DASHBOARD_SHEET_NAME = "Dashboard";
@@ -755,8 +755,8 @@ function getNextCase(specificRow) {
         const colHeader = String(sheetHeaders[colIdx] || "").trim();
         if(colHeader) {
             const displayLabel = protoLabels[colHeader] || colHeader;
-            // Ne pas précocher les cases - laisser l'utilisateur cocher
-            const isChecked = false;
+            // Charger l'état réel de la case depuis la feuille
+            const isChecked = row[colIdx] === "✓" || row[colIdx] === true;
             protoList.push({ id: colIdx, label: displayLabel, checked: isChecked });
         }
     }
