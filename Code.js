@@ -1,7 +1,7 @@
 /****************************************************
  * SDIS 66 - SDS | WebApp Dashboard
  * CACHE SÉQUENTIEL + FIXES + LOCK SYSTEM
- * Version: 2026-01-28 17:15
+ * Version: v1.15 | 2026-01-28
  ****************************************************/
 
 const DASHBOARD_SHEET_NAME = "Dashboard";
