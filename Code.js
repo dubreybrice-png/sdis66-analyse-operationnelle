@@ -10,6 +10,7 @@ const APP_SHEET_NAME = "APP";
 
 const ID_SS_2025 = "112sOp4EAPm3vq0doLWzWlAbsOdutszGKT86USjSqst0"; 
 const ID_SS_RH   = "1lwQJ6xTET3qpr9-cPGBngdih_bmfrVRMOYcMgMkUVP0"; 
+const ID_PROTOCOLES_CORRESP = "12-7VNgPo7PsoKoRHzm_y24a-2OoDiCvJIyJFTdC9l7c"; 
 
 const DASH_LASTDATE_CELL = "D2";
 const DASH_PSUD_2026_CELL = "B3";
@@ -699,9 +700,40 @@ function getNextCase(specificRow) {
     const rowIdx = rowToProcess - 1;
     const row = data[rowIdx];
     
-    // Récupérer les listes de dropdown
-    const protoAdultList = getDropdownList_(shApp, C_PROTO_START) || [];
-    const protoPediaList = getDropdownList_(shApp, C_PROTO_START + 10) || [];
+    // Récupérer les correspondances de protocoles depuis le fichier externe
+    let protoLabels = {};
+    try {
+        const ssProto = SpreadsheetApp.openById(ID_PROTOCOLES_CORRESP);
+        const shProto = ssProto.getSheets()[0];
+        const header = shProto.getRange(1, 1, 2, shProto.getLastColumn()).getValues();
+        for(let i = 0; i < header[0].length; i++) {
+            const colName = String(header[0][i]).trim();
+            const displayName = String(header[1][i]).trim();
+            if(colName && displayName) {
+                protoLabels[colName] = displayName;
+            }
+        }
+    } catch(e) {
+        Logger.log("Erreur chargement protocoles: " + e);
+    }
+    
+    // Construire la liste des protocoles depuis colonnes V (21) à AW (48)
+    const protoList = [];
+    const sheetHeaders = shApp.getRange(1, 1, 1, shApp.getLastColumn()).getValues()[0];
+    
+    for(let colIdx = C_PROTO_START; colIdx <= C_PROTO_END; colIdx++) {
+        const colHeader = String(sheetHeaders[colIdx] || "").trim();
+        if(colHeader) {
+            const displayLabel = protoLabels[colHeader] || colHeader;
+            const isChecked = row[colIdx] === "✓" || row[colIdx] === true || String(row[colIdx]).trim() !== "";
+            protoList.push({ id: colIdx, label: displayLabel, checked: isChecked });
+        }
+    }
+    
+    // Séparer adultes (première moitié) et pédiatriques (seconde moitié)
+    const midPoint = Math.ceil(protoList.length / 2);
+    const protoAdult = protoList.slice(0, midPoint);
+    const protoPedia = protoList.slice(midPoint);
     
     // Récupérer les critères et résultats
     const info = {
@@ -712,9 +744,6 @@ function getNextCase(specificRow) {
         motif: String(row[C_APP_MOTIF]||"").trim(),
         engin: String(row[C_APP_ENGIN]||"").trim()
     };
-    
-    const protoAdult = protoAdultList.length > 0 ? protoAdultList.map(p => ({ id: p, label: p, checked: row[C_PROTO_START] === p })) : [];
-    const protoPedia = protoPediaList.length > 0 ? protoPediaList.map(p => ({ id: p, label: p, checked: row[C_PROTO_START+10] === p })) : [];
     
     const criteres = {
         ax: { label: "AKIM", opts: getDropdownList_(shApp, 20), val: row[20] },
