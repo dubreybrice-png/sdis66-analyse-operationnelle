@@ -1,7 +1,7 @@
 /****************************************************
  * SDIS 66 - SDS | WebApp Dashboard
  * CACHE SÉQUENTIEL + FIXES + LOCK SYSTEM
- * Version: 2026-01-28 16:15
+ * Version: 2026-01-28 16:20
  ****************************************************/
 
 const DASHBOARD_SHEET_NAME = "Dashboard";
@@ -497,10 +497,10 @@ function getIspStats(matriculeInput, dobInput) {
 
     // Erreurs et confirmations
     const errLegereBilanList = [], errLegerePisuList = [], errLourdeList = [];
-    const okList = []; // Liste combinée pour Bilan OK ET Pisu OK
+    const okList = []; // Liste combinée pour Bilan OK ET Pisu OK (BOTH required)
     const okById = {}; // Map pour combiner les deux
     
-    // 1. Parcourir APP pour les fiches OK directes (BI et BK cochées)
+    // 1. Parcourir APP pour les fiches OK directes (BI ET BK cochées ensemble)
     if(shApp) {
         const data = shApp.getDataRange().getValues();
         for(let i=1; i<data.length; i++) {
@@ -515,20 +515,27 @@ function getIspStats(matriculeInput, dobInput) {
                 
                 const hasBilan = data[i][C_BILAN_OK] === true;
                 const hasPisu = data[i][C_PISU_OK] === true;
+                const hasBilanError = data[i][C_BILAN_KO] === true;
+                const hasPisuError = data[i][C_PISU_KO] === true;
                 
-                // Si au moins l'un des deux est OK
-                if(hasBilan || hasPisu) {
-                    if(!okById[id]) {
-                        okById[id] = { id:id, motif:motif, centre:cis, engin:engin, date:date, status:status, types: [], errorType: "" };
-                    }
-                    if(hasBilan && !okById[id].types.includes("Bilan OK")) okById[id].types.push("Bilan OK");
-                    if(hasPisu && !okById[id].types.includes("Pisu OK")) okById[id].types.push("Pisu OK");
+                // BOTH Bilan ET Pisu OK = fiche OK
+                if(hasBilan && hasPisu) {
+                    okById[id] = { id:id, motif:motif, centre:cis, engin:engin, date:date, status:status, types: ["Bilan OK", "Pisu OK"], errorType: "" };
+                }
+                // Seulement Bilan OK OU seulement Pisu OK = Erreur légère
+                else if(hasBilan && !hasPisu && hasPisuError) {
+                    const item = { id:id, motif:motif, centre:cis, engin:engin, date:date, status:status, types: ["Erreur Pisu Légère"], errorType: "Erreur Pisu Légère" };
+                    errLegerePisuList.push(item);
+                }
+                else if(hasPisu && !hasBilan && hasBilanError) {
+                    const item = { id:id, motif:motif, centre:cis, engin:engin, date:date, status:status, types: ["Erreur Bilan Légère"], errorType: "Erreur Bilan Légère" };
+                    errLegereBilanList.push(item);
                 }
             }
         }
     }
     
-    // 2. Parcourir APP Alex pour les fiches avec corrections (H et I) ou erreurs (J, K, L)
+    // 2. Parcourir APP Alex pour les corrections (H ET I = revient à OK) ou erreurs (J, K, L)
     const shAlex = ss.getSheetByName("APP Alex");
     if(shAlex) {
         const data = shAlex.getDataRange().getValues();
@@ -542,19 +549,24 @@ function getIspStats(matriculeInput, dobInput) {
                 const date = appDataRef[id] ? appDataRef[id].date : "";
                 const status = appDataRef[id] ? appDataRef[id].status : "";
                 
-                const hasH = data[i][7] === true;  // H = Bilan finalement OK
-                const hasI = data[i][8] === true;  // I = Pisu finalement OK
+                const hasH = data[i][7] === true;  // H = Bilan finalement OK (correction)
+                const hasI = data[i][8] === true;  // I = Pisu finalement OK (correction)
                 const hasJ = data[i][9] === true;  // J = Erreur bilan légère
                 const hasK = data[i][10] === true; // K = Erreur pisu légère
                 const hasL = data[i][11] === true; // L = Erreur grave
                 
-                // Corrections = repassent dans la liste OK
-                if(hasH || hasI) {
-                    if(!okById[id]) {
-                        okById[id] = { id:id, motif:motif, centre:centre, engin:engin, date:date, status:status, types: [], errorType: "" };
-                    }
-                    if(hasH && !okById[id].types.includes("Bilan OK")) okById[id].types.push("Bilan OK");
-                    if(hasI && !okById[id].types.includes("Pisu OK")) okById[id].types.push("Pisu OK");
+                // H ET I cochées = fiche revient à OK complètement
+                if(hasH && hasI) {
+                    okById[id] = { id:id, motif:motif, centre:centre, engin:engin, date:date, status:status, types: ["Bilan OK", "Pisu OK"], errorType: "" };
+                }
+                // Seulement H OU seulement I = Correction partielle, pas OK
+                else if(hasH && !hasI) {
+                    const item = { id:id, motif:motif, centre:centre, engin:engin, date:date, status:status, types: ["Erreur Pisu Légère"], errorType: "Erreur Pisu Légère" };
+                    errLegerePisuList.push(item);
+                }
+                else if(hasI && !hasH) {
+                    const item = { id:id, motif:motif, centre:centre, engin:engin, date:date, status:status, types: ["Erreur Bilan Légère"], errorType: "Erreur Bilan Légère" };
+                    errLegereBilanList.push(item);
                 }
                 
                 // J cochée = Erreur bilan légère
@@ -1067,11 +1079,33 @@ function getIspDetailsAdmin(mat) {
             const tags = alexTags[id] || {};
             let types = [];
             let errorType = "";
-            if(dApp[i][C_BILAN_OK] || tags.reqBilOk) types.push("Bilan OK");
-            if(dApp[i][C_PISU_OK] || tags.reqPisuOk) types.push("Pisu OK");
+            
+            const bilanOk = dApp[i][C_BILAN_OK] || tags.reqBilOk;
+            const pisuOk = dApp[i][C_PISU_OK] || tags.reqPisuOk;
+            const bilanError = dApp[i][C_BILAN_KO] || tags.errBilL || tags.errGrave;
+            const pisuError = dApp[i][C_PISU_KO] || tags.errPisuL || tags.errGrave;
+            
+            // Seul OK complet (BOTH Bilan ET Pisu)
+            if(bilanOk && pisuOk) {
+                types.push("Bilan OK");
+                types.push("Pisu OK");
+            }
+            // Pisu OK mais pas Bilan = erreur Bilan
+            else if(pisuOk && !bilanOk && bilanError) {
+                types.push("Erreur Bilan Légère");
+                if(!errorType) errorType = "Erreur Bilan Légère";
+            }
+            // Bilan OK mais pas Pisu = erreur Pisu
+            else if(bilanOk && !pisuOk && pisuError) {
+                types.push("Erreur Pisu Légère");
+                if(!errorType) errorType = "Erreur Pisu Légère";
+            }
+            
+            // Erreurs graves ou légères
             if(tags.errBilL) { types.push("Erreur Bilan Légère"); if(!errorType) errorType = "Erreur Bilan Légère"; }
             if(tags.errPisuL) { types.push("Erreur Pisu Légère"); if(!errorType) errorType = "Erreur Pisu Légère"; }
             if(tags.errGrave) { types.push("Erreur Grave"); errorType = "Erreur Grave"; }
+            
             list.push({ 
                 id: id, 
                 date: date, 
