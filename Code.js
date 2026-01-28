@@ -48,11 +48,10 @@ const C_BILAN_OK = 60;
 const C_BILAN_KO = 61; 
 const C_PISU_OK = 62;  
 const C_PISU_KO = 63;  
-const C_BM_TRANSPORT = 64; // Absence traçabilité transport (checkbox)
-const C_TXTBILAN_KO = 65;   // Motif bilan incomplet (texte)
-const C_TXTPISU_KO = 66;    // Motif pisu pas ok (texte)
-const C_BQ = 67; // Colonne BQ
-const C_BP_CLOSE = 68; 
+const C_BM_SURV_TRANSPORT = 64; // Absence de traçabilité de la surveillance pendant le transport (checkbox)
+const C_TXTBILAN_KO = 65;   // BN: Motif bilan incomplet (texte)
+const C_TXTPISU_KO = 66;    // BO: Motif pisu pas ok (texte)
+const C_BP_CLOSE = 67;      // BP: Case clôturée (ne plus afficher dans APP) 
 const C_BS_PROBLEM = 70; // Signaler problème à Brice (checkbox)
 const C_BT_PROBLEM_TXT = 71; // Texte du problème pour Brice
 const C_BU_LOCK = 72; // Timestamp de verrouillage pour éviter doublons     
@@ -941,7 +940,7 @@ function getNextCase(specificRow) {
             { id: "bk", label: "Pisu OK", checked: isCheckboxChecked(row[C_PISU_OK]), color: "ok" },
             { id: "bj", label: "Bilan incomplet", checked: isCheckboxChecked(row[C_BILAN_KO]), color: "orange" },
             { id: "bl", label: "Pisu pas ok", checked: isCheckboxChecked(row[C_PISU_KO]), color: "orange" },
-            { id: "bm", label: "Absence traçabilité transport", checked: isCheckboxChecked(row[C_BM_TRANSPORT]), color: "" }
+            { id: "bm", label: "Absence traçabilité surveillance transport", checked: isCheckboxChecked(row[C_BM_SURV_TRANSPORT]), color: "" }
         ]
     };
     
@@ -1025,7 +1024,7 @@ function saveCase(form) {
     shApp.getRange(row, C_BILAN_KO + 1).setValue(form.resultats.bj ? true : false);
     shApp.getRange(row, C_PISU_OK + 1).setValue(form.resultats.bk ? true : false);
     shApp.getRange(row, C_PISU_KO + 1).setValue(form.resultats.bl ? true : false);
-    shApp.getRange(row, C_BM_TRANSPORT + 1).setValue(form.resultats.bm ? true : false);
+    shApp.getRange(row, C_BM_SURV_TRANSPORT + 1).setValue(form.resultats.bm ? true : false);
     
     // Textes
     shApp.getRange(row, C_TXTBILAN_KO + 1).setValue(form.txtBn);
