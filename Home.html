@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Version: v1.23 | 2026-01-29 -->
+<!-- Version: v1.24 | 2026-01-29 -->
 <html>
 <head>
   <base target="_top">
@@ -470,7 +470,7 @@
                 <div style="margin-bottom:8px;">
                     <label class="cb"><input type="checkbox" id="chkBh"> <span id="lblBh">Absence / erreur commande PUI</span></label>
                 </div>
-                <div id="biBmBox" style="display:grid; grid-template-columns: 1fr 1fr; gap:6px; word-wrap:break-word; word-break:break-word;"></div>
+                <div id="biBmBox" style="display:grid; grid-template-columns: 1fr; gap:6px; word-wrap:break-word; word-break:break-word;"></div>
             </div>
 
             <div class="group" id="motifContainer" style="display:none;">
@@ -736,19 +736,57 @@
          const box = document.getElementById(boxId);
          box.innerHTML = "";
          if (!items || !Array.isArray(items)) return;
-         items.forEach(item => {
-            const lbl = document.createElement("label");
-            lbl.className = "cb";
-            if(item.color === "ok") {
-              lbl.style.borderColor = "rgba(71,209,140,.3)";
-              lbl.style.color = "var(--ok)";
-            } else if(item.color === "orange") {
-              lbl.style.borderColor = "rgba(255,165,0,.3)";
-              lbl.style.color = "#ff8c00";
-            }
-            lbl.innerHTML = `<input type="checkbox" name="chk_${item.id}" ${item.checked?'checked':''}> ${item.label}`;
-            box.appendChild(lbl);
-         });
+         
+         // Pour biBmBox, créer un layout groupé
+         if(boxId === "biBmBox") {
+            // Créer un conteneur wrapper pour gérer le layout
+            let currentRow = null;
+            let itemsInRow = 0;
+            
+            items.forEach((item, idx) => {
+               // Déterminer le nombre d'items par ligne
+               const itemsPerRow = item.label.includes("Absence traçabilité") ? 1 : 2;
+               
+               // Créer une nouvelle ligne si nécessaire
+               if(itemsInRow === 0 || itemsInRow >= itemsPerRow) {
+                  currentRow = document.createElement("div");
+                  currentRow.style.display = "grid";
+                  currentRow.style.gridTemplateColumns = itemsPerRow === 1 ? "1fr" : "1fr 1fr";
+                  currentRow.style.gap = "6px";
+                  currentRow.style.marginBottom = "6px";
+                  box.appendChild(currentRow);
+                  itemsInRow = 0;
+               }
+               
+               const lbl = document.createElement("label");
+               lbl.className = "cb";
+               if(item.color === "ok") {
+                 lbl.style.borderColor = "rgba(71,209,140,.3)";
+                 lbl.style.color = "var(--ok)";
+               } else if(item.color === "orange") {
+                 lbl.style.borderColor = "rgba(255,165,0,.3)";
+                 lbl.style.color = "#ff8c00";
+               }
+               lbl.innerHTML = `<input type="checkbox" name="chk_${item.id}" ${item.checked?'checked':''}> ${item.label}`;
+               currentRow.appendChild(lbl);
+               itemsInRow++;
+            });
+         } else {
+            // Layout standard pour autres
+            items.forEach(item => {
+               const lbl = document.createElement("label");
+               lbl.className = "cb";
+               if(item.color === "ok") {
+                 lbl.style.borderColor = "rgba(71,209,140,.3)";
+                 lbl.style.color = "var(--ok)";
+               } else if(item.color === "orange") {
+                 lbl.style.borderColor = "rgba(255,165,0,.3)";
+                 lbl.style.color = "#ff8c00";
+               }
+               lbl.innerHTML = `<input type="checkbox" name="chk_${item.id}" ${item.checked?'checked':''}> ${item.label}`;
+               box.appendChild(lbl);
+            });
+         }
        };
 
        mkCb("protoAdultBox", schema.protoAdult || []);
@@ -956,7 +994,10 @@
         if(document.getElementById("adminPwd").value!=="0007") { toast("Erreur code"); return; }
         
         document.getElementById("adminLogin").style.display="none";
-        document.getElementById("adminLoadBox").style.display="inline-block";
+        const adminLoadBox = document.getElementById("adminLoadBox");
+        adminLoadBox.style.display="block";
+        adminLoadBox.style.marginLeft="0";
+        adminLoadBox.style.marginTop="10px";
         
         let w=0; 
         const i=setInterval(()=>{ 
