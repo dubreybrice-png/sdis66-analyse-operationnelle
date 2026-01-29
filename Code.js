@@ -511,7 +511,25 @@ function getIspStats(matriculeInput, dobInput) {
     let bilanOkCount = 0, pisuOkCount = 0;
     const shAlex = ss.getSheetByName("APP Alex");
     
-    // 1. Parcourir APP pour compter les Bilan OK et Pisu OK séparément
+    // 1. Construire un index complet APP avec matricule pour recherche rapide
+    const idToMat = {}; // Mapping ID -> Matricule pour tous les IDs
+    if(shApp) {
+        const data = shApp.getDataRange().getValues();
+        for(let i=1; i<data.length; i++) {
+            const id = String(data[i][C_APP_ID]).trim();
+            const rowMat = normalizeMat(data[i][C_APP_MAT]);
+            idToMat[id] = rowMat; // Stocker le matricule de chaque ID
+            appDataRef[id] = { // Stocker aussi les données de TOUS les IDs
+                motif: String(data[i][C_APP_MOTIF]||"").trim(),
+                cis: String(data[i][C_APP_CIS]||"").trim(),
+                engin: String(data[i][C_APP_ENGIN]||"").trim(),
+                date: formatDateHeureFR_(data[i][C_APP_DATE]),
+                status: (String(data[i][C_APP_CIS]||"").trim() === "SD SSSM") ? "De Garde" : "Astreinte / Dispo"
+            };
+        }
+    }
+    
+    // 2. Parcourir APP pour compter les Bilan OK et Pisu OK du matricule actuel
     if(shApp) {
         const data = shApp.getDataRange().getValues();
         const dAlex = shAlex ? shAlex.getDataRange().getValues() : [];
@@ -526,14 +544,11 @@ function getIspStats(matriculeInput, dobInput) {
             const rowMat = normalizeMat(data[i][C_APP_MAT]);
             if(rowMat === mat) {
                 const id = String(data[i][C_APP_ID]).trim();
-                const motif = String(data[i][C_APP_MOTIF]||"").trim();
-                const cis = String(data[i][C_APP_CIS]||"").trim();
-                const engin = String(data[i][C_APP_ENGIN]||"").trim();
-                const date = formatDateHeureFR_(data[i][C_APP_DATE]);
-                const status = (cis === "SD SSSM") ? "De Garde" : "Astreinte / Dispo";
-                
-                // Stocker dans appDataRef pour utilisation dans APP Alex
-                appDataRef[id] = { motif, cis, engin, date, status };
+                const motif = appDataRef[id].motif;
+                const cis = appDataRef[id].cis;
+                const engin = appDataRef[id].engin;
+                const date = appDataRef[id].date;
+                const status = appDataRef[id].status;
                 
                 const tags = alexTags[id] || {};
                 
@@ -566,48 +581,21 @@ function getIspStats(matriculeInput, dobInput) {
         }
     }
     
-    // 2. Parcourir APP Alex pour les erreurs graves (L cochée)
+    // 3. Parcourir APP Alex pour les erreurs graves et corrections
     if(shAlex) {
         const data = shAlex.getDataRange().getValues();
         for(let i=1; i<data.length; i++) {
             const id = String(data[i][0]).trim();
             
-            // Vérifier si cet ID correspond à notre matricule dans APP
-            let isMyIntervention = false;
-            if(appDataRef[id]) {
-                // Si on a déjà cet ID dans appDataRef, c'est qu'il vient de notre matricule
-                isMyIntervention = true;
-            } else {
-                // Sinon, chercher dans APP pour vérifier le matricule
-                if(shApp) {
-                    const appData = shApp.getDataRange().getValues();
-                    for(let k=1; k<appData.length; k++) {
-                        if(String(appData[k][C_APP_ID]).trim() === id && normalizeMat(appData[k][C_APP_MAT]) === mat) {
-                            isMyIntervention = true;
-                            break;
-                        }
-                    }
-                }
-            }
+            // Vérifier rapidement si cet ID appartient à notre matricule
+            if(idToMat[id] !== mat) continue;
             
-            if(!isMyIntervention) continue;
-            
-            // Récupérer les infos depuis APP Alex ou appDataRef
-            let motif = "", centre = "", engin = "", date = "", status = "";
-            if(appDataRef[id]) {
-                motif = appDataRef[id].motif || "?";
-                centre = appDataRef[id].centre || "";
-                engin = appDataRef[id].engin || "";
-                date = appDataRef[id].date || "";
-                status = appDataRef[id].status || "";
-            } else {
-                // Si pas dans appDataRef, utiliser les données d'APP Alex directement
-                motif = String(data[i][2]||"?").trim();
-                centre = String(data[i][1]||"").trim();
-                engin = String(data[i][5]||"").trim();
-                date = formatDateHeureFR_(data[i][6]);
-                status = (centre === "SD SSSM") ? "De Garde" : "Astreinte / Dispo";
-            }
+            // Récupérer les infos depuis appDataRef (qui contient TOUS les IDs)
+            const motif = appDataRef[id].motif || "?";
+            const centre = appDataRef[id].cis || "";
+            const engin = appDataRef[id].engin || "";
+            const date = appDataRef[id].date || "";
+            const status = appDataRef[id].status || "";
             
             const hasH = isCheckboxChecked(data[i][7]);  // H = Bilan finalement OK (correction)
             const hasI = isCheckboxChecked(data[i][8]);  // I = Pisu finalement OK (correction)
