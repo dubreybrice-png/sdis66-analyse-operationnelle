@@ -202,8 +202,8 @@ function handleAppAutoCheckAlexHI(e) {
   const alexSheet = ss.getSheetByName("APP Alex");
   if (!alexSheet) return;
   
-  // Récupérer l'ID de la ligne modifiée (colonne B = 2)
-  const id = String(appSheet.getRange(row, 2).getValue()).trim();
+  // Récupérer l'ID de la ligne modifiée (colonne A = 1)
+  const id = String(appSheet.getRange(row, 1).getValue()).trim();
   if (!id) return;
   
   // Récupérer les valeurs des checkboxes
