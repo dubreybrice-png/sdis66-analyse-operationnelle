@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Version: v1.41 | 2026-01-29 -->
+<!-- Version: v1.42 | 2026-01-29 -->
 <html>
 <head>
   <base target="_top">
@@ -31,6 +31,7 @@
     .main{ padding:25px; overflow-y:auto; height:100vh; }
     .view { display:none; animation:fadeIn 0.3s; }
     .view.active { display:block; }
+    #viewChefferie.active { display:flex !important; flex-direction:column; height:100vh; overflow:hidden; }
     @keyframes fadeIn { from{opacity:0;transform:translateY(5px);} to{opacity:1;transform:translateY(0);} }
 
     .topbar{ border-bottom:1px solid var(--border); padding-bottom:8px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center; }
@@ -345,31 +346,31 @@
         </div>
       </div>
 
-      <div id="viewChefferie" class="view" style="display:none;">
-          <div style="position:sticky;top:0;background:var(--bg1);z-index:100;padding-bottom:10px;">
-              <div class="topbar" style="margin-bottom:15px;">
-                  <button class="btnGo" style="width:auto;margin:0" onclick="goHome()">← Retour Dashboard</button>
-                  <h1 style="display:inline-block;margin-left:15px;">Espace Chefferie ISP</h1>
-              </div>
-              
-              <div style="display:flex;gap:15px;">
-                  <button class="c-btn" onclick="loadChefCase('app_isp');hideGlobal()">
-                      <h3>Faire APP Chefferie <span class="badgeBtn" id="btnBadgeIspG">0</span></h3>
-                      <p>Côter les BPV après passage ISP d'analyse</p>
-                  </button>
-                  <button class="c-btn" onclick="loadChefCase('med_chef');hideGlobal()">
-                      <h3>Analyse médecin cheffe <span class="badgeBtn red" id="btnBadgeIspR">0</span></h3>
-                      <p>Analyser les erreurs graves et proposer des actions</p>
-                  </button>
-                  <button class="c-btn" onclick="loadGlobalList()">
-                      <h3>Voir données APP</h3>
-                      <p>Voir le récap' des résultats et les BPV de chaque ISP</p>
-                  </button>
-              </div>
+      <div id="viewChefferie" class="view">
+          <div class="topbar" style="flex-shrink:0;">
+              <button class="btnGo" style="width:auto;margin:0" onclick="goHome()">← Retour Dashboard</button>
+              <h1 style="display:inline-block;margin-left:15px;">Espace Chefferie ISP</h1>
+          </div>
+          
+          <div class="btn-row" style="flex-shrink:0;">
+              <button class="c-btn" onclick="loadChefCase('app_isp');hideGlobal()">
+                  <h3>Faire APP Chefferie <span class="badgeBtn" id="btnBadgeIspG">0</span></h3>
+                  <p>Côter les BPV après passage ISP d'analyse</p>
+              </button>
+              <button class="c-btn" onclick="loadChefCase('med_chef');hideGlobal()">
+                  <h3>Analyse médecin cheffe <span class="badgeBtn red" id="btnBadgeIspR">0</span></h3>
+                  <p>Analyser les erreurs graves et proposer des actions</p>
+              </button>
+              <button class="c-btn" onclick="loadGlobalList()">
+                  <h3>Voir données APP</h3>
+                  <p>Voir le récap' des résultats et les BPV de chaque ISP</p>
+              </button>
           </div>
 
-          <div id="chefFormArea"></div>
-          <div id="globalListArea" style="display:none;">
+          <div style="overflow-y:auto; flex:1; padding:20px;">
+              <div id="chefFormArea" style="display:block;"></div>
+              
+              <div id="globalListArea" style="display:none;">
                   <div class="panel">
                       <div class="panelBody" style="max-height:none;overflow:visible;">
                           <div style="display:flex;gap:15px;align-items:center;padding:10px;background:rgba(255,255,255,0.05);margin-bottom:10px;border-radius:8px;font-size:11px;">

@@ -1,7 +1,7 @@
 /****************************************************
  * SDIS 66 - SDS | WebApp Dashboard
  * CACHE SÉQUENTIEL + FIXES + LOCK SYSTEM + ANTI-DOUBLE-COUNT
- * Version: v1.41 | 2026-01-29
+ * Version: v1.42 | 2026-01-29
  ****************************************************/
 
 const DASHBOARD_SHEET_NAME = "Dashboard";
@@ -665,25 +665,45 @@ function getChefferieCounts() {
         const dAlex = shAlex.getDataRange().getValues();
         const dEve = shEve.getDataRange().getValues();
         
-        const alexDone = new Set(), alexHeavy = new Set(), eveDone = new Set(), evePending = new Set();
+        // Comptages APP Alex
+        const alexNotClosed = new Set();  // Erreurs confirmées pas encore clôturées
+        const alexGraves = new Set();      // Erreurs graves (L coché)
         
         for(let i=1; i<dAlex.length; i++) {
             const id = String(dAlex[i][0]).trim();
-            if(isCheckboxChecked(dAlex[i][13])) alexDone.add(id);
-            if(isCheckboxChecked(dAlex[i][11])) alexHeavy.add(id);
-        }
-        for(let i=1; i<dEve.length; i++) {
-            const id = String(dEve[i][0]).trim();
-            if(dEve[i][14] || dEve[i][16]) eveDone.add(id);
-            if((dEve[i][14] || dEve[i][16]) && !dEve[i][18]) evePending.add(id);
-        }
-        for(let i=1; i<dApp.length; i++) {
-            if(isCheckboxChecked(dApp[i][C_BILAN_KO]) || isCheckboxChecked(dApp[i][C_PISU_KO])) {
-                if(!alexDone.has(String(dApp[i][C_APP_ID]).trim())) isp++;
+            const hasJ = isCheckboxChecked(dAlex[i][9]);   // J
+            const hasK = isCheckboxChecked(dAlex[i][10]);  // K
+            const hasL = isCheckboxChecked(dAlex[i][11]);  // L
+            const isClosed = isCheckboxChecked(dAlex[i][13]); // N
+            
+            if((hasJ || hasK || hasL) && !isClosed) {
+                alexNotClosed.add(id);
+            }
+            if(hasL) {
+                alexGraves.add(id);
             }
         }
-        for(let id of alexHeavy) { if(!eveDone.has(id)) med++; }
-        valid = evePending.size;
+        
+        // Comptages APP Eve
+        const eveDone = new Set(); // Fiches avec analyse/action
+        for(let i=1; i<dEve.length; i++) {
+            const id = String(dEve[i][0]).trim();
+            if(dEve[i][14] || dEve[i][16]) {
+                eveDone.add(id);
+            }
+        }
+        
+        // isp = erreurs confirmées pas clôturées
+        isp = alexNotClosed.size;
+        
+        // med = erreurs graves pas traitées dans APP Eve
+        med = 0;
+        for(let id of alexGraves) {
+            if(!eveDone.has(id)) med++;
+        }
+        
+        // valid = inutilisé pour l'instant
+        valid = 0;
     } catch(e) {}
     
     const result = { isp, med, valid };
@@ -761,23 +781,63 @@ function getChefferieNextCase(mode) {
         }
     }
     else if(mode === 'med_chef') {
+        const shApp = ss.getSheetByName(APP_SHEET_NAME);
         const shAlex = ss.getSheetByName("APP Alex");
         const shEve = ss.getSheetByName("APP Eve");
+        const dataApp = shApp.getDataRange().getValues();
         const dataAlex = shAlex.getDataRange().getValues();
-        const dataEve = shEve.getDataRange().getValues();
+        const dataEve = shEve ? shEve.getDataRange().getValues() : [];
+        
         for(let i=1; i<dataAlex.length; i++) {
-            if(isCheckboxChecked(dataAlex[i][11])) { 
-                const id = String(dataAlex[i][0]).trim();
-                let alreadyDone = false;
-                for(let j=1; j<dataEve.length; j++) {
-                    if(String(dataEve[j][0]).trim() === id && (dataEve[j][14] || dataEve[j][16])) { alreadyDone = true; break; }
-                }
-                if(!alreadyDone) {
-                    rowToProcess = i+1;
-                    schema = { mode:'med_chef', info:{ interId:id, motif:dataAlex[i][1], date:'', pdf:dataAlex[i][2], infName:dataAlex[i][4], cis:'', engin:'', status:"Erreur Lourde" } };
-                    break;
+            const hasL = isCheckboxChecked(dataAlex[i][11]);  // L = Erreur Grave
+            if(!hasL) continue;
+            
+            const id = String(dataAlex[i][0]).trim();
+            if(!id) continue;
+            
+            // Vérifier si déjà traité dans APP Eve
+            let alreadyDone = false;
+            for(let j=1; j<dataEve.length; j++) {
+                if(String(dataEve[j][0]).trim() === id && (dataEve[j][14] || dataEve[j][16])) { 
+                    alreadyDone = true; 
+                    break; 
                 }
             }
+            if(alreadyDone) continue;
+            
+            // Chercher les infos dans APP
+            let appRow = -1;
+            for(let j=1; j<dataApp.length; j++) {
+                if(String(dataApp[j][C_APP_ID]).trim() === id) { appRow = j; break; }
+            }
+            
+            rowToProcess = i+1;
+            const appInfo = (appRow >= 0) ? {
+                motif: dataApp[appRow][C_APP_MOTIF],
+                date: formatDateHeureFR_(dataApp[appRow][C_APP_DATE]),
+                pdf: dataApp[appRow][C_APP_PDF],
+                nom: dataApp[appRow][C_APP_NOM],
+                cis: String(dataApp[appRow][C_APP_CIS]||"").trim(),
+                engin: String(dataApp[appRow][C_APP_ENGIN]||"").trim()
+            } : { motif:"", date:"", pdf:dataAlex[i][2], nom:dataAlex[i][4], cis:"", engin:"" };
+            
+            const status = (appInfo.cis === "SD SSSM") ? "Garde" : "Astreinte / Dispo";
+            schema = { 
+                mode:'med_chef', 
+                info:{ 
+                    interId:id, 
+                    motif:appInfo.motif, 
+                    date:appInfo.date, 
+                    pdf:appInfo.pdf, 
+                    infName:appInfo.nom, 
+                    cis:appInfo.cis, 
+                    engin:appInfo.engin, 
+                    status:status,
+                    errorType:"Erreur Grave"
+                },
+                existingAnalyse: (dataEve.length > 0) ? (dataEve.find(r => String(r[0]).trim() === id) || {}) [14] || "" : ""
+            };
+            break;
         }
     }
     else if(mode === 'valid_final') {
