@@ -1,6 +1,6 @@
 /****************************************************
  * SDIS 66 - SDS | WebApp Dashboard
- * CACHE SÉQUENTIEL + FIXES + LOCK SYSTEM
+ * CACHE SÉQUENTIEL + FIXES + LOCK SYSTEM + ANTI-DOUBLE-COUNT
  * Version: v1.32 | 2026-01-29
  ****************************************************/
 
