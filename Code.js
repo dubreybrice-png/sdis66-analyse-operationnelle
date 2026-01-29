@@ -1088,23 +1088,34 @@ function getIspDetailsAdmin(mat) {
     const shAlex = ss.getSheetByName("APP Alex");
     const shEve = ss.getSheetByName("APP Eve");
     let list = [];
-    const dApp = shApp.getDataRange().getValues();
-    const dAlex = shAlex.getDataRange().getValues();
-    const dEve = shEve.getDataRange().getValues();
+    
+    // Charger les tags et commentaires de APP Alex et APP Eve (une seule fois)
     let comments = {};
     let alexTags = {}; 
-    for(let i=1; i<dAlex.length; i++) {
-        const id = String(dAlex[i][0]).trim();
-        comments[id] = { chef: dAlex[i][12], med: "" };
-        alexTags[id] = { errBilL: dAlex[i][9], errPisuL: dAlex[i][10], errGrave: dAlex[i][11], reqBilOk: dAlex[i][7], reqPisuOk: dAlex[i][8] };
+    if(shAlex) {
+        const dAlex = shAlex.getDataRange().getValues();
+        for(let i=1; i<dAlex.length; i++) {
+            const id = String(dAlex[i][0]).trim();
+            comments[id] = { chef: dAlex[i][12], med: "" };
+            alexTags[id] = { errBilL: dAlex[i][9], errPisuL: dAlex[i][10], errGrave: dAlex[i][11], reqBilOk: dAlex[i][7], reqPisuOk: dAlex[i][8] };
+        }
     }
-    for(let i=1; i<dEve.length; i++) {
-         const id = String(dEve[i][0]).trim();
-         if(!comments[id]) comments[id] = { chef: "", med: "" };
-         comments[id].med = dEve[i][14];
+    if(shEve) {
+        const dEve = shEve.getDataRange().getValues();
+        for(let i=1; i<dEve.length; i++) {
+            const id = String(dEve[i][0]).trim();
+            if(!comments[id]) comments[id] = { chef: "", med: "" };
+            comments[id].med = dEve[i][14];
+        }
     }
-    for(let i=1; i<dApp.length; i++) {
-        if(normalizeMat(dApp[i][C_APP_MAT]) === normalizeMat(mat)) {
+    
+    // Charger APP et filtrer uniquement par matricule
+    const normalizedMat = normalizeMat(mat);
+    if(shApp) {
+        const dApp = shApp.getDataRange().getValues();
+        for(let i=1; i<dApp.length; i++) {
+            if(normalizeMat(dApp[i][C_APP_MAT]) !== normalizedMat) continue;
+            
             const id = String(dApp[i][C_APP_ID]).trim();
             const cis = String(dApp[i][C_APP_CIS]||"").trim();
             const status = (cis === "SD SSSM") ? "Garde" : "Dispo/Astreinte";
