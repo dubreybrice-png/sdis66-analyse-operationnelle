@@ -1,7 +1,7 @@
 /****************************************************
  * SDIS 66 - SDS | WebApp Dashboard
  * CACHE SÉQUENTIEL + FIXES + LOCK SYSTEM + ANTI-DOUBLE-COUNT
- * Version: v1.40 | 2026-01-29
+ * Version: v1.41 | 2026-01-29
  ****************************************************/
 
 const DASHBOARD_SHEET_NAME = "Dashboard";
@@ -701,7 +701,7 @@ function getChefferieNextCase(mode) {
         const dataApp = shApp.getDataRange().getValues();
         const dataAlex = shAlex.getDataRange().getValues(); 
 
-        // Chercher dans APP Alex les IDs avec erreur confirmée (J, K ou L) et pas encore clôturés (N)
+        // Chercher dans APP Alex les IDs avec erreur confirmée (J, K ou L) et PAS clôturés (N)
         for(let i=1; i<dataAlex.length; i++) {
             const id = String(dataAlex[i][0]).trim();
             const hasJ = isCheckboxChecked(dataAlex[i][9]);   // J = Erreur Bilan légère
@@ -709,6 +709,7 @@ function getChefferieNextCase(mode) {
             const hasL = isCheckboxChecked(dataAlex[i][11]);  // L = Erreur Grave
             const isClosed = isCheckboxChecked(dataAlex[i][13]); // N = Clôture chef
             
+            // On traite si erreur confirmée ET pas encore clôturé
             if((hasJ || hasK || hasL) && !isClosed) {
                 // Trouver les infos dans APP
                 let appRow = -1;
@@ -730,10 +731,31 @@ function getChefferieNextCase(mode) {
                     status: status,
                     commBN: dataApp[appRow][C_TXTBILAN_KO], 
                     commBO: dataApp[appRow][C_TXTPISU_KO],
-                    commChef: dataAlex[i][12]
+                    commChef: dataAlex[i][12] || ""
                 };
                 const hAlex = shAlex.getRange(1,1,1,20).getValues()[0];
-                schema = { mode:'app_isp', info:info, checks:[{id:7, label:hAlex[7]}, {id:8, label:hAlex[8]}, {id:9, label:hAlex[9]}, {id:10, label:hAlex[10]}, {id:11, label:hAlex[11]}] };
+                
+                // Récupérer les valeurs déjà saisies si elles existent
+                const existingChecks = {
+                    7: isCheckboxChecked(dataAlex[i][7]),   // H
+                    8: isCheckboxChecked(dataAlex[i][8]),   // I
+                    9: isCheckboxChecked(dataAlex[i][9]),   // J
+                    10: isCheckboxChecked(dataAlex[i][10]), // K
+                    11: isCheckboxChecked(dataAlex[i][11])  // L
+                };
+                
+                schema = { 
+                    mode:'app_isp', 
+                    info:info, 
+                    checks:[
+                        {id:7, label:hAlex[7], checked: existingChecks[7]}, 
+                        {id:8, label:hAlex[8], checked: existingChecks[8]}, 
+                        {id:9, label:hAlex[9], checked: existingChecks[9]}, 
+                        {id:10, label:hAlex[10], checked: existingChecks[10]}, 
+                        {id:11, label:hAlex[11], checked: existingChecks[11]}
+                    ],
+                    existingComment: String(dataAlex[i][12]||"")
+                };
                 break;
             }
         }
@@ -1097,91 +1119,92 @@ function getIspDetailsAdmin(mat) {
     const shApp = ss.getSheetByName(APP_SHEET_NAME);
     const shAlex = ss.getSheetByName("APP Alex");
     const shEve = ss.getSheetByName("APP Eve");
+    const normalizedMat = normalizeMat(mat);
     let list = [];
     
-    // Charger les tags et commentaires de APP Alex et APP Eve (une seule fois)
-    let comments = {};
-    let alexTags = {}; 
-    if(shAlex) {
-        const dAlex = shAlex.getDataRange().getValues();
-        for(let i=1; i<dAlex.length; i++) {
-            const id = String(dAlex[i][0]).trim();
-            comments[id] = { chef: dAlex[i][12], med: "" };
-            alexTags[id] = { 
-                hasH: isCheckboxChecked(dAlex[i][7]),      // H = Correction Bilan OK
-                hasI: isCheckboxChecked(dAlex[i][8]),      // I = Correction Pisu OK
-                hasJ: isCheckboxChecked(dAlex[i][9]),      // J = Erreur Bilan légère
-                hasK: isCheckboxChecked(dAlex[i][10]),     // K = Erreur Pisu légère
-                hasL: isCheckboxChecked(dAlex[i][11])      // L = Erreur Grave
-            };
-        }
+    if(!shApp || !shAlex) return list;
+    
+    // 1. Charger APP Alex en map
+    const alexData = {};
+    const alexRows = shAlex.getDataRange().getValues();
+    for(let i=1; i<alexRows.length; i++) {
+        const id = String(alexRows[i][0]).trim();
+        if(!id) continue;
+        alexData[id] = {
+            H: isCheckboxChecked(alexRows[i][7]),   // Correction Bilan
+            I: isCheckboxChecked(alexRows[i][8]),   // Correction Pisu
+            J: isCheckboxChecked(alexRows[i][9]),   // Erreur Bilan légère
+            K: isCheckboxChecked(alexRows[i][10]),  // Erreur Pisu légère
+            L: isCheckboxChecked(alexRows[i][11]),  // Erreur Grave
+            commChef: String(alexRows[i][12]||"")
+        };
     }
+    
+    // 2. Charger APP Eve en map
+    const eveData = {};
     if(shEve) {
-        const dEve = shEve.getDataRange().getValues();
-        for(let i=1; i<dEve.length; i++) {
-            const id = String(dEve[i][0]).trim();
-            if(!comments[id]) comments[id] = { chef: "", med: "" };
-            comments[id].med = dEve[i][14];
+        const eveRows = shEve.getDataRange().getValues();
+        for(let i=1; i<eveRows.length; i++) {
+            const id = String(eveRows[i][0]).trim();
+            if(!id) continue;
+            eveData[id] = { commMed: String(eveRows[i][14]||"") };
         }
     }
     
-    // Charger APP et filtrer uniquement par matricule
-    const normalizedMat = normalizeMat(mat);
-    if(shApp) {
-        const dApp = shApp.getDataRange().getValues();
-        for(let i=1; i<dApp.length; i++) {
-            if(normalizeMat(dApp[i][C_APP_MAT]) !== normalizedMat) continue;
-            
-            const id = String(dApp[i][C_APP_ID]).trim();
-            const cis = String(dApp[i][C_APP_CIS]||"").trim();
-            const status = (cis === "SD SSSM") ? "Garde" : "Dispo/Astreinte";
-            const date = formatDateHeureFR_(dApp[i][C_APP_DATE]);
-            const motif = String(dApp[i][C_APP_MOTIF]||"—").trim();
-            const engin = String(dApp[i][C_APP_ENGIN]||"—").trim();
-            const tags = alexTags[id] || {};
-            let types = [];
-            let errorType = "";
-            
-            const bilanOk = isCheckboxChecked(dApp[i][C_BILAN_OK]) || tags.hasH;
-            const pisuOk = isCheckboxChecked(dApp[i][C_PISU_OK]) || tags.hasI;
-            const bilanKo = isCheckboxChecked(dApp[i][C_BILAN_KO]);
-            const pisuKo = isCheckboxChecked(dApp[i][C_PISU_KO]);
-            
-            // Toujours ajouter OK si coché
-            if(bilanOk) { types.push("Bilan OK"); }
-            if(pisuOk) { types.push("Pisu OK"); }
-            
-            // Ajouter les erreurs SEULEMENT si confirmées en APP Alex (J, K, ou L coché)
-            // Erreur Bilan: si BJ coché ET PAS H ET (J ou L coché)
-            if(bilanKo && !tags.hasH && (tags.hasJ || tags.hasL)) { 
-                const errType = tags.hasL ? "Erreur Grave" : "Erreur Bilan Légère";
-                types.push(errType); 
-                if(!errorType) errorType = errType; 
-            }
-            // Erreur Pisu: si BL coché ET PAS I ET (K ou L coché)
-            if(pisuKo && !tags.hasI && (tags.hasK || tags.hasL)) { 
-                const errType = tags.hasL ? "Erreur Grave" : "Erreur Pisu Légère";
-                types.push(errType); 
-                if(!errorType) errorType = errType; 
-            }
-            
-            // Ne compter que si on a des types (OK ou erreur confirmée)
-            if(types.length > 0) {
-                list.push({ 
-                    id: id, 
-                    date: date, 
-                    centre: cis,
-                    motif: motif, 
-                    engin: engin,
-                    pdf: dApp[i][C_APP_PDF], 
-                    status: status, 
-                    types: types, 
-                    errorType: errorType,
-                    commChef: comments[id] ? comments[id].chef : "", 
-                    commMed: comments[id] ? comments[id].med : "" 
-                });
-            }
+    // 3. Parcourir APP et construire la liste
+    const appRows = shApp.getDataRange().getValues();
+    for(let i=1; i<appRows.length; i++) {
+        // Filtrer par matricule
+        if(normalizeMat(appRows[i][C_APP_MAT]) !== normalizedMat) continue;
+        
+        const id = String(appRows[i][C_APP_ID]).trim();
+        if(!id) continue;
+        
+        const alex = alexData[id] || {};
+        const eve = eveData[id] || {};
+        
+        // Déterminer les types
+        let types = [];
+        let errorType = "";
+        
+        const biOk = isCheckboxChecked(appRows[i][C_BILAN_OK]) || alex.H;
+        const piOk = isCheckboxChecked(appRows[i][C_PISU_OK]) || alex.I;
+        const biKo = isCheckboxChecked(appRows[i][C_BILAN_KO]);
+        const piKo = isCheckboxChecked(appRows[i][C_PISU_KO]);
+        
+        // OK
+        if(biOk) types.push("Bilan OK");
+        if(piOk) types.push("Pisu OK");
+        
+        // Erreurs confirmées uniquement
+        if(biKo && !alex.H && (alex.J || alex.L)) {
+            const err = alex.L ? "Erreur Grave" : "Erreur Bilan Légère";
+            types.push(err);
+            if(!errorType) errorType = err;
         }
+        if(piKo && !alex.I && (alex.K || alex.L)) {
+            const err = alex.L ? "Erreur Grave" : "Erreur Pisu Légère";
+            types.push(err);
+            if(!errorType) errorType = err;
+        }
+        
+        // Ne garder que si on a au moins un type
+        if(types.length === 0) continue;
+        
+        const cis = String(appRows[i][C_APP_CIS]||"").trim();
+        list.push({
+            id: id,
+            date: formatDateHeureFR_(appRows[i][C_APP_DATE]),
+            centre: cis,
+            motif: String(appRows[i][C_APP_MOTIF]||"—").trim(),
+            engin: String(appRows[i][C_APP_ENGIN]||"—").trim(),
+            pdf: appRows[i][C_APP_PDF],
+            status: (cis === "SD SSSM") ? "Garde" : "Dispo/Astreinte",
+            types: types,
+            errorType: errorType,
+            commChef: alex.commChef || "",
+            commMed: eve.commMed || ""
+        });
     }
     
     cache.put(cacheKey, JSON.stringify(list), 21600);

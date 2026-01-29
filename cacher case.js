@@ -1,5 +1,5 @@
 /**
- * Version: 2026-01-29 v1.40
+ * Version: 2026-01-29 v1.41
  * @OnlyCurrentDoc
  * Point d'entrée unique : se lance à chaque modification dans le fichier.
  */
