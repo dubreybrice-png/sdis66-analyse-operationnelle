@@ -1131,25 +1131,13 @@ function getIspDetailsAdmin(mat) {
             const bilanError = dApp[i][C_BILAN_KO] || tags.errBilL || tags.errGrave;
             const pisuError = dApp[i][C_PISU_KO] || tags.errPisuL || tags.errGrave;
             
-            // Seul OK complet (BOTH Bilan ET Pisu)
-            if(bilanOk && pisuOk) {
-                types.push("Bilan OK");
-                types.push("Pisu OK");
-            }
-            // Pisu OK mais pas Bilan = erreur Bilan
-            else if(pisuOk && !bilanOk && bilanError) {
-                types.push("Erreur Bilan Légère");
-                if(!errorType) errorType = "Erreur Bilan Légère";
-            }
-            // Bilan OK mais pas Pisu = erreur Pisu
-            else if(bilanOk && !pisuOk && pisuError) {
-                types.push("Erreur Pisu Légère");
-                if(!errorType) errorType = "Erreur Pisu Légère";
-            }
+            // Toujours ajouter OK si coché
+            if(bilanOk) { types.push("Bilan OK"); }
+            if(pisuOk) { types.push("Pisu OK"); }
             
-            // Erreurs graves ou légères
-            if(tags.errBilL) { types.push("Erreur Bilan Légère"); if(!errorType) errorType = "Erreur Bilan Légère"; }
-            if(tags.errPisuL) { types.push("Erreur Pisu Légère"); if(!errorType) errorType = "Erreur Pisu Légère"; }
+            // Ajouter les erreurs si pas OK
+            if(bilanError && !bilanOk) { types.push("Erreur Bilan Légère"); if(!errorType) errorType = "Erreur Bilan Légère"; }
+            if(pisuError && !pisuOk) { types.push("Erreur Pisu Légère"); if(!errorType) errorType = "Erreur Pisu Légère"; }
             if(tags.errGrave) { types.push("Erreur Grave"); errorType = "Erreur Grave"; }
             
             list.push({ 
