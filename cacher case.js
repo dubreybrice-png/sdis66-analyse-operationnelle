@@ -274,20 +274,28 @@ function validateAppAlexCheckboxes(e) {
   if (hasH && hasJ) {
     // Erreur: on ne peut pas cocher à la fois H et J
     sheet.getRange(row, 10).setValue(false); // Décocher J
-    SpreadsheetApp.getActive().toast(
-      "⚠️ Vous ne pouvez pas cocher Bilan finalement OK (H) ET Erreur bilan légère (J) en même temps!",
-      "Combinaison invalide",
-      5
+    SpreadsheetApp.getActive().beep(); // Bip sonore
+    SpreadsheetApp.getUi().alert(
+      "⚠️ ERREUR\n\nVous ne pouvez pas cocher à la fois:\n" +
+      "• H (Bilan finalement OK)\n" +
+      "• J (Erreur bilan légère)\n\n" +
+      "Ces deux cases sont contradictoires.\n" +
+      "La case J a été décochée.",
+      SpreadsheetApp.getUi().ButtonSet.OK
     );
   }
   
   if (hasI && hasK) {
     // Erreur: on ne peut pas cocher à la fois I et K
     sheet.getRange(row, 11).setValue(false); // Décocher K
-    SpreadsheetApp.getActive().toast(
-      "⚠️ Vous ne pouvez pas cocher Pisu finalement OK (I) ET Erreur pisu légère (K) en même temps!",
-      "Combinaison invalide",
-      5
+    SpreadsheetApp.getActive().beep(); // Bip sonore
+    SpreadsheetApp.getUi().alert(
+      "⚠️ ERREUR\n\nVous ne pouvez pas cocher à la fois:\n" +
+      "• I (Pisu finalement OK)\n" +
+      "• K (Erreur pisu légère)\n\n" +
+      "Ces deux cases sont contradictoires.\n" +
+      "La case K a été décochée.",
+      SpreadsheetApp.getUi().ButtonSet.OK
     );
   }
 }
