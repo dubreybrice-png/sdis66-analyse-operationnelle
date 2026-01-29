@@ -1,7 +1,7 @@
 /****************************************************
  * SDIS 66 - SDS | WebApp Dashboard
  * CACHE SÉQUENTIEL + FIXES + LOCK SYSTEM + ANTI-DOUBLE-COUNT
- * Version: v1.43 | 2026-01-29
+ * Version: v1.44 | 2026-01-30
  ****************************************************/
 
 const DASHBOARD_SHEET_NAME = "Dashboard";
@@ -973,10 +973,9 @@ function getNextCase(specificRow) {
         }
     }
     
-    // Séparer adultes (première moitié) et pédiatriques (seconde moitié)
-    const midPoint = Math.ceil(protoList.length / 2);
-    const protoAdult = protoList.slice(0, midPoint);
-    const protoPedia = protoList.slice(midPoint);
+    // Séparer adultes (V-AL = 22-38) et pédiatriques (AM-AW = 39-49)
+    const protoAdult = protoList.filter(p => p.colIdx <= 38);
+    const protoPedia = protoList.filter(p => p.colIdx >= 39);
     
     // Récupérer les critères et résultats
     const info = {
