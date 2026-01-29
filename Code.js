@@ -1,7 +1,7 @@
 /****************************************************
  * SDIS 66 - SDS | WebApp Dashboard
  * CACHE SÉQUENTIEL + FIXES + LOCK SYSTEM
- * Version: v1.27 | 2026-01-29
+ * Version: v1.28 | 2026-01-29
  ****************************************************/
 
 const DASHBOARD_SHEET_NAME = "Dashboard";
@@ -506,10 +506,10 @@ function getIspStats(matriculeInput, dobInput) {
 
     // Erreurs et confirmations
     const errLegereBilanList = [], errLegerePisuList = [], errLourdeList = [];
-    const okList = []; // Liste combinée pour Bilan OK ET Pisu OK (BOTH required)
-    const okById = {}; // Map pour combiner les deux
+    const okBilanList = [], okPisuList = []; // Listes séparées pour Bilan OK et Pisu OK
+    let bilanOkCount = 0, pisuOkCount = 0;
     
-    // 1. Parcourir APP pour les fiches OK directes (BI ET BK cochées ensemble)
+    // 1. Parcourir APP pour compter les Bilan OK et Pisu OK séparément
     if(shApp) {
         const data = shApp.getDataRange().getValues();
         const shAlex = ss.getSheetByName("APP Alex");
@@ -533,30 +533,36 @@ function getIspStats(matriculeInput, dobInput) {
                 
                 const tags = alexTags[id] || {};
                 
-                // Utiliser la même logique que getIspDetailsAdmin qui FONCTIONNE
+                // Compter Bilan OK et Pisu OK SÉPARÉMENT
                 const bilanOk = data[i][C_BILAN_OK] || tags.reqBilOk;
                 const pisuOk = data[i][C_PISU_OK] || tags.reqPisuOk;
-                const bilanError = data[i][C_BILAN_KO] || tags.errBilL || tags.errGrave;
-                const pisuError = data[i][C_PISU_KO] || tags.errPisuL || tags.errGrave;
+                const bilanError = data[i][C_BILAN_KO];
+                const pisuError = data[i][C_PISU_KO];
                 
-                // BOTH Bilan ET Pisu OK = fiche OK
-                if(bilanOk && pisuOk) {
-                    okById[id] = { id:id, motif:motif, centre:cis, engin:engin, date:date, status:status, types: ["Bilan OK", "Pisu OK"], errorType: "" };
+                // Compter les OK simplement
+                if(bilanOk) {
+                    bilanOkCount++;
+                    okBilanList.push({ id:id, motif:motif, centre:cis, engin:engin, date:date, status:status, types: ["Bilan OK"], errorType: "" });
                 }
-                // Seulement Bilan OK OU seulement Pisu OK = Erreur légère
-                else if(bilanOk && !pisuOk && pisuError) {
-                    const item = { id:id, motif:motif, centre:cis, engin:engin, date:date, status:status, types: ["Erreur Pisu Légère"], errorType: "Erreur Pisu Légère" };
-                    errLegerePisuList.push(item);
+                if(pisuOk) {
+                    pisuOkCount++;
+                    okPisuList.push({ id:id, motif:motif, centre:cis, engin:engin, date:date, status:status, types: ["Pisu OK"], errorType: "" });
                 }
-                else if(pisuOk && !bilanOk && bilanError) {
+                
+                // Erreurs légères: faut AVOIR L'ERREUR DANS APP ET LE TAG DANS APP Alex
+                if(bilanError && tags.errBilL) {
                     const item = { id:id, motif:motif, centre:cis, engin:engin, date:date, status:status, types: ["Erreur Bilan Légère"], errorType: "Erreur Bilan Légère" };
                     errLegereBilanList.push(item);
+                }
+                if(pisuError && tags.errPisuL) {
+                    const item = { id:id, motif:motif, centre:cis, engin:engin, date:date, status:status, types: ["Erreur Pisu Légère"], errorType: "Erreur Pisu Légère" };
+                    errLegerePisuList.push(item);
                 }
             }
         }
     }
     
-    // 2. Parcourir APP Alex pour les corrections (H ET I = revient à OK) ou erreurs (J, K, L)
+    // 2. Parcourir APP Alex pour les erreurs graves (L cochée)
     const shAlex = ss.getSheetByName("APP Alex");
     if(shAlex) {
         const data = shAlex.getDataRange().getValues();
@@ -639,11 +645,7 @@ function getIspStats(matriculeInput, dobInput) {
             } 
         }
     }
-    
-    // Convertir la map en tableau
-    for(const id in okById) {
-        okList.push(okById[id]);
-    }
+
 
     const result = {
         nom: agentName,
@@ -651,7 +653,10 @@ function getIspStats(matriculeInput, dobInput) {
         garde2026: hGarde26, garde2025_ytd: hGarde25_ytd, garde2025_tot: hGarde25_tot,
         inter2026: interHg26, inter2025_ytd: interHg25_ytd, inter2025_tot: interHg25_tot,
         bilanConf, pisuConf,
-        okList: okList,
+        bilanOkCount: bilanOkCount,
+        pisuOkCount: pisuOkCount,
+        okBilanList: okBilanList,
+        okPisuList: okPisuList,
         errLegereBilan: errLegereBilanList,
         errLegerePisu: errLegerePisuList,
         errLourde: errLourdeList

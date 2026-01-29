@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Version: v1.27 | 2026-01-29 -->
+<!-- Version: v1.28 | 2026-01-29 -->
 <html>
 <head>
   <base target="_top">
@@ -275,12 +275,13 @@
                         </div>
                         <div>
                             <h4 style="color:var(--accent3);margin:0 0 5px 0">Etude qualitative des BPV</h4>
-                            <div style="font-size:12px;cursor:pointer;text-decoration:underline;" class="text-green" onclick="openErrorList('OK')">Bilan OK: <b id="ispOk"></b></div>
+                            <div style="font-size:12px;cursor:pointer;text-decoration:underline;" class="text-green" onclick="openErrorList('Bilan')">Bilan OK: <b id="ispBilanOk"></b></div>
+                            <div style="font-size:12px;cursor:pointer;text-decoration:underline;" class="text-green" onclick="openErrorList('Pisu')">Pisu OK: <b id="ispPisuOk"></b></div>
                             
-                            <div style="margin-top:8px;cursor:pointer;text-decoration:underline;" class="text-orange" onclick="openErrorList('Bilan')">Erreur Bilan Légère: <span id="ispErrBil"></span></div>
-                            <div style="cursor:pointer;text-decoration:underline;" class="text-orange" onclick="openErrorList('Pisu')">Erreur Pisu Légère: <span id="ispErrPisu"></span></div>
+                            <div style="margin-top:8px;cursor:pointer;text-decoration:underline;" class="text-orange" onclick="openErrorList('BilanLeg')">Erreur Bilan Légère: <span id="ispErrBil"></span></div>
+                            <div style="cursor:pointer;text-decoration:underline;" class="text-orange" onclick="openErrorList('PisuLeg')">Erreur Pisu Légère: <span id="ispErrPisu"></span></div>
                             
-                            <div style="margin-top:8px;cursor:pointer;text-decoration:underline;" class="text-red" onclick="openErrorList('Lourde')">Erreur Grave: <span id="ispErrLourd"></span></div>
+                            <div style="margin-top:8px;cursor:pointer;text-decoration:underline;" class="text-red" onclick="openErrorList('Grave')">Erreur Grave: <span id="ispErrLourd"></span></div>
                         </div>
                     </div>
                     <button class="btnGo" style="width:auto;margin-top:15px;background:#333;color:#fff" onclick="logoutIsp()">Déconnexion</button>
@@ -974,7 +975,7 @@
             setText("ispInter26", res.inter2026); setText("ispInter25Ytd", res.inter2025_ytd); setText("ispInter25Tot", res.inter2025_tot);
             document.getElementById("ispInterTrend").innerHTML = getTrendHtml(res.inter2026, res.inter2025_ytd);
             
-            setText("ispOk", (res.okList||[]).length);
+            setText("ispBilanOk", (res.bilanOkCount||0)); setText("ispPisuOk", (res.pisuOkCount||0));
             setText("ispErrBil", (res.errLegereBilan||[]).length); setText("ispErrPisu", (res.errLegerePisu||[]).length); setText("ispErrLourd", (res.errLourde||[]).length);
             window_currentIspData = res;
         }).getIspStats(m, d);
@@ -993,10 +994,11 @@
             let list = [];
             let filterValue = "";
             
-            if(type==='OK') { list = fullList.filter(x => x.types.includes("Bilan OK")); filterValue = "Bilan OK"; }
-            else if(type==='Bilan') { list = fullList.filter(x => x.types.includes("Erreur Bilan Légère")); filterValue = "Erreur Bilan Légère"; }
-            else if(type==='Pisu') { list = fullList.filter(x => x.types.includes("Erreur Pisu Légère")); filterValue = "Erreur Pisu Légère"; }
-            else { list = fullList.filter(x => x.types.includes("Erreur Grave")); filterValue = "Erreur Grave"; }
+            if(type==='Bilan') { list = fullList.filter(x => x.types.includes("Bilan OK")); filterValue = "Bilan OK"; }
+            else if(type==='Pisu') { list = fullList.filter(x => x.types.includes("Pisu OK")); filterValue = "Pisu OK"; }
+            else if(type==='BilanLeg') { list = fullList.filter(x => x.types.includes("Erreur Bilan Légère")); filterValue = "Erreur Bilan Légère"; }
+            else if(type==='PisuLeg') { list = fullList.filter(x => x.types.includes("Erreur Pisu Légère")); filterValue = "Erreur Pisu Légère"; }
+            else if(type==='Grave') { list = fullList.filter(x => x.types.includes("Erreur Grave")); filterValue = "Erreur Grave"; }
             
             // Remplir currentDetailList et initialiser les checkboxes
             currentDetailList = list;
