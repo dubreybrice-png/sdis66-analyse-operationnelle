@@ -25,6 +25,7 @@ function onEdit(e) {
     // =========================
     if (sheetName === "APP Alex") {
       handleAppAlex(e);        // N coche/décoche → cacher/afficher
+      validateAppAlexCheckboxes(e); // Vérifier les combinaisons invalides
       return;
     }
 
@@ -248,5 +249,45 @@ function handleAppAutoCheckAlexHI(e) {
     if (alexSheet.getRange(alexRow, 9).getValue() === true) {
       alexSheet.getRange(alexRow, 9).setValue(false);
     }
+  }
+}
+
+/**
+ * Valide que dans APP Alex on ne coche pas simultanément:
+ * - H (col 8, Bilan finalement OK) ET J (col 10, Erreur bilan légère)
+ * - I (col 9, Pisu finalement OK) ET K (col 11, Erreur pisu légère)
+ */
+function validateAppAlexCheckboxes(e) {
+  const sheet = e.range.getSheet();
+  const col = e.range.getColumn();
+  const row = e.range.getRow();
+  
+  // Vérifier seulement si c'est une édition dans les colonnes H, I, J, K (8-11)
+  if (row < 2 || col < 8 || col > 11) return;
+  
+  const hasH = sheet.getRange(row, 8).getValue() === true;  // Bilan finalement OK
+  const hasI = sheet.getRange(row, 9).getValue() === true;  // Pisu finalement OK
+  const hasJ = sheet.getRange(row, 10).getValue() === true; // Erreur bilan légère
+  const hasK = sheet.getRange(row, 11).getValue() === true; // Erreur pisu légère
+  
+  // Vérifier les combinaisons invalides
+  if (hasH && hasJ) {
+    // Erreur: on ne peut pas cocher à la fois H et J
+    sheet.getRange(row, 10).setValue(false); // Décocher J
+    SpreadsheetApp.getActive().toast(
+      "⚠️ Vous ne pouvez pas cocher Bilan finalement OK (H) ET Erreur bilan légère (J) en même temps!",
+      "Combinaison invalide",
+      5
+    );
+  }
+  
+  if (hasI && hasK) {
+    // Erreur: on ne peut pas cocher à la fois I et K
+    sheet.getRange(row, 11).setValue(false); // Décocher K
+    SpreadsheetApp.getActive().toast(
+      "⚠️ Vous ne pouvez pas cocher Pisu finalement OK (I) ET Erreur pisu légère (K) en même temps!",
+      "Combinaison invalide",
+      5
+    );
   }
 }
