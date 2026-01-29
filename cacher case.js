@@ -194,8 +194,8 @@ function handleAppAutoCheckAlexHI(e) {
   const row = e.range.getRow();
   const col = e.range.getColumn();
   
-  // Vérifier si c'est une édition dans les colonnes BI, BJ, BK, ou BL (60-63)
-  if (row < 2 || col < 60 || col > 63) return;
+  // Vérifier si c'est une édition dans les colonnes BI, BJ, BK, ou BL (61-64)
+  if (row < 2 || col < 61 || col > 64) return;
   
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const appSheet = ss.getSheetByName("APP");
@@ -206,13 +206,14 @@ function handleAppAutoCheckAlexHI(e) {
   const id = String(appSheet.getRange(row, 2).getValue()).trim();
   if (!id) return;
   
-  Logger.log("Auto H/I: ID=" + id + " Row=" + row + " Bilan OK/KO: " + appSheet.getRange(row, 60).getValue() + "/" + appSheet.getRange(row, 61).getValue() + " Pisu OK/KO: " + appSheet.getRange(row, 62).getValue() + "/" + appSheet.getRange(row, 63).getValue());
-  
   // Récupérer les valeurs des checkboxes
-  const bilanOk = appSheet.getRange(row, 60).getValue() === true;
-  const bilanKo = appSheet.getRange(row, 61).getValue() === true;
-  const pisuOk = appSheet.getRange(row, 62).getValue() === true;
-  const pisuKo = appSheet.getRange(row, 63).getValue() === true;
+  // BI = 61 (Bilan OK), BJ = 62 (Bilan incomplet), BK = 63 (Pisu OK), BL = 64 (Pisu pas ok)
+  const bilanOk = appSheet.getRange(row, 61).getValue() === true;
+  const bilanKo = appSheet.getRange(row, 62).getValue() === true;
+  const pisuOk = appSheet.getRange(row, 63).getValue() === true;
+  const pisuKo = appSheet.getRange(row, 64).getValue() === true;
+  
+  Logger.log("Auto H/I: ID=" + id + " Row=" + row + " BI(61)=" + bilanOk + " BJ(62)=" + bilanKo + " BK(63)=" + pisuOk + " BL(64)=" + pisuKo);
   
   // Trouver la ligne dans APP Alex
   const alexData = alexSheet.getDataRange().getValues();
