@@ -1,7 +1,7 @@
 /****************************************************
  * SDIS 66 - SDS | WebApp Dashboard
  * CACHE SÉQUENTIEL + FIXES + LOCK SYSTEM + ANTI-DOUBLE-COUNT
- * Version: v1.32 | 2026-01-29
+ * Version: v1.33 | 2026-01-29
  ****************************************************/
 
 const DASHBOARD_SHEET_NAME = "Dashboard";
@@ -282,8 +282,9 @@ function getCacheStatus() {
 
 function clearIspCache(mat) {
   const cache = CacheService.getScriptCache();
-  const cacheKey = "isp_" + normalizeMat(mat);
-  cache.remove(cacheKey);
+  const normalizedMat = normalizeMat(mat);
+  cache.remove("isp_" + normalizedMat); // Cache de getIspStats
+  cache.remove("isp_detail_" + normalizedMat); // Cache de getIspDetailsAdmin
   return true;
 }
 

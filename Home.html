@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Version: v1.32 | 2026-01-29 -->
+<!-- Version: v1.33 | 2026-01-29 -->
 <html>
 <head>
   <base target="_top">
@@ -983,11 +983,14 @@
             window_currentIspData = res;
         }).getIspStats(m, d);
     }
-    function logoutIsp(){ document.getElementById("ispData").style.display="none"; document.getElementById("ispLogin").style.display="flex"; window_currentIspData={}; }
+    function logoutIsp(){ document.getElementById("ispData").style.display="none"; document.getElementById("ispLogin").style.display="flex"; window_currentIspData={}; currentDetailList=[]; }
     
     function refreshIspData() {
         const mat = document.getElementById("matInput").value;
         if(!mat) { toast("Matricule requis"); return; }
+        // Fermer le modal s'il est ouvert
+        document.getElementById("modalList").style.display = "none";
+        currentDetailList = []; // Vider la liste en cache
         google.script.run.withSuccessHandler(() => {
             toast("Cache vidé - rechargement...");
             loginIsp();
@@ -1001,8 +1004,8 @@
         const mat = document.getElementById("matInput").value;
         if(!mat) { toast("Matricule requis"); return; }
         
-        // Si les données sont déjà chargées et le modal est visible, juste mettre à jour les checkboxes
-        if(document.getElementById("modalList").style.display === "flex" && currentDetailList && currentDetailList.length > 0) {
+        // Si les données sont déjà chargées ET le modal est visible, juste mettre à jour les checkboxes
+        if(currentDetailList && currentDetailList.length > 0 && document.getElementById("modalList").style.display === "flex") {
             const typeMap = {
                 'Bilan': 'Bilan OK',
                 'Pisu': 'Pisu OK',
@@ -1012,7 +1015,7 @@
             };
             const filterValue = typeMap[type] || "";
             
-            // Cocher seulement le type cliqué, sinon tous les autres
+            // Cocher seulement le type cliqué
             document.querySelectorAll('#filterBox input[type="checkbox"]').forEach(cb => {
                 cb.checked = cb.value === filterValue;
             });
@@ -1020,7 +1023,7 @@
             return; // Pas besoin de recharger les données
         }
         
-        // Premier chargement: charger TOUTES les données
+        // Chargement: charger TOUTES les données fraîches
         google.script.run.withSuccessHandler(fullList => {
             // Stocker toutes les données en mémoire pour filtrage côté client
             currentDetailList = fullList;
