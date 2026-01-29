@@ -1,7 +1,7 @@
 /****************************************************
  * SDIS 66 - SDS | WebApp Dashboard
  * CACHE SÉQUENTIEL + FIXES + LOCK SYSTEM + ANTI-DOUBLE-COUNT
- * Version: v1.34 | 2026-01-29
+ * Version: v1.35 | 2026-01-29
  ****************************************************/
 
 const DASHBOARD_SHEET_NAME = "Dashboard";
@@ -520,139 +520,109 @@ function getIspStats(matriculeInput, dobInput) {
     let bilanOkCount = 0, pisuOkCount = 0;
     const shAlex = ss.getSheetByName("APP Alex");
     
-    // 1. Construire un index complet APP avec matricule pour recherche rapide
+    // 1. Construire un index complet APP avec matricule et tous les checkboxes pour recherche rapide
     const idToMat = {}; // Mapping ID -> Matricule pour tous les IDs
+    const appRows = {}; // Stocker TOUTES les données APP par ID
     if(shApp) {
         const data = shApp.getDataRange().getValues();
         for(let i=1; i<data.length; i++) {
             const id = String(data[i][C_APP_ID]).trim();
             const rowMat = normalizeMat(data[i][C_APP_MAT]);
-            idToMat[id] = rowMat; // Stocker le matricule de chaque ID
-            appDataRef[id] = { // Stocker aussi les données de TOUS les IDs
+            idToMat[id] = rowMat;
+            appDataRef[id] = {
                 motif: String(data[i][C_APP_MOTIF]||"").trim(),
                 cis: String(data[i][C_APP_CIS]||"").trim(),
                 engin: String(data[i][C_APP_ENGIN]||"").trim(),
                 date: formatDateHeureFR_(data[i][C_APP_DATE]),
                 status: (String(data[i][C_APP_CIS]||"").trim() === "SD SSSM") ? "De Garde" : "Astreinte / Dispo"
             };
+            appRows[id] = {
+                bilanOk: data[i][C_BILAN_OK],
+                bilanKo: data[i][C_BILAN_KO],
+                pisuOk: data[i][C_PISU_OK],
+                pisuKo: data[i][C_PISU_KO]
+            };
         }
     }
     
-    // 2. Parcourir APP pour compter les Bilan OK et Pisu OK du matricule actuel
-    if(shApp) {
-        const data = shApp.getDataRange().getValues();
-        const dAlex = shAlex ? shAlex.getDataRange().getValues() : [];
-        let alexTags = {};
+    // 2. Charger les tags de APP Alex
+    const alexTags = {};
+    if(shAlex) {
+        const dAlex = shAlex.getDataRange().getValues();
         for(let i=1; i<dAlex.length; i++) {
             const id = String(dAlex[i][0]).trim();
-            alexTags[id] = { errBilL: dAlex[i][9], errPisuL: dAlex[i][10], errGrave: dAlex[i][11], reqBilOk: dAlex[i][7], reqPisuOk: dAlex[i][8] };
-        }
-        
-        for(let i=1; i<data.length; i++) {
-            // Filtrer par MATRICULE, pas par nom
-            const rowMat = normalizeMat(data[i][C_APP_MAT]);
-            if(rowMat === mat) {
-                const id = String(data[i][C_APP_ID]).trim();
-                const motif = appDataRef[id].motif;
-                const cis = appDataRef[id].cis;
-                const engin = appDataRef[id].engin;
-                const date = appDataRef[id].date;
-                const status = appDataRef[id].status;
-                
-                const tags = alexTags[id] || {};
-                
-                // Compter Bilan OK et Pisu OK SÉPARÉMENT
-                const bilanOk = data[i][C_BILAN_OK] || tags.reqBilOk;
-                const pisuOk = data[i][C_PISU_OK] || tags.reqPisuOk;
-                const bilanError = data[i][C_BILAN_KO];
-                const pisuError = data[i][C_PISU_KO];
-                
-                // Compter les OK simplement
-                if(bilanOk) {
-                    bilanOkCount++;
-                    countedIds.add(id + "_bilan");
-                    okBilanList.push({ id:id, motif:motif, centre:cis, engin:engin, date:date, status:status, types: ["Bilan OK"], errorType: "" });
-                }
-                if(pisuOk) {
-                    pisuOkCount++;
-                    countedIds.add(id + "_pisu");
-                    okPisuList.push({ id:id, motif:motif, centre:cis, engin:engin, date:date, status:status, types: ["Pisu OK"], errorType: "" });
-                }
-                
-                // Erreurs légères: faut AVOIR L'ERREUR DANS APP ET LE TAG DANS APP Alex
-                if(bilanError && tags.errBilL) {
-                    const item = { id:id, motif:motif, centre:cis, engin:engin, date:date, status:status, types: ["Erreur Bilan Légère"], errorType: "Erreur Bilan Légère" };
-                    errLegereBilanList.push(item);
-                }
-                if(pisuError && tags.errPisuL) {
-                    const item = { id:id, motif:motif, centre:cis, engin:engin, date:date, status:status, types: ["Erreur Pisu Légère"], errorType: "Erreur Pisu Légère" };
-                    errLegerePisuList.push(item);
-                }
-            }
+            alexTags[id] = { 
+                hasH: isCheckboxChecked(dAlex[i][7]),   // H = Passer bilan en ok
+                hasI: isCheckboxChecked(dAlex[i][8]),   // I = Passer pisu en ok
+                hasJ: isCheckboxChecked(dAlex[i][9]),   // J = Erreur bilan légère
+                hasK: isCheckboxChecked(dAlex[i][10]),  // K = Erreur pisu légère
+                hasL: isCheckboxChecked(dAlex[i][11])   // L = Erreur grave
+            };
         }
     }
     
-    // 3. Parcourir APP Alex pour les erreurs graves et corrections
-    if(shAlex) {
-        const data = shAlex.getDataRange().getValues();
+    // 3. Parcourir APP pour compter OK et tracer erreurs
+    if(shApp) {
+        const data = shApp.getDataRange().getValues();
         for(let i=1; i<data.length; i++) {
-            const id = String(data[i][0]).trim();
+            const rowMat = normalizeMat(data[i][C_APP_MAT]);
+            if(rowMat !== mat) continue; // Seulement ce matricule
             
-            // Vérifier rapidement si cet ID appartient à notre matricule
-            if(idToMat[id] !== mat) continue;
+            const id = String(data[i][C_APP_ID]).trim();
+            const motif = appDataRef[id].motif;
+            const cis = appDataRef[id].cis;
+            const engin = appDataRef[id].engin;
+            const date = appDataRef[id].date;
+            const status = appDataRef[id].status;
             
-            // Récupérer les infos depuis appDataRef (qui contient TOUS les IDs)
-            const motif = appDataRef[id].motif || "?";
-            const centre = appDataRef[id].cis || "";
-            const engin = appDataRef[id].engin || "";
-            const date = appDataRef[id].date || "";
-            const status = appDataRef[id].status || "";
+            const bilanOk = data[i][C_BILAN_OK];
+            const bilanKo = data[i][C_BILAN_KO];
+            const pisuOk = data[i][C_PISU_OK];
+            const pisuKo = data[i][C_PISU_KO];
+            const tags = alexTags[id] || {};
             
-            const hasH = isCheckboxChecked(data[i][7]);  // H = Bilan finalement OK (correction)
-            const hasI = isCheckboxChecked(data[i][8]);  // I = Pisu finalement OK (correction)
-            const hasJ = isCheckboxChecked(data[i][9]);  // J = Erreur bilan légère
-            const hasK = isCheckboxChecked(data[i][10]); // K = Erreur pisu légère
-            const hasL = isCheckboxChecked(data[i][11]); // L = Erreur grave
-            
-            // H ET I cochées = fiche revient à OK complètement
-            if(hasH && hasI) {
-                okById[id] = { id:id, motif:motif, centre:centre, engin:engin, date:date, status:status, types: ["Bilan OK", "Pisu OK"], errorType: "" };
+            // === BILAN ===
+            // Si BI (Bilan OK) coché → OK
+            if(bilanOk) {
+                bilanOkCount++;
+                countedIds.add(id + "_bilan");
+                okBilanList.push({ id:id, motif:motif, centre:cis, engin:engin, date:date, status:status, types: ["Bilan OK"], errorType: "" });
             }
-            // Seulement H OU seulement I = Correction partielle, pas OK
-            else if(hasH && !hasI) {
-                const item = { id:id, motif:motif, centre:centre, engin:engin, date:date, status:status, types: ["Erreur Pisu Légère"], errorType: "Erreur Pisu Légère" };
-                errLegerePisuList.push(item);
+            // Si BJ (Bilan incomplet) coché ET H (correction) dans APP Alex → OK
+            else if(bilanKo && tags.hasH) {
+                bilanOkCount++;
+                countedIds.add(id + "_bilan");
+                okBilanList.push({ id:id, motif:motif, centre:cis, engin:engin, date:date, status:status, types: ["Bilan OK"], errorType: "" });
             }
-            else if(hasI && !hasH) {
-                const item = { id:id, motif:motif, centre:centre, engin:engin, date:date, status:status, types: ["Erreur Bilan Légère"], errorType: "Erreur Bilan Légère" };
-                errLegereBilanList.push(item);
+            // Si BJ coché ET PAS H → Erreur Bilan (le type vient de APP Alex: J=légère, L=grave)
+            else if(bilanKo && !tags.hasH) {
+                const errorType = tags.hasL ? "Erreur Grave" : "Erreur Bilan Légère";
+                const list = tags.hasL ? errLourdeList : errLegereBilanList;
+                const item = { id:id, motif:motif, centre:cis, engin:engin, date:date, status:status, types: [errorType], errorType: errorType };
+                list.push(item);
             }
             
-            // J cochée = Erreur bilan légère
-            if(hasJ) { 
-                const item = { id:id, motif:motif, centre:centre, engin:engin, date:date, status:status, types: ["Erreur Bilan Légère"], errorType: "Erreur Bilan Légère" };
-                errLegereBilanList.push(item); 
-            } 
-            
-            // K cochée = Erreur pisu légère
-            if(hasK) { 
-                const item = { id:id, motif:motif, centre:centre, engin:engin, date:date, status:status, types: ["Erreur Pisu Légère"], errorType: "Erreur Pisu Légère" };
-                errLegerePisuList.push(item); 
-            } 
-            
-            // L cochée = Erreur grave
-            if(hasL) { 
-                const item = { id:id, motif:motif, centre:centre, engin:engin, date:date, status:status, types: ["Erreur Grave"], errorType: "Erreur Grave" };
-                errLourdeList.push(item); 
-            } 
+            // === PISU ===
+            // Si BK (Pisu OK) coché → OK
+            if(pisuOk) {
+                pisuOkCount++;
+                countedIds.add(id + "_pisu");
+                okPisuList.push({ id:id, motif:motif, centre:cis, engin:engin, date:date, status:status, types: ["Pisu OK"], errorType: "" });
+            }
+            // Si BL (Pisu pas ok) coché ET I (correction) dans APP Alex → OK
+            else if(pisuKo && tags.hasI) {
+                pisuOkCount++;
+                countedIds.add(id + "_pisu");
+                okPisuList.push({ id:id, motif:motif, centre:cis, engin:engin, date:date, status:status, types: ["Pisu OK"], errorType: "" });
+            }
+            // Si BL coché ET PAS I → Erreur Pisu (le type vient de APP Alex: K=légère, L=grave)
+            else if(pisuKo && !tags.hasI) {
+                const errorType = tags.hasL ? "Erreur Grave" : "Erreur Pisu Légère";
+                const list = tags.hasL ? errLourdeList : errLegerePisuList;
+                const item = { id:id, motif:motif, centre:cis, engin:engin, date:date, status:status, types: [errorType], errorType: errorType };
+                list.push(item);
+            }
         }
-    }
-
-
-    // Compter les fiches corrigées dans APP Alex (H ET I cochées) - SEULEMENT si pas déjà comptées
-    for(const id in okById) {
-        if(!countedIds.has(id + "_bilan")) bilanOkCount++;
-        if(!countedIds.has(id + "_pisu")) pisuOkCount++;
     }
 
     const result = {
