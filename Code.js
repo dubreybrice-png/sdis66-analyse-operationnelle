@@ -1,7 +1,7 @@
 /****************************************************
  * SDIS 66 - SDS | WebApp Dashboard
  * CACHE SÉQUENTIEL + FIXES + LOCK SYSTEM + ANTI-DOUBLE-COUNT
- * Version: v1.44 | 2026-01-30
+ * Version: v1.45 | 2026-01-30
  ****************************************************/
 
 const DASHBOARD_SHEET_NAME = "Dashboard";
@@ -1058,11 +1058,12 @@ function getNextCase(specificRow) {
 }
 
 function saveCase(form) {
-    const ss = getSS_();
-    const shApp = ss.getSheetByName(APP_SHEET_NAME);
-    if(!shApp) return { success: false };
-    
-    const row = form.rowNumber;
+    try {
+        const ss = getSS_();
+        const shApp = ss.getSheetByName(APP_SHEET_NAME);
+        if(!shApp) return { success: false, error: "Sheet not found" };
+        
+        const row = form.rowNumber;
     
     // Sauvegarder les données
     shApp.getRange(row, C_ISP_ANALYSE + 1).setValue(form.isp);
@@ -1102,7 +1103,13 @@ function saveCase(form) {
     shApp.getRange(row, C_BS_PROBLEM + 1).setValue(form.pbCheck ? true : false);
     shApp.getRange(row, C_BT_PROBLEM_TXT + 1).setValue(form.pbTxt || "");
     
+    // Clear cache
+    CacheService.getScriptCache().remove("chefferie_counts");
+    
     return { success: true };
+    } catch(e) {
+        return { success: false, error: e.toString() };
+    }
 }
 
 function skipCase(rowNumber) {
