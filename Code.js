@@ -594,8 +594,8 @@ function getIspStats(matriculeInput, dobInput) {
                 countedIds.add(id + "_bilan");
                 okBilanList.push({ id:id, motif:motif, centre:cis, engin:engin, date:date, status:status, types: ["Bilan OK"], errorType: "" });
             }
-            // Si BJ coché ET PAS H → Erreur Bilan (le type vient de APP Alex: J=légère, L=grave)
-            else if(bilanKo && !tags.hasH) {
+            // Si BJ coché ET PAS H → Erreur Bilan SEULEMENT si confirmée en APP Alex (J ou L)
+            else if(bilanKo && !tags.hasH && (tags.hasJ || tags.hasL)) {
                 const errorType = tags.hasL ? "Erreur Grave" : "Erreur Bilan Légère";
                 const list = tags.hasL ? errLourdeList : errLegereBilanList;
                 const item = { id:id, motif:motif, centre:cis, engin:engin, date:date, status:status, types: [errorType], errorType: errorType };
@@ -615,8 +615,8 @@ function getIspStats(matriculeInput, dobInput) {
                 countedIds.add(id + "_pisu");
                 okPisuList.push({ id:id, motif:motif, centre:cis, engin:engin, date:date, status:status, types: ["Pisu OK"], errorType: "" });
             }
-            // Si BL coché ET PAS I → Erreur Pisu (le type vient de APP Alex: K=légère, L=grave)
-            else if(pisuKo && !tags.hasI) {
+            // Si BL coché ET PAS I → Erreur Pisu SEULEMENT si confirmée en APP Alex (K ou L)
+            else if(pisuKo && !tags.hasI && (tags.hasK || tags.hasL)) {
                 const errorType = tags.hasL ? "Erreur Grave" : "Erreur Pisu Légère";
                 const list = tags.hasL ? errLourdeList : errLegerePisuList;
                 const item = { id:id, motif:motif, centre:cis, engin:engin, date:date, status:status, types: [errorType], errorType: errorType };
@@ -1097,7 +1097,13 @@ function getIspDetailsAdmin(mat) {
         for(let i=1; i<dAlex.length; i++) {
             const id = String(dAlex[i][0]).trim();
             comments[id] = { chef: dAlex[i][12], med: "" };
-            alexTags[id] = { errBilL: dAlex[i][9], errPisuL: dAlex[i][10], errGrave: dAlex[i][11], reqBilOk: dAlex[i][7], reqPisuOk: dAlex[i][8] };
+            alexTags[id] = { 
+                hasH: isCheckboxChecked(dAlex[i][7]),      // H = Correction Bilan OK
+                hasI: isCheckboxChecked(dAlex[i][8]),      // I = Correction Pisu OK
+                hasJ: isCheckboxChecked(dAlex[i][9]),      // J = Erreur Bilan légère
+                hasK: isCheckboxChecked(dAlex[i][10]),     // K = Erreur Pisu légère
+                hasL: isCheckboxChecked(dAlex[i][11])      // L = Erreur Grave
+            };
         }
     }
     if(shEve) {
@@ -1126,33 +1132,45 @@ function getIspDetailsAdmin(mat) {
             let types = [];
             let errorType = "";
             
-            const bilanOk = dApp[i][C_BILAN_OK] || tags.reqBilOk;
-            const pisuOk = dApp[i][C_PISU_OK] || tags.reqPisuOk;
-            const bilanError = dApp[i][C_BILAN_KO] || tags.errBilL || tags.errGrave;
-            const pisuError = dApp[i][C_PISU_KO] || tags.errPisuL || tags.errGrave;
+            const bilanOk = dApp[i][C_BILAN_OK] || tags.hasH;
+            const pisuOk = dApp[i][C_PISU_OK] || tags.hasI;
+            const bilanKo = dApp[i][C_BILAN_KO];
+            const pisuKo = dApp[i][C_PISU_KO];
             
             // Toujours ajouter OK si coché
             if(bilanOk) { types.push("Bilan OK"); }
             if(pisuOk) { types.push("Pisu OK"); }
             
-            // Ajouter les erreurs si pas OK
-            if(bilanError && !bilanOk) { types.push("Erreur Bilan Légère"); if(!errorType) errorType = "Erreur Bilan Légère"; }
-            if(pisuError && !pisuOk) { types.push("Erreur Pisu Légère"); if(!errorType) errorType = "Erreur Pisu Légère"; }
-            if(tags.errGrave) { types.push("Erreur Grave"); errorType = "Erreur Grave"; }
+            // Ajouter les erreurs SEULEMENT si confirmées en APP Alex (J, K, ou L coché)
+            // Erreur Bilan: si BJ coché ET PAS H ET (J ou L coché)
+            if(bilanKo && !tags.hasH && (tags.hasJ || tags.hasL)) { 
+                const errType = tags.hasL ? "Erreur Grave" : "Erreur Bilan Légère";
+                types.push(errType); 
+                if(!errorType) errorType = errType; 
+            }
+            // Erreur Pisu: si BL coché ET PAS I ET (K ou L coché)
+            if(pisuKo && !tags.hasI && (tags.hasK || tags.hasL)) { 
+                const errType = tags.hasL ? "Erreur Grave" : "Erreur Pisu Légère";
+                types.push(errType); 
+                if(!errorType) errorType = errType; 
+            }
             
-            list.push({ 
-                id: id, 
-                date: date, 
-                centre: cis,
-                motif: motif, 
-                engin: engin,
-                pdf: dApp[i][C_APP_PDF], 
-                status: status, 
-                types: types, 
-                errorType: errorType,
-                commChef: comments[id] ? comments[id].chef : "", 
-                commMed: comments[id] ? comments[id].med : "" 
-            });
+            // Ne compter que si on a des types (OK ou erreur confirmée)
+            if(types.length > 0) {
+                list.push({ 
+                    id: id, 
+                    date: date, 
+                    centre: cis,
+                    motif: motif, 
+                    engin: engin,
+                    pdf: dApp[i][C_APP_PDF], 
+                    status: status, 
+                    types: types, 
+                    errorType: errorType,
+                    commChef: comments[id] ? comments[id].chef : "", 
+                    commMed: comments[id] ? comments[id].med : "" 
+                });
+            }
         }
     }
     
