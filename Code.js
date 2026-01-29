@@ -1,7 +1,7 @@
 /****************************************************
  * SDIS 66 - SDS | WebApp Dashboard
  * CACHE SÉQUENTIEL + FIXES + LOCK SYSTEM
- * Version: v1.28 | 2026-01-29
+ * Version: v1.29 | 2026-01-29
  ****************************************************/
 
 const DASHBOARD_SHEET_NAME = "Dashboard";
@@ -507,6 +507,7 @@ function getIspStats(matriculeInput, dobInput) {
     // Erreurs et confirmations
     const errLegereBilanList = [], errLegerePisuList = [], errLourdeList = [];
     const okBilanList = [], okPisuList = []; // Listes séparées pour Bilan OK et Pisu OK
+    const okById = {}; // Map pour les corrections (H ET I de APP Alex)
     let bilanOkCount = 0, pisuOkCount = 0;
     
     // 1. Parcourir APP pour compter les Bilan OK et Pisu OK séparément
@@ -646,6 +647,12 @@ function getIspStats(matriculeInput, dobInput) {
         }
     }
 
+
+    // Compter les fiches corrigées dans APP Alex (H ET I cochées)
+    for(const id in okById) {
+        bilanOkCount++;
+        pisuOkCount++;
+    }
 
     const result = {
         nom: agentName,
