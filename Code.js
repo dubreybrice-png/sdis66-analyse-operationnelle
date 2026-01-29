@@ -509,11 +509,11 @@ function getIspStats(matriculeInput, dobInput) {
     const okBilanList = [], okPisuList = []; // Listes séparées pour Bilan OK et Pisu OK
     const okById = {}; // Map pour les corrections (H ET I de APP Alex)
     let bilanOkCount = 0, pisuOkCount = 0;
+    const shAlex = ss.getSheetByName("APP Alex");
     
     // 1. Parcourir APP pour compter les Bilan OK et Pisu OK séparément
     if(shApp) {
         const data = shApp.getDataRange().getValues();
-        const shAlex = ss.getSheetByName("APP Alex");
         const dAlex = shAlex ? shAlex.getDataRange().getValues() : [];
         let alexTags = {};
         for(let i=1; i<dAlex.length; i++) {
