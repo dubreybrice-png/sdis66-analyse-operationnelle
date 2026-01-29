@@ -509,7 +509,6 @@ function getIspStats(matriculeInput, dobInput) {
     const okBilanList = [], okPisuList = []; // Listes séparées pour Bilan OK et Pisu OK
     const okById = {}; // Map pour les corrections (H ET I de APP Alex)
     let bilanOkCount = 0, pisuOkCount = 0;
-    const appDataRef = {}; // Map pour référencer les données de APP par ID
     
     // 1. Parcourir APP pour compter les Bilan OK et Pisu OK séparément
     if(shApp) {
