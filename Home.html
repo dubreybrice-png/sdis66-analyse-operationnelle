@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Version: v1.30 | 2026-01-29 -->
+<!-- Version: v1.31 | 2026-01-29 -->
 <html>
 <head>
   <base target="_top">
@@ -284,7 +284,10 @@
                             <div style="margin-top:8px;cursor:pointer;text-decoration:underline;" class="text-red" onclick="openErrorList('Grave')">Erreur Grave: <span id="ispErrLourd"></span></div>
                         </div>
                     </div>
-                    <button class="btnGo" style="width:auto;margin-top:15px;background:#333;color:#fff" onclick="logoutIsp()">Déconnexion</button>
+                    <div style="display:flex;gap:10px;margin-top:15px;">
+                        <button class="btnGo" style="width:auto;background:#333;color:#fff" onclick="logoutIsp()">Déconnexion</button>
+                        <button class="btnGo" style="width:auto;background:#444;color:#fff" onclick="refreshIspData()">🔄 Rafraîchir</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -981,6 +984,15 @@
         }).getIspStats(m, d);
     }
     function logoutIsp(){ document.getElementById("ispData").style.display="none"; document.getElementById("ispLogin").style.display="flex"; window_currentIspData={}; }
+    
+    function refreshIspData() {
+        const mat = document.getElementById("matInput").value;
+        if(!mat) { toast("Matricule requis"); return; }
+        google.script.run.withSuccessHandler(() => {
+            toast("Cache vidé - rechargement...");
+            loginIsp();
+        }).clearIspCache(mat);
+    }
 
     function openErrorList(type) {
         if(!window_currentIspData || !window_currentIspData.nom) return;
