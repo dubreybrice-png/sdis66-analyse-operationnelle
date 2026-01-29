@@ -1,7 +1,7 @@
 /****************************************************
  * SDIS 66 - SDS | WebApp Dashboard
  * CACHE SÉQUENTIEL + FIXES + LOCK SYSTEM + ANTI-DOUBLE-COUNT
- * Version: v1.39 | 2026-01-29
+ * Version: v1.40 | 2026-01-29
  ****************************************************/
 
 const DASHBOARD_SHEET_NAME = "Dashboard";
@@ -701,26 +701,36 @@ function getChefferieNextCase(mode) {
         const dataApp = shApp.getDataRange().getValues();
         const dataAlex = shAlex.getDataRange().getValues(); 
 
-        for(let i=1; i<dataApp.length; i++) {
-            const hasError = (isCheckboxChecked(dataApp[i][C_BILAN_KO]) || isCheckboxChecked(dataApp[i][C_PISU_KO]));
-            const id = String(dataApp[i][C_APP_ID]).trim();
-            let alreadyDone = false;
-            for(let j=1; j<dataAlex.length; j++) {
-                if(String(dataAlex[j][0]).trim() === id && isCheckboxChecked(dataAlex[j][13])) { alreadyDone = true; break; }
-            }
-            if(hasError && !alreadyDone) {
+        // Chercher dans APP Alex les IDs avec erreur confirmée (J, K ou L) et pas encore clôturés (N)
+        for(let i=1; i<dataAlex.length; i++) {
+            const id = String(dataAlex[i][0]).trim();
+            const hasJ = isCheckboxChecked(dataAlex[i][9]);   // J = Erreur Bilan légère
+            const hasK = isCheckboxChecked(dataAlex[i][10]);  // K = Erreur Pisu légère
+            const hasL = isCheckboxChecked(dataAlex[i][11]);  // L = Erreur Grave
+            const isClosed = isCheckboxChecked(dataAlex[i][13]); // N = Clôture chef
+            
+            if((hasJ || hasK || hasL) && !isClosed) {
+                // Trouver les infos dans APP
+                let appRow = -1;
+                for(let j=1; j<dataApp.length; j++) {
+                    if(String(dataApp[j][C_APP_ID]).trim() === id) { appRow = j; break; }
+                }
+                if(appRow === -1) continue; // ID pas trouvé dans APP
+                
                 rowToProcess = i+1;
-                const cis = String(dataApp[i][C_APP_CIS]||"").trim();
+                const cis = String(dataApp[appRow][C_APP_CIS]||"").trim();
                 const status = (cis === "SD SSSM") ? "De Garde" : "Astreinte / Dispo";
                 const info = {
                     interId: id, 
-                    motif: dataApp[i][C_APP_MOTIF], 
-                    date: formatDateHeureFR_(dataApp[i][C_APP_DATE]),
-                    pdf: dataApp[i][C_APP_PDF], 
-                    infName: dataApp[i][C_APP_NOM], 
+                    motif: dataApp[appRow][C_APP_MOTIF], 
+                    date: formatDateHeureFR_(dataApp[appRow][C_APP_DATE]),
+                    pdf: dataApp[appRow][C_APP_PDF], 
+                    infName: dataApp[appRow][C_APP_NOM], 
+                    engin: String(dataApp[appRow][C_APP_ENGIN]||"").trim(),
                     status: status,
-                    commBN: dataApp[i][C_TXTBILAN_KO], 
-                    commBO: dataApp[i][C_TXTPISU_KO]
+                    commBN: dataApp[appRow][C_TXTBILAN_KO], 
+                    commBO: dataApp[appRow][C_TXTPISU_KO],
+                    commChef: dataAlex[i][12]
                 };
                 const hAlex = shAlex.getRange(1,1,1,20).getValues()[0];
                 schema = { mode:'app_isp', info:info, checks:[{id:7, label:hAlex[7]}, {id:8, label:hAlex[8]}, {id:9, label:hAlex[9]}, {id:10, label:hAlex[10]}, {id:11, label:hAlex[11]}] };
@@ -989,7 +999,7 @@ function saveCase(form) {
     // Protocoles
     Object.keys(form.checks).forEach(id => {
         const colIdx = parseInt(id) + 1;
-        shApp.getRange(row, colIdx).setValue(form.checks[id] ? "✓" : "");
+        shApp.getRange(row, colIdx).setValue(form.checks[id] ? true : false);
     });
     
     // Critères
@@ -1132,10 +1142,10 @@ function getIspDetailsAdmin(mat) {
             let types = [];
             let errorType = "";
             
-            const bilanOk = dApp[i][C_BILAN_OK] || tags.hasH;
-            const pisuOk = dApp[i][C_PISU_OK] || tags.hasI;
-            const bilanKo = dApp[i][C_BILAN_KO];
-            const pisuKo = dApp[i][C_PISU_KO];
+            const bilanOk = isCheckboxChecked(dApp[i][C_BILAN_OK]) || tags.hasH;
+            const pisuOk = isCheckboxChecked(dApp[i][C_PISU_OK]) || tags.hasI;
+            const bilanKo = isCheckboxChecked(dApp[i][C_BILAN_KO]);
+            const pisuKo = isCheckboxChecked(dApp[i][C_PISU_KO]);
             
             // Toujours ajouter OK si coché
             if(bilanOk) { types.push("Bilan OK"); }

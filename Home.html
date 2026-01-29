@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Version: v1.39 | 2026-01-29 -->
+<!-- Version: v1.40 | 2026-01-29 -->
 <html>
 <head>
   <base target="_top">
@@ -347,9 +347,12 @@
       </div>
 
       <div id="viewChefferie" class="view">
-          <div class="topbar" style="flex-shrink:0;"><button class="btnGo" style="width:auto;margin:0" onclick="goHome()">← Retour Dashboard</button><h1 style="display:inline-block;margin-left:15px;">Espace Chefferie ISP</h1></div>
+          <div class="topbar" style="flex-shrink:0;position:sticky;top:0;background:var(--bg1);z-index:20;padding:15px 0;">
+              <button class="btnGo" style="width:auto;margin:0" onclick="goHome()">← Retour Dashboard</button>
+              <h1 style="display:inline-block;margin-left:15px;">Espace Chefferie ISP</h1>
+          </div>
           
-          <div class="btn-row" style="flex-shrink:0;">
+          <div class="btn-row" style="flex-shrink:0;position:sticky;top:60px;z-index:15;background:var(--bg1);margin-bottom:10px;">
               <button class="c-btn" onclick="loadChefCase('app_isp');hideGlobal()">
                   <h3>Faire APP Chefferie <span class="badgeBtn" id="btnBadgeIspG">0</span></h3>
                   <p>Côter les BPV après passage ISP d'analyse</p>
@@ -364,10 +367,9 @@
               </button>
           </div>
 
-          <div style="overflow-y:auto; flex:1; padding:20px;">
-              <div id="chefFormArea" style="display:block;"></div>
+          <div id="chefFormArea" style="flex:1;overflow-y:auto;"></div>
               
-              <div id="globalListArea" style="display:none;">
+          <div id="globalListArea" style="display:none;flex:1;overflow-y:auto;">
                   <div class="panel">
                       <div class="panelBody" style="max-height:none;overflow:visible;">
                           <div style="display:flex;gap:15px;align-items:center;padding:10px;background:rgba(255,255,255,0.05);margin-bottom:10px;border-radius:8px;font-size:11px;">
@@ -388,7 +390,6 @@
                       </div>
                   </div>
               </div>
-          </div>
       </div>
 
       <div id="viewMedecin" class="view">
@@ -528,7 +529,8 @@
             <h4 style="color:var(--red);margin:15px 0 10px 0;">Analyse Médecin</h4>
             <div id="commMed" class="static-box" style="color:var(--red);"></div>
           </div>
-          <button class="btnGo" style="margin-top:auto;width:100%;" onclick="closeModal('modalDetail')">Fermer</button>
+          <button class="btnGo" style="width:100%;margin-bottom:8px;" onclick="document.getElementById('modalDetail').style.display='none'; document.getElementById('modalList').style.display='flex';">← Retour aux fiches</button>
+          <button class="btnGo" style="width:100%;" onclick="closeModal('modalDetail')">Fermer</button>
         </div>
       </div>
     </div>
@@ -1312,6 +1314,9 @@
     }
     
     function loadInterDetail(id, date, motif, status, centre, engin) {
+        // Fermer la liste des interventions
+        document.getElementById("modalList").style.display = "none";
+        
         startLoad();
         google.script.run.withSuccessHandler(res => {
             stopLoad();
