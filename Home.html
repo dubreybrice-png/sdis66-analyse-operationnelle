@@ -1,10 +1,42 @@
 <!doctype html>
-<!-- Version: v1.42 | 2026-01-29 -->
+<!-- Version: v1.43 | 2026-01-29 -->
 <html>
 <head>
   <base target="_top">
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <script>const SCRIPT_URL = "<?= scriptUrl ?>";</script>
+  <script>const SCRIPT_URL = "<?= scriptUrl ?>";
+  
+  // Mapping des protocoles: colonne Excel (0-indexed) => label
+  const PROTOCOLS_MAP = {
+    22: "VVP (1A)",
+    23: "Hypoglycémie (2A)",
+    24: "Détr. Circu (3A)",
+    25: "Brulures (4A)",
+    26: "Dlr Aigue (5A)",
+    27: "Penthrox (5A2)",
+    28: "Dlr Iade (5A3)",
+    29: "ACR (6A)",
+    30: "Allergie (7A)",
+    31: "DRA (8A)",
+    32: "Intox Fumées (9A)",
+    33: "Convulsions (10A)",
+    34: "Accouchement (11A)",
+    35: "Dlr Tho (12A)",
+    36: "Coup chaleur (13A)",
+    37: "Fracture fem'/bassin (14A)",
+    38: "Hors Protocole (HPA)",
+    39: "VVP (1E)",
+    40: "Hypoglycémie (2E)",
+    41: "Brulures (4E)",
+    42: "Dlr Aigue (5E)",
+    43: "ACR (6E)",
+    44: "Allergie (7E)",
+    45: "DRA (8E)",
+    46: "Intox Fumées (9E)",
+    47: "Convulsions (10E)",
+    48: "Nouveau Né (11E)",
+    49: "Hors Protocole (HPE)"
+  };</script>
   <style>
     :root{ --bg0:#0b0f1f; --bg1:#0f1430; --text:#eaf0ff; --muted:#a9b5db; --border:rgba(255,255,255,.08); --accent3:#4fc3f7; --ok:#47d18c; --radius:18px; --red:#ff4d4d; --orange:#ffa500; --accent:#6ea8fe; --danger:#ff6b6b; --selectBg:#0e1730; }
     *{ box-sizing:border-box; }
@@ -805,7 +837,7 @@
                  lbl.style.borderColor = "rgba(255,165,0,.3)";
                  lbl.style.color = "#ff8c00";
                }
-               lbl.innerHTML = `<input type="checkbox" name="chk_${item.id}" ${item.checked?'checked':''}> ${item.label}`;
+               lbl.innerHTML = `<input type="checkbox" name="chk_${item.colIdx}" data-col="${item.colIdx}" ${item.checked?'checked':''} /> ${item.label}`;
                box.appendChild(lbl);
             });
          }
@@ -914,8 +946,8 @@
 
       const checks = {};
       document.querySelectorAll('input[type="checkbox"][name^="chk_"]').forEach(cb => {
-         const id = cb.name.split('_')[1];
-         checks[id] = cb.checked;
+         const colIdx = parseInt(cb.getAttribute('data-col'));
+         checks[colIdx] = cb.checked;
       });
 
       const payload = {

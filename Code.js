@@ -1,7 +1,7 @@
 /****************************************************
  * SDIS 66 - SDS | WebApp Dashboard
  * CACHE SÉQUENTIEL + FIXES + LOCK SYSTEM + ANTI-DOUBLE-COUNT
- * Version: v1.42 | 2026-01-29
+ * Version: v1.43 | 2026-01-29
  ****************************************************/
 
 const DASHBOARD_SHEET_NAME = "Dashboard";
@@ -40,8 +40,8 @@ const C_APP_MAT = 8;
 const C_APP_NOM = 9;    
 const C_APP_DATE = 13;  
 const C_ISP_ANALYSE = 20; 
-const C_PROTO_START = 21; 
-const C_PROTO_END = 48;   
+const C_PROTO_START = 22;  // V = 22 (0-indexed)
+const C_PROTO_END = 49;    // AW = 49 (0-indexed)
 const C_BG_EXAM = 58; 
 const C_BH_ABS = 59;  
 const C_BILAN_OK = 60; 
@@ -947,39 +947,29 @@ function getNextCase(specificRow) {
     const row = data[rowIdx];
     
     // Récupérer les correspondances de protocoles depuis le fichier externe
-    let protoLabels = {};
-    let protoMapping = {}; // Mappe colonne APP → index de colonne
-    try {
-        const ssProto = SpreadsheetApp.openById(ID_PROTOCOLES_CORRESP);
-        const shProto = ssProto.getSheets()[0];
-        // Charger les 3 lignes : code (1), nom (2), colonne APP (3)
-        const header = shProto.getRange(1, 1, 3, shProto.getLastColumn()).getValues();
-        for(let i = 0; i < header[0].length; i++) {
-            const code = String(header[0][i]).trim();
-            const displayName = String(header[1][i]).trim();
-            const colRef = String(header[2][i]).trim();
-            if(code && displayName && colRef) {
-                protoLabels[code] = displayName;
-                protoMapping[colRef] = code; // Mappe colonne APP (ex: "V") à code (ex: "1A")
-            }
-        }
-    } catch(e) {
-        Logger.log("Erreur chargement protocoles: " + e);
-    }
+    // Mapping des protocoles (colonne 0-indexed => label)
+    const PROTOCOLS_MAP = {
+        22: "VVP (1A)", 23: "Hypoglycémie (2A)", 24: "Détr. Circu (3A)", 25: "Brulures (4A)",
+        26: "Dlr Aigue (5A)", 27: "Penthrox (5A2)", 28: "Dlr Iade (5A3)", 29: "ACR (6A)",
+        30: "Allergie (7A)", 31: "DRA (8A)", 32: "Intox Fumées (9A)", 33: "Convulsions (10A)",
+        34: "Accouchement (11A)", 35: "Dlr Tho (12A)", 36: "Coup chaleur (13A)", 37: "Fracture fem'/bassin (14A)",
+        38: "Hors Protocole (HPA)", 39: "VVP (1E)", 40: "Hypoglycémie (2E)", 41: "Brulures (4E)",
+        42: "Dlr Aigue (5E)", 43: "ACR (6E)", 44: "Allergie (7E)", 45: "DRA (8E)",
+        46: "Intox Fumées (9E)", 47: "Convulsions (10E)", 48: "Nouveau Né (11E)", 49: "Hors Protocole (HPE)"
+    };
     
-    // Construire la liste des protocoles depuis colonnes V (21) à AW (48)
+    // Construire la liste des protocoles depuis colonnes V à AW
     const protoList = [];
-    const sheetHeaders = shApp.getRange(1, 1, 1, shApp.getLastColumn()).getValues()[0];
-    
     for(let colIdx = C_PROTO_START; colIdx <= C_PROTO_END; colIdx++) {
-        const colHeader = String(sheetHeaders[colIdx] || "").trim();
-        if(colHeader) {
-            // Utiliser le mapping pour trouver le code du protocole
-            const protoCode = protoMapping[colHeader] || colHeader;
-            const displayLabel = protoLabels[protoCode] || colHeader;
+        const label = PROTOCOLS_MAP[colIdx] || "";
+        if(label) {
             // Charger l'état réel de la case depuis la feuille
-            const isChecked = row[colIdx] === "✓" || row[colIdx] === true;
-            protoList.push({ id: colIdx, label: displayLabel, checked: isChecked });
+            const isChecked = row[colIdx] === true || row[colIdx] === "TRUE";
+            protoList.push({ 
+                colIdx: colIdx, 
+                label: label, 
+                checked: isChecked 
+            });
         }
     }
     
@@ -1078,10 +1068,11 @@ function saveCase(form) {
     // Sauvegarder les données
     shApp.getRange(row, C_ISP_ANALYSE + 1).setValue(form.isp);
     
-    // Protocoles
-    Object.keys(form.checks).forEach(id => {
-        const colIdx = parseInt(id) + 1;
-        shApp.getRange(row, colIdx).setValue(form.checks[id] ? true : false);
+    // Protocoles: checks est un objet {colIdx: boolean, colIdx: boolean, ...}
+    Object.keys(form.checks).forEach(colIdxStr => {
+        const colIdx = parseInt(colIdxStr);
+        // colIdx est déjà en 0-indexed (22, 23, ...), ajouter 1 pour Google Sheets
+        shApp.getRange(row, colIdx + 1).setValue(form.checks[colIdxStr] ? true : false);
     });
     
     // Critères
