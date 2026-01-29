@@ -1,7 +1,7 @@
 /****************************************************
  * SDIS 66 - SDS | WebApp Dashboard
  * CACHE SÉQUENTIEL + FIXES + LOCK SYSTEM
- * Version: v1.31 | 2026-01-29
+ * Version: v1.32 | 2026-01-29
  ****************************************************/
 
 const DASHBOARD_SHEET_NAME = "Dashboard";
@@ -515,6 +515,7 @@ function getIspStats(matriculeInput, dobInput) {
     const errLegereBilanList = [], errLegerePisuList = [], errLourdeList = [];
     const okBilanList = [], okPisuList = []; // Listes séparées pour Bilan OK et Pisu OK
     const okById = {}; // Map pour les corrections (H ET I de APP Alex)
+    const countedIds = new Set(); // Track IDs déjà comptés pour éviter double-counting
     let bilanOkCount = 0, pisuOkCount = 0;
     const shAlex = ss.getSheetByName("APP Alex");
     
@@ -568,10 +569,12 @@ function getIspStats(matriculeInput, dobInput) {
                 // Compter les OK simplement
                 if(bilanOk) {
                     bilanOkCount++;
+                    countedIds.add(id + "_bilan");
                     okBilanList.push({ id:id, motif:motif, centre:cis, engin:engin, date:date, status:status, types: ["Bilan OK"], errorType: "" });
                 }
                 if(pisuOk) {
                     pisuOkCount++;
+                    countedIds.add(id + "_pisu");
                     okPisuList.push({ id:id, motif:motif, centre:cis, engin:engin, date:date, status:status, types: ["Pisu OK"], errorType: "" });
                 }
                 
@@ -645,10 +648,10 @@ function getIspStats(matriculeInput, dobInput) {
     }
 
 
-    // Compter les fiches corrigées dans APP Alex (H ET I cochées)
+    // Compter les fiches corrigées dans APP Alex (H ET I cochées) - SEULEMENT si pas déjà comptées
     for(const id in okById) {
-        bilanOkCount++;
-        pisuOkCount++;
+        if(!countedIds.has(id + "_bilan")) bilanOkCount++;
+        if(!countedIds.has(id + "_pisu")) pisuOkCount++;
     }
 
     const result = {
