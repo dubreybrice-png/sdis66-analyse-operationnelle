@@ -1,5 +1,5 @@
 /**
- * Version: 2026-01-28 13:15
+ * Version: 2026-01-29 v1.34
  * @OnlyCurrentDoc
  * Point d'entrée unique : se lance à chaque modification dans le fichier.
  */
@@ -16,6 +16,7 @@ function onEdit(e) {
     if (sheetName === "APP") {
       handleAppCheckToBI(e);   // BD/BF → BI
       handleAppHideOnBP(e);    // BP coche → cacher ligne
+      handleAppAutoCheckAlexHI(e); // Auto-coche H/I dans APP Alex
       return;
     }
 
@@ -179,6 +180,70 @@ function handleChefferie(e) {
       if (dataEve[i][0] === numInter) {
         sheetEve.showRows(i + 2);
       }
+    }
+  }
+}
+
+/**
+ * Auto-coche H/I dans APP Alex selon la logique:
+ * - Si Pisu pas ok (BL=63) ET Bilan ok (BI=60) → cocher H (col 8) dans APP Alex
+ * - Si Bilan pas ok (BJ=61) ET Pisu ok (BK=62) → cocher I (col 9) dans APP Alex
+ * - Si les deux pas ok → ne rien cocher
+ */
+function handleAppAutoCheckAlexHI(e) {
+  const row = e.range.getRow();
+  const col = e.range.getColumn();
+  
+  // Vérifier si c'est une édition dans les colonnes BI, BJ, BK, ou BL (60-63)
+  if (row < 2 || col < 60 || col > 63) return;
+  
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const appSheet = ss.getSheetByName("APP");
+  const alexSheet = ss.getSheetByName("APP Alex");
+  if (!alexSheet) return;
+  
+  // Récupérer l'ID de la ligne modifiée (colonne B = 2)
+  const id = String(appSheet.getRange(row, 2).getValue()).trim();
+  if (!id) return;
+  
+  // Récupérer les valeurs des checkboxes
+  const bilanOk = appSheet.getRange(row, 60).getValue() === true;
+  const bilanKo = appSheet.getRange(row, 61).getValue() === true;
+  const pisuOk = appSheet.getRange(row, 62).getValue() === true;
+  const pisuKo = appSheet.getRange(row, 63).getValue() === true;
+  
+  // Trouver la ligne dans APP Alex
+  const alexData = alexSheet.getDataRange().getValues();
+  let alexRow = -1;
+  for (let i = 1; i < alexData.length; i++) {
+    if (String(alexData[i][0]).trim() === id) {
+      alexRow = i + 1;
+      break;
+    }
+  }
+  
+  // Si pas trouvé dans APP Alex, créer une nouvelle ligne
+  if (alexRow === -1) {
+    alexRow = alexSheet.getLastRow() + 1;
+    alexSheet.getRange(alexRow, 1).setValue(id);
+  }
+  
+  // Logique de cochage automatique:
+  // Si Pisu pas ok (BL) ET Bilan ok (BI) → cocher H (col 8)
+  if (pisuKo && bilanOk) {
+    alexSheet.getRange(alexRow, 8).setValue(true);
+  } else {
+    if (alexSheet.getRange(alexRow, 8).getValue() === true) {
+      alexSheet.getRange(alexRow, 8).setValue(false);
+    }
+  }
+  
+  // Si Bilan pas ok (BJ) ET Pisu ok (BK) → cocher I (col 9)
+  if (bilanKo && pisuOk) {
+    alexSheet.getRange(alexRow, 9).setValue(true);
+  } else {
+    if (alexSheet.getRange(alexRow, 9).getValue() === true) {
+      alexSheet.getRange(alexRow, 9).setValue(false);
     }
   }
 }
