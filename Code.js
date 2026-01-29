@@ -568,7 +568,6 @@ function getIspStats(matriculeInput, dobInput) {
     }
     
     // 2. Parcourir APP Alex pour les erreurs graves (L cochée)
-    const shAlex = ss.getSheetByName("APP Alex");
     if(shAlex) {
         const data = shAlex.getDataRange().getValues();
         for(let i=1; i<data.length; i++) {
