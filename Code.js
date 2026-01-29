@@ -509,6 +509,7 @@ function getIspStats(matriculeInput, dobInput) {
     const okBilanList = [], okPisuList = []; // Listes séparées pour Bilan OK et Pisu OK
     const okById = {}; // Map pour les corrections (H ET I de APP Alex)
     let bilanOkCount = 0, pisuOkCount = 0;
+    const appDataRef = {}; // Map pour référencer les données de APP par ID
     
     // 1. Parcourir APP pour compter les Bilan OK et Pisu OK séparément
     if(shApp) {
@@ -531,6 +532,9 @@ function getIspStats(matriculeInput, dobInput) {
                 const engin = String(data[i][C_APP_ENGIN]||"").trim();
                 const date = formatDateHeureFR_(data[i][C_APP_DATE]);
                 const status = (cis === "SD SSSM") ? "De Garde" : "Astreinte / Dispo";
+                
+                // Stocker dans appDataRef pour utilisation dans APP Alex
+                appDataRef[id] = { motif, cis, engin, date, status };
                 
                 const tags = alexTags[id] || {};
                 
