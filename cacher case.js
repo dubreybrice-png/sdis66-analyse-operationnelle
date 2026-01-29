@@ -274,7 +274,6 @@ function validateAppAlexCheckboxes(e) {
   if (hasH && hasJ) {
     // Erreur: on ne peut pas cocher à la fois H et J
     sheet.getRange(row, 10).setValue(false); // Décocher J
-    SpreadsheetApp.getActive().beep(); // Bip sonore
     SpreadsheetApp.getUi().alert(
       "⚠️ ERREUR\n\nVous ne pouvez pas cocher à la fois:\n" +
       "• H (Bilan finalement OK)\n" +
@@ -288,7 +287,6 @@ function validateAppAlexCheckboxes(e) {
   if (hasI && hasK) {
     // Erreur: on ne peut pas cocher à la fois I et K
     sheet.getRange(row, 11).setValue(false); // Décocher K
-    SpreadsheetApp.getActive().beep(); // Bip sonore
     SpreadsheetApp.getUi().alert(
       "⚠️ ERREUR\n\nVous ne pouvez pas cocher à la fois:\n" +
       "• I (Pisu finalement OK)\n" +
