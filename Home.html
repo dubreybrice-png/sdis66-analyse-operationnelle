@@ -989,21 +989,33 @@
         const mat = document.getElementById("matInput").value;
         if(!mat) { toast("Matricule requis"); return; }
         
-        // Faire un appel à getIspDetailsAdmin pour avoir les données complètes avec date, engin, etc.
-        google.script.run.withSuccessHandler(fullList => {
-            let list = [];
-            let filterValue = "";
+        // Si les données sont déjà chargées et le modal est visible, juste mettre à jour les checkboxes
+        if(document.getElementById("modalList").style.display === "flex" && currentDetailList && currentDetailList.length > 0) {
+            const typeMap = {
+                'Bilan': 'Bilan OK',
+                'Pisu': 'Pisu OK',
+                'BilanLeg': 'Erreur Bilan Légère',
+                'PisuLeg': 'Erreur Pisu Légère',
+                'Grave': 'Erreur Grave'
+            };
+            const filterValue = typeMap[type] || "";
             
-            if(type==='Bilan') { list = fullList.filter(x => x.types.includes("Bilan OK")); filterValue = "Bilan OK"; }
-            else if(type==='Pisu') { list = fullList.filter(x => x.types.includes("Pisu OK")); filterValue = "Pisu OK"; }
-            else if(type==='BilanLeg') { list = fullList.filter(x => x.types.includes("Erreur Bilan Légère")); filterValue = "Erreur Bilan Légère"; }
-            else if(type==='PisuLeg') { list = fullList.filter(x => x.types.includes("Erreur Pisu Légère")); filterValue = "Erreur Pisu Légère"; }
-            else if(type==='Grave') { list = fullList.filter(x => x.types.includes("Erreur Grave")); filterValue = "Erreur Grave"; }
-            
-            // Remplir currentDetailList et initialiser les checkboxes
-            currentDetailList = list;
+            // Cocher seulement le type cliqué, sinon tous les autres
             document.querySelectorAll('#filterBox input[type="checkbox"]').forEach(cb => {
                 cb.checked = cb.value === filterValue;
+            });
+            filterDetails();
+            return; // Pas besoin de recharger les données
+        }
+        
+        // Premier chargement: charger TOUTES les données
+        google.script.run.withSuccessHandler(fullList => {
+            // Stocker toutes les données en mémoire pour filtrage côté client
+            currentDetailList = fullList;
+            
+            // Initialiser tous les checkboxes à coché
+            document.querySelectorAll('#filterBox input[type="checkbox"]').forEach(cb => {
+                cb.checked = true;
             });
             
             document.getElementById("modalListTitle").textContent = `Dossiers de ${window_currentIspData.nom}`;
