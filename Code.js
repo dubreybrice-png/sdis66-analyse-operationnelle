@@ -1,7 +1,7 @@
 /****************************************************
  * SDIS 66 - SDS | WebApp Dashboard
  * CACHE SÉQUENTIEL + FIXES + LOCK SYSTEM + ANTI-DOUBLE-COUNT
- * Version: v1.45 | 2026-01-30
+ * Version: v1.46 | 2026-01-30
  ****************************************************/
 
 const DASHBOARD_SHEET_NAME = "Dashboard";
@@ -44,6 +44,12 @@ const C_PROTO_START = 22;  // V = 22 (0-indexed)
 const C_PROTO_END = 49;    // AW = 49 (0-indexed)
 const C_BG_EXAM = 58; 
 const C_BH_ABS = 59;  
+const C_AKIM = 49;         // AX (0-indexed = 49, Google = 50)
+const C_SMUR = 50;         // AY (0-indexed = 50, Google = 51)
+const C_CCMU = 51;         // AZ (0-indexed = 51, Google = 52)
+const C_DEVENIR = 52;      // BA (0-indexed = 52, Google = 53)
+const C_SOUSAN = 53;       // BB (0-indexed = 53, Google = 54)
+const C_NBVICTIMES = 54;   // BC (0-indexed = 54, Google = 55)
 const C_BILAN_OK = 60; 
 const C_BILAN_KO = 61; 
 const C_PISU_OK = 62;  
@@ -1076,12 +1082,12 @@ function saveCase(form) {
     });
     
     // Critères
-    shApp.getRange(row, 50).setValue(form.criteres.ax);
-    shApp.getRange(row, 51).setValue(form.criteres.ay);
-    shApp.getRange(row, 52).setValue(form.criteres.az);
-    shApp.getRange(row, 53).setValue(form.criteres.ba);
-    shApp.getRange(row, 54).setValue(form.criteres.bb);
-    shApp.getRange(row, 55).setValue(form.criteres.bc);
+    shApp.getRange(row, C_AKIM + 1).setValue(form.criteres.ax);
+    shApp.getRange(row, C_SMUR + 1).setValue(form.criteres.ay);
+    shApp.getRange(row, C_CCMU + 1).setValue(form.criteres.az);
+    shApp.getRange(row, C_DEVENIR + 1).setValue(form.criteres.ba);
+    shApp.getRange(row, C_SOUSAN + 1).setValue(form.criteres.bb);
+    shApp.getRange(row, C_NBVICTIMES + 1).setValue(form.criteres.bc);
     
     // Résultats
     shApp.getRange(row, C_BG_EXAM + 1).setValue(form.resultats.bg);

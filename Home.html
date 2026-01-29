@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Version: v1.45 | 2026-01-30 -->
+<!-- Version: v1.46 | 2026-01-30 -->
 <html>
 <head>
   <base target="_top">
@@ -979,16 +979,19 @@
          pbTxt: document.getElementById("pbTxt").value
       };
 
-      google.script.run.withSuccessHandler(()=>{ 
+      console.log("Sending saveCase payload:", payload);
+      google.script.run.withSuccessHandler((res)=>{ 
+          console.log("saveCase success:", res);
           isAppSubmitting = false;
           setStatus("Sauvegardé"); 
           toast("Enregistré et Clôturé ✅"); 
           loadNext(); 
       })
       .withFailureHandler(e=>{ 
+          console.error("saveCase error:", e);
           isAppSubmitting = false;
           setStatus("Erreur"); 
-          toast(e.message,"err"); 
+          toast("Erreur: " + e.message,"err"); 
           setButtons(false); 
       }).saveCase(payload);
     }
