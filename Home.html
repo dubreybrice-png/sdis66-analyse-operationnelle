@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Version: v1.49 | 2026-01-30 -->
+<!-- Version: v1.50 | 2026-01-30 -->
 <html>
 <head>
   <base target="_top">
@@ -61,6 +61,7 @@
     .badgeBtn.red { background:var(--red); color:#fff; }
 
     .main{ padding:25px; overflow-y:auto; height:100vh; }
+    .main:has(#viewChefferie.active) { padding:0; overflow:hidden; }
     .view { display:none; animation:fadeIn 0.3s; }
     .view.active { display:block; }
     #viewChefferie.active { display:flex !important; flex-direction:column; height:100vh; overflow:hidden; background:var(--bg); }
