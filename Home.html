@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Version: v1.48 | 2026-01-30 -->
+<!-- Version: v1.49 | 2026-01-30 -->
 <html>
 <head>
   <base target="_top">
@@ -239,7 +239,7 @@
       <div class="sideBtns">
         <button class="sideBtn primary" id="btnAppAccess" onclick="openAppView()"><span>Accès APP</span><span class="badgeBtn" id="cntAppBadge">...</span></button>
         <button class="sideBtn" onclick="askPass('chef')"><span>Accès chefferie ISP</span><span style="display:flex;align-items:center;gap:4px;"><span class="badgeBtn" id="cntIspGBadge">...</span><span style="color:var(--muted);">/</span><span class="badgeBtn red" id="cntIspRBadge">...</span></span></button>
-        <button class="sideBtn" onclick="askPass('med')"><span>Accès médecin cheffe</span><span class="badgeBtn" id="cntMedBadge">...</span></button>
+        <button class="sideBtn" onclick="askPass('med')"><span>Analyse médecin cheffe</span><span class="badgeBtn" id="cntMedBadge">...</span></button>
       </div>
     </aside>
 
@@ -1207,6 +1207,16 @@
         }
     }
     
+    function loadChefferieCounts() {
+        google.script.run.withSuccessHandler(res => {
+            if(res && res.valid) {
+                setText("cntIspGBadge", res.isp||0);
+                setText("cntIspRBadge", res.med||0);
+                setText("cntMedBadge", res.med||0);
+            }
+        }).getChefferieCounts();
+    }
+    
     function loadAppChefferie() {
         const div = document.getElementById('chefAppContent');
         div.innerHTML = '<div style="text-align:center;padding:40px;color:gray;">Chargement...</div>';
@@ -1254,7 +1264,7 @@
                     </div>` : ''}
                     
                     ${info.pisuKo ? `<div class="panel" style="margin-top:15px;">
-                        <div class="panelHead">Motif Pisu Pas OK (lecture seule)</div>
+                        <div class="panelHead">Motif Pisu Incomplet (lecture seule)</div>
                         <div class="panelBody">
                             <div style="background:rgba(255,255,255,0.05); padding:10px; border-radius:6px; font-size:12px;">${info.motifPisu || 'Aucun motif renseigné'}</div>
                         </div>
@@ -1317,6 +1327,7 @@
         
         google.script.run.withSuccessHandler(() => {
             toast("Fiche clôturée ✅");
+            loadChefferieCounts(); // Mettre à jour les badges
             loadAppChefferie(); // Charger la suivante
         }).withFailureHandler(e => {
             toast("Erreur: " + e.message, "err");
@@ -1404,6 +1415,7 @@
         
         google.script.run.withSuccessHandler(() => {
             toast("Analyse enregistrée ✅");
+            loadChefferieCounts(); // Mettre à jour les badges
             loadMedecinChef(); // Charger la suivante
         }).withFailureHandler(e => {
             toast("Erreur: " + e.message, "err");
@@ -1483,11 +1495,11 @@
     let globalList = [], currentDetailList = [], currentDetailIspName = "";
     let sortDir = 1;
     function loadGlobalList() {
-        document.getElementById("chefFormArea").style.display="none";
-        document.getElementById("globalListArea").style.display="block";
-        startLoad();
+        const tbody = document.getElementById("globalTbody");
+        if(!tbody) return;
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:30px;color:gray;">Chargement...</td></tr>';
+        
         google.script.run.withSuccessHandler(res => {
-            stopLoad();
             globalList = res;
             renderGlobalTable(res);
         }).getAllIspErrorStats();
