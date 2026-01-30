@@ -1,7 +1,7 @@
 /****************************************************
  * SDIS 66 - SDS | WebApp Dashboard
  * CACHE SÉQUENTIEL + FIXES + LOCK SYSTEM + ANTI-DOUBLE-COUNT
- * Version: v1.47 | 2026-01-30
+ * Version: v1.48 | 2026-01-30
  ****************************************************/
 
 const DASHBOARD_SHEET_NAME = "Dashboard";
@@ -868,6 +868,216 @@ function saveChefferie(form) {
     }
     return { success: true };
 }
+
+// === NOUVELLE INTERFACE CHEFFERIE ===
+
+/**
+ * Mode 1: APP Chefferie - Fiches avec BJ=1 (Bilan Incomplet) OU BL=1 (Pisu pas OK) dans APP
+ */
+function getNextAppChefferie() {
+    const ss = getSS_();
+    const shApp = ss.getSheetByName(APP_SHEET_NAME);
+    const shAlex = ss.getSheetByName("APP Alex");
+    const dataApp = shApp.getDataRange().getValues();
+    const dataAlex = shAlex ? shAlex.getDataRange().getValues() : [];
+    
+    for(let i=1; i<dataApp.length; i++) {
+        const bilanKo = isCheckboxChecked(dataApp[i][C_BILAN_KO]);
+        const pisuKo = isCheckboxChecked(dataApp[i][C_PISU_KO]);
+        const isClosed = isCheckboxChecked(dataApp[i][C_BP_CLOSE]);
+        
+        if((bilanKo || pisuKo) && !isClosed) {
+            const id = String(dataApp[i][C_APP_ID]).trim();
+            
+            // Chercher dans APP Alex si déjà traité
+            let alexRow = -1;
+            let alexData = null;
+            for(let j=1; j<dataAlex.length; j++) {
+                if(String(dataAlex[j][0]).trim() === id) {
+                    alexRow = j;
+                    alexData = dataAlex[j];
+                    break;
+                }
+            }
+            
+            // Si clôturé dans APP Alex (colonne N), passer au suivant
+            if(alexData && isCheckboxChecked(alexData[13])) continue;
+            
+            const cis = String(dataApp[i][C_APP_CIS]||"").trim();
+            const status = (cis === "SD SSSM") ? "De Garde" : "Astreinte / Dispo";
+            
+            return {
+                found: true,
+                rowApp: i+1,
+                rowAlex: alexRow + 1,
+                info: {
+                    interId: id,
+                    date: formatDateHeureFR_(dataApp[i][C_APP_DATE]),
+                    infName: dataApp[i][C_APP_NOM],
+                    motif: dataApp[i][C_APP_MOTIF],
+                    engin: String(dataApp[i][C_APP_ENGIN]||"").trim(),
+                    pdf: dataApp[i][C_APP_PDF],
+                    status: status,
+                    motifBilan: dataApp[i][C_TXTBILAN_KO] || "",
+                    motifPisu: dataApp[i][C_TXTPISU_KO] || "",
+                    bilanKo: bilanKo,
+                    pisuKo: pisuKo
+                },
+                checks: {
+                    H: alexData ? isCheckboxChecked(alexData[7]) : false,
+                    I: alexData ? isCheckboxChecked(alexData[8]) : false,
+                    J: alexData ? isCheckboxChecked(alexData[9]) : false,
+                    K: alexData ? isCheckboxChecked(alexData[10]) : false,
+                    L: alexData ? isCheckboxChecked(alexData[11]) : false
+                },
+                commentChef: alexData ? (alexData[12] || "") : ""
+            };
+        }
+    }
+    
+    return { found: false, message: "Aucune fiche à traiter" };
+}
+
+/**
+ * Mode 2: Analyse Médecin Cheffe - Fiches avec L=1 (Erreur Grave) dans APP Alex
+ */
+function getNextMedecinChef() {
+    const ss = getSS_();
+    const shAlex = ss.getSheetByName("APP Alex");
+    const shApp = ss.getSheetByName(APP_SHEET_NAME);
+    const shEve = ss.getSheetByName("APP Eve");
+    const dataAlex = shAlex.getDataRange().getValues();
+    const dataApp = shApp.getDataRange().getValues();
+    const dataEve = shEve ? shEve.getDataRange().getValues() : [];
+    
+    for(let i=1; i<dataAlex.length; i++) {
+        const hasL = isCheckboxChecked(dataAlex[i][11]); // L = Erreur Grave
+        if(!hasL) continue;
+        
+        const id = String(dataAlex[i][0]).trim();
+        
+        // Vérifier si déjà traité dans APP Eve (colonnes O=14 analyse OU Q=16 action)
+        let alreadyDone = false;
+        for(let j=1; j<dataEve.length; j++) {
+            if(String(dataEve[j][0]).trim() === id && (dataEve[j][14] || dataEve[j][16])) {
+                alreadyDone = true;
+                break;
+            }
+        }
+        if(alreadyDone) continue;
+        
+        // Chercher infos dans APP
+        let appRow = -1;
+        for(let j=1; j<dataApp.length; j++) {
+            if(String(dataApp[j][C_APP_ID]).trim() === id) {
+                appRow = j;
+                break;
+            }
+        }
+        
+        const appInfo = appRow >= 0 ? dataApp[appRow] : null;
+        const cis = appInfo ? String(appInfo[C_APP_CIS]||"").trim() : "";
+        const status = (cis === "SD SSSM") ? "De Garde" : "Astreinte / Dispo";
+        
+        return {
+            found: true,
+            rowAlex: i+1,
+            info: {
+                interId: id,
+                date: appInfo ? formatDateHeureFR_(appInfo[C_APP_DATE]) : "",
+                infName: appInfo ? appInfo[C_APP_NOM] : dataAlex[i][4],
+                motif: appInfo ? appInfo[C_APP_MOTIF] : "",
+                engin: appInfo ? String(appInfo[C_APP_ENGIN]||"").trim() : "",
+                pdf: appInfo ? appInfo[C_APP_PDF] : dataAlex[i][2],
+                status: status,
+                commentChef: dataAlex[i][12] || ""
+            }
+        };
+    }
+    
+    return { found: false, message: "Aucune fiche grave à analyser" };
+}
+
+/**
+ * Sauvegarder APP Chefferie
+ */
+function saveAppChefferie(form) {
+    try {
+        const ss = getSS_();
+        const shAlex = ss.getSheetByName("APP Alex");
+        
+        let row = form.rowAlex;
+        
+        // Si pas de ligne APP Alex, créer une nouvelle
+        if(row <= 0) {
+            const dataAlex = shAlex.getDataRange().getValues();
+            row = dataAlex.length + 1;
+            shAlex.getRange(row, 1).setValue(form.interId);
+        }
+        
+        // Sauvegarder les checkboxes H, I, J, K, L
+        shAlex.getRange(row, 8).setValue(form.checks.H ? true : false);  // H
+        shAlex.getRange(row, 9).setValue(form.checks.I ? true : false);  // I
+        shAlex.getRange(row, 10).setValue(form.checks.J ? true : false); // J
+        shAlex.getRange(row, 11).setValue(form.checks.K ? true : false); // K
+        shAlex.getRange(row, 12).setValue(form.checks.L ? true : false); // L
+        
+        // Commentaire chefferie (colonne M = 13)
+        shAlex.getRange(row, 13).setValue(form.commentChef || "");
+        
+        // Clôturer (colonne N = 14)
+        shAlex.getRange(row, 14).setValue(true);
+        
+        // Clear cache
+        CacheService.getScriptCache().remove("chefferie_counts");
+        
+        return { success: true };
+    } catch(e) {
+        Logger.log("saveAppChefferie error: " + e.toString());
+        return { success: false, error: e.toString() };
+    }
+}
+
+/**
+ * Sauvegarder Analyse Médecin
+ */
+function saveMedecinAnalyse(form) {
+    try {
+        const ss = getSS_();
+        const shEve = ss.getSheetByName("APP Eve");
+        
+        // Chercher la ligne avec cet ID
+        const dataEve = shEve.getDataRange().getValues();
+        let row = -1;
+        for(let i=1; i<dataEve.length; i++) {
+            if(String(dataEve[i][0]).trim() === form.interId) {
+                row = i+1;
+                break;
+            }
+        }
+        
+        // Si pas trouvé, créer nouvelle ligne
+        if(row === -1) {
+            row = dataEve.length + 1;
+            shEve.getRange(row, 1).setValue(form.interId);
+        }
+        
+        // Analyse Médecin (colonne O = 15)
+        shEve.getRange(row, 15).setValue(form.analyse || "");
+        
+        // Action Requise (colonne Q = 17)
+        shEve.getRange(row, 17).setValue(form.action || "");
+        
+        // Clear cache
+        CacheService.getScriptCache().remove("chefferie_counts");
+        
+        return { success: true };
+    } catch(e) {
+        Logger.log("saveMedecinAnalyse error: " + e.toString());
+        return { success: false, error: e.toString() };
+    }
+}
+
 
 /* --- APP PAGE --- */
 function getNextCase(specificRow) {

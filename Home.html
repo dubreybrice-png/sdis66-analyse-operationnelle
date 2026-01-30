@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Version: v1.47 | 2026-01-30 -->
+<!-- Version: v1.48 | 2026-01-30 -->
 <html>
 <head>
   <base target="_top">
@@ -380,51 +380,62 @@
         </div>
       </div>
 
+      <!-- NOUVELLE INTERFACE CHEFFERIE -->
       <div id="viewChefferie" class="view">
-          <div class="topbar" style="flex-shrink:0; border-bottom:1px solid var(--border); padding:10px 15px;">
-              <button class="btnGo" style="width:auto;margin:0" onclick="goHome()">← Retour Dashboard</button>
-              <h1 style="display:inline-block;margin-left:15px;font-size:16px;">Espace Chefferie ISP</h1>
+          <!-- Header fixe -->
+          <div style="background:var(--bg); border-bottom:2px solid var(--border); padding:12px 20px;">
+              <button class="btnGo" style="width:auto;padding:8px 16px;" onclick="goHome()">← Retour Dashboard</button>
+              <h1 style="display:inline;margin-left:20px;font-size:18px;font-weight:800;">Espace Chefferie ISP</h1>
           </div>
           
-          <div style="flex-shrink:0; border-bottom:1px solid var(--border); padding:10px 15px; display:flex; gap:10px; flex-wrap:wrap;">
-              <button class="c-btn" style="flex:1; min-width:200px;" onclick="loadChefCase('app_isp');hideGlobal()">
-                  <h3 style="margin:0 0 4px 0; font-size:13px;">Faire APP Chefferie <span class="badgeBtn" id="btnBadgeIspG">0</span></h3>
-                  <p style="margin:0; font-size:10px;">Côter les BPV après passage ISP d'analyse</p>
+          <!-- 3 Boutons TOUJOURS EN HAUT -->
+          <div style="background:rgba(11,15,31,0.98); border-bottom:1px solid var(--border); padding:15px 20px; display:flex; gap:12px; position:sticky; top:0; z-index:100;">
+              <button class="c-btn" style="flex:1;" onclick="showChefferieMode('app')">
+                  <h3 style="margin:0 0 4px 0; font-size:14px;">📋 Faire APP Chefferie</h3>
+                  <p style="margin:0; font-size:11px; opacity:0.8;">Fiches Bilan/Pisu incomplets</p>
               </button>
-              <button class="c-btn" style="flex:1; min-width:200px;" onclick="loadChefCase('med_chef');hideGlobal()">
-                  <h3 style="margin:0 0 4px 0; font-size:13px;">Analyse médecin cheffe <span class="badgeBtn red" id="btnBadgeIspR">0</span></h3>
-                  <p style="margin:0; font-size:10px;">Analyser les erreurs graves et proposer des actions</p>
+              <button class="c-btn" style="flex:1;" onclick="showChefferieMode('med')">
+                  <h3 style="margin:0 0 4px 0; font-size:14px;">⚠️ Analyse Médecin Cheffe</h3>
+                  <p style="margin:0; font-size:11px; opacity:0.8;">Erreurs graves</p>
               </button>
-              <button class="c-btn" style="flex:1; min-width:200px;" onclick="loadGlobalList()">
-                  <h3 style="margin:0 0 4px 0; font-size:13px;">Voir données APP</h3>
-                  <p style="margin:0; font-size:10px;">Voir le récap' des résultats et les BPV de chaque ISP</p>
+              <button class="c-btn" style="flex:1;" onclick="showChefferieMode('data')">
+                  <h3 style="margin:0 0 4px 0; font-size:14px;">📊 Voir Données APP</h3>
+                  <p style="margin:0; font-size:11px; opacity:0.8;">Tous les ISP</p>
               </button>
           </div>
-
-          <div style="overflow-y:auto; flex:1; padding:15px;">
-              <div id="chefFormArea" style="display:block;"></div>
+          
+          <!-- Zone de contenu -->
+          <div style="flex:1; overflow-y:auto; padding:20px;">
+              <!-- Mode APP Chefferie -->
+              <div id="chefModeApp" style="display:none;">
+                  <div id="chefAppContent"></div>
+              </div>
               
-              <div id="globalListArea" style="display:none;">
+              <!-- Mode Médecin -->
+              <div id="chefModeMed" style="display:none;">
+                  <div id="chefMedContent"></div>
+              </div>
+              
+              <!-- Mode Data -->
+              <div id="chefModeData" style="display:none;">
                   <div class="panel">
-                      <div class="panelBody" style="max-height:none;overflow:visible;">
-                          <div style="display:flex;gap:15px;align-items:center;padding:10px;background:rgba(255,255,255,0.05);margin-bottom:10px;border-radius:8px;font-size:11px;">
-                              <div style="flex:0 0 auto;">Cliquez sur un ISP pour voir ses fiches.</div>
-                              <button class="btnGo" style="width:auto;padding:6px 12px;font-size:11px;" onclick="loadAllGraveErrors()">Voir toutes les fiches</button>
-                          </div>
-                          <table id="globalTable">
+                      <div class="panelHead">Récapitulatif par ISP</div>
+                      <div class="panelBody">
+                          <table id="globalTable" style="width:100%;">
                               <thead><tr>
-                                  <th onclick="sortGlobal(0)">Nom ISP <span id="sortIcon0">↕</span></th>
-                                  <th onclick="sortGlobal(1)">Bilan OK <span id="sortIcon1">↕</span></th>
-                                  <th onclick="sortGlobal(2)">Pisu OK <span id="sortIcon2">↕</span></th>
-                                  <th onclick="sortGlobal(3)">Erreur Bilan Lég. <span id="sortIcon3">↕</span></th>
-                                  <th onclick="sortGlobal(4)">Erreur Pisu Lég. <span id="sortIcon4">↕</span></th>
-                                  <th onclick="sortGlobal(5)">Erreur Grave <span id="sortIcon5">↕</span></th>
+                                  <th>Nom ISP</th>
+                                  <th>Bilan OK</th>
+                                  <th>Pisu OK</th>
+                                  <th>Err. Bilan Lég.</th>
+                                  <th>Err. Pisu Lég.</th>
+                                  <th>Err. Grave</th>
                               </tr></thead>
                               <tbody id="globalTbody"></tbody>
                           </table>
                       </div>
                   </div>
               </div>
+          </div>
       </div>
 
       <div id="viewMedecin" class="view">
@@ -1175,7 +1186,232 @@
         });
     }
 
-    // CHEFFERIE
+    // === NOUVELLE INTERFACE CHEFFERIE ===
+    let currentChefData = null;
+    
+    function showChefferieMode(mode) {
+        // Masquer tous les modes
+        document.getElementById('chefModeApp').style.display = 'none';
+        document.getElementById('chefModeMed').style.display = 'none';
+        document.getElementById('chefModeData').style.display = 'none';
+        
+        if(mode === 'app') {
+            document.getElementById('chefModeApp').style.display = 'block';
+            loadAppChefferie();
+        } else if(mode === 'med') {
+            document.getElementById('chefModeMed').style.display = 'block';
+            loadMedecinChef();
+        } else if(mode === 'data') {
+            document.getElementById('chefModeData').style.display = 'block';
+            loadGlobalList();
+        }
+    }
+    
+    function loadAppChefferie() {
+        const div = document.getElementById('chefAppContent');
+        div.innerHTML = '<div style="text-align:center;padding:40px;color:gray;">Chargement...</div>';
+        
+        google.script.run.withSuccessHandler(res => {
+            if(!res.found) {
+                div.innerHTML = `<div style="text-align:center;padding:40px;color:var(--accent3);">${res.message}</div>`;
+                return;
+            }
+            currentChefData = res;
+            renderAppChefferie(res);
+        }).getNextAppChefferie();
+    }
+    
+    function renderAppChefferie(data) {
+        const div = document.getElementById('chefAppContent');
+        const info = data.info;
+        
+        div.innerHTML = `
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; height:calc(100vh - 200px);">
+                <!-- PDF à gauche -->
+                <div style="border:1px solid var(--border); border-radius:12px; overflow:hidden;">
+                    <iframe src="${info.pdf}" style="width:100%; height:100%; border:none;"></iframe>
+                </div>
+                
+                <!-- Formulaire à droite -->
+                <div style="overflow-y:auto; padding:15px;">
+                    <div class="panel">
+                        <div class="panelHead">Fiche Intervention</div>
+                        <div class="panelBody">
+                            <div style="margin-bottom:10px;"><strong>ID:</strong> ${info.interId}</div>
+                            <div style="margin-bottom:10px;"><strong>Date:</strong> ${info.date}</div>
+                            <div style="margin-bottom:10px;"><strong>ISP:</strong> ${info.infName}</div>
+                            <div style="margin-bottom:10px;"><strong>Statut:</strong> ${info.status}</div>
+                            <div style="margin-bottom:10px;"><strong>Motif:</strong> ${info.motif}</div>
+                            <div style="margin-bottom:10px;"><strong>Engin:</strong> ${info.engin}</div>
+                        </div>
+                    </div>
+                    
+                    ${info.bilanKo ? `<div class="panel" style="margin-top:15px;">
+                        <div class="panelHead">Motif Bilan Incomplet (lecture seule)</div>
+                        <div class="panelBody">
+                            <div style="background:rgba(255,255,255,0.05); padding:10px; border-radius:6px; font-size:12px;">${info.motifBilan || 'Aucun motif renseigné'}</div>
+                        </div>
+                    </div>` : ''}
+                    
+                    ${info.pisuKo ? `<div class="panel" style="margin-top:15px;">
+                        <div class="panelHead">Motif Pisu Pas OK (lecture seule)</div>
+                        <div class="panelBody">
+                            <div style="background:rgba(255,255,255,0.05); padding:10px; border-radius:6px; font-size:12px;">${info.motifPisu || 'Aucun motif renseigné'}</div>
+                        </div>
+                    </div>` : ''}
+                    
+                    <div class="panel" style="margin-top:15px;">
+                        <div class="panelHead">Côter la fiche</div>
+                        <div class="panelBody">
+                            <label class="cb" style="background:rgba(71,209,140,.1); border-color:rgba(71,209,140,.3); margin-bottom:8px;">
+                                <input type="checkbox" id="chkH" ${data.checks.H?'checked':''}>
+                                <span style="color:var(--ok);">✓ Passer Bilan en OK</span>
+                            </label>
+                            <label class="cb" style="background:rgba(71,209,140,.1); border-color:rgba(71,209,140,.3); margin-bottom:8px;">
+                                <input type="checkbox" id="chkI" ${data.checks.I?'checked':''}>
+                                <span style="color:var(--ok);">✓ Passer Pisu en OK</span>
+                            </label>
+                            <label class="cb" style="background:rgba(255,165,0,.1); border-color:rgba(255,165,0,.3); margin-bottom:8px;">
+                                <input type="checkbox" id="chkJ" ${data.checks.J?'checked':''}>
+                                <span style="color:orange;">⚠ Erreur Bilan Légère</span>
+                            </label>
+                            <label class="cb" style="background:rgba(255,165,0,.1); border-color:rgba(255,165,0,.3); margin-bottom:8px;">
+                                <input type="checkbox" id="chkK" ${data.checks.K?'checked':''}>
+                                <span style="color:orange;">⚠ Erreur Pisu Légère</span>
+                            </label>
+                            <label class="cb" style="background:rgba(255,107,107,.1); border-color:rgba(255,107,107,.3); margin-bottom:8px;">
+                                <input type="checkbox" id="chkL" ${data.checks.L?'checked':''}>
+                                <span style="color:var(--danger);">🚨 Erreur Grave</span>
+                            </label>
+                            
+                            <div style="margin-top:15px;">
+                                <label style="display:block; margin-bottom:5px; font-size:11px; font-weight:bold;">Commentaire Chefferie</label>
+                                <textarea id="txtCommentChef" style="width:100%; min-height:80px;">${data.commentChef}</textarea>
+                            </div>
+                            
+                            <div style="margin-top:20px; display:flex; gap:10px;">
+                                <button class="btn ok" style="flex:1;" onclick="saveAndNextAppChef()">💾 Clôturer et Suivant</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    function saveAndNextAppChef() {
+        const form = {
+            interId: currentChefData.info.interId,
+            rowAlex: currentChefData.rowAlex,
+            checks: {
+                H: document.getElementById('chkH').checked,
+                I: document.getElementById('chkI').checked,
+                J: document.getElementById('chkJ').checked,
+                K: document.getElementById('chkK').checked,
+                L: document.getElementById('chkL').checked
+            },
+            commentChef: document.getElementById('txtCommentChef').value
+        };
+        
+        document.getElementById('chefAppContent').innerHTML = '<div style="text-align:center;padding:40px;">Enregistrement...</div>';
+        
+        google.script.run.withSuccessHandler(() => {
+            toast("Fiche clôturée ✅");
+            loadAppChefferie(); // Charger la suivante
+        }).withFailureHandler(e => {
+            toast("Erreur: " + e.message, "err");
+            loadAppChefferie();
+        }).saveAppChefferie(form);
+    }
+    
+    function loadMedecinChef() {
+        const div = document.getElementById('chefMedContent');
+        div.innerHTML = '<div style="text-align:center;padding:40px;color:gray;">Chargement...</div>';
+        
+        google.script.run.withSuccessHandler(res => {
+            if(!res.found) {
+                div.innerHTML = `<div style="text-align:center;padding:40px;color:var(--accent3);">${res.message}</div>`;
+                return;
+            }
+            currentChefData = res;
+            renderMedecinChef(res);
+        }).getNextMedecinChef();
+    }
+    
+    function renderMedecinChef(data) {
+        const div = document.getElementById('chefMedContent');
+        const info = data.info;
+        
+        div.innerHTML = `
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; height:calc(100vh - 200px);">
+                <!-- PDF à gauche -->
+                <div style="border:1px solid var(--border); border-radius:12px; overflow:hidden;">
+                    <iframe src="${info.pdf}" style="width:100%; height:100%; border:none;"></iframe>
+                </div>
+                
+                <!-- Formulaire à droite -->
+                <div style="overflow-y:auto; padding:15px;">
+                    <div class="panel">
+                        <div class="panelHead" style="background:rgba(255,107,107,.2);">⚠️ Erreur Grave</div>
+                        <div class="panelBody">
+                            <div style="margin-bottom:10px;"><strong>ID:</strong> ${info.interId}</div>
+                            <div style="margin-bottom:10px;"><strong>Date:</strong> ${info.date}</div>
+                            <div style="margin-bottom:10px;"><strong>ISP:</strong> ${info.infName}</div>
+                            <div style="margin-bottom:10px;"><strong>Statut:</strong> ${info.status}</div>
+                            <div style="margin-bottom:10px;"><strong>Motif:</strong> ${info.motif}</div>
+                            <div style="margin-bottom:10px;"><strong>Engin:</strong> ${info.engin}</div>
+                        </div>
+                    </div>
+                    
+                    ${info.commentChef ? `<div class="panel" style="margin-top:15px;">
+                        <div class="panelHead">Commentaire Chefferie</div>
+                        <div class="panelBody">
+                            <div style="background:rgba(255,255,255,0.05); padding:10px; border-radius:6px; font-size:12px;">${info.commentChef}</div>
+                        </div>
+                    </div>` : ''}
+                    
+                    <div class="panel" style="margin-top:15px;">
+                        <div class="panelHead">Analyse Médecin Cheffe</div>
+                        <div class="panelBody">
+                            <div style="margin-bottom:15px;">
+                                <label style="display:block; margin-bottom:5px; font-size:11px; font-weight:bold;">Analyse</label>
+                                <textarea id="txtAnalyse" style="width:100%; min-height:100px;" placeholder="Votre analyse de l'erreur grave..."></textarea>
+                            </div>
+                            
+                            <div>
+                                <label style="display:block; margin-bottom:5px; font-size:11px; font-weight:bold;">Action Requise</label>
+                                <textarea id="txtAction" style="width:100%; min-height:80px;" placeholder="Actions à mener..."></textarea>
+                            </div>
+                            
+                            <div style="margin-top:20px;">
+                                <button class="btn ok" style="width:100%;" onclick="saveAndNextMedChef()">💾 Enregistrer et Suivant</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    function saveAndNextMedChef() {
+        const form = {
+            interId: currentChefData.info.interId,
+            analyse: document.getElementById('txtAnalyse').value,
+            action: document.getElementById('txtAction').value
+        };
+        
+        document.getElementById('chefMedContent').innerHTML = '<div style="text-align:center;padding:40px;">Enregistrement...</div>';
+        
+        google.script.run.withSuccessHandler(() => {
+            toast("Analyse enregistrée ✅");
+            loadMedecinChef(); // Charger la suivante
+        }).withFailureHandler(e => {
+            toast("Erreur: " + e.message, "err");
+            loadMedecinChef();
+        }).saveMedecinAnalyse(form);
+    }
+
+    // CHEFFERIE (ANCIENNE - à garder pour compatibilité)
     let currentSchema = null;
     function hideGlobal() { document.getElementById("globalListArea").style.display="none"; document.getElementById("chefFormArea").style.display="block"; }
     function loadChefCase(mode) {
