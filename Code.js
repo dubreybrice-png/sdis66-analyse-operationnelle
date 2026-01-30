@@ -1,7 +1,7 @@
 /****************************************************
  * SDIS 66 - SDS | WebApp Dashboard
  * CACHE SÉQUENTIEL + FIXES + LOCK SYSTEM + ANTI-DOUBLE-COUNT
- * Version: v1.46 | 2026-01-30
+ * Version: v1.47 | 2026-01-30
  ****************************************************/
 
 const DASHBOARD_SHEET_NAME = "Dashboard";
@@ -206,79 +206,47 @@ function preCacheAllData() {
     return `${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}:${String(d.getSeconds()).padStart(2,"0")}`;
   }
   
-  // Status initial
-  cache.put("cache_status", `Synthèse: ${getTime()}`, 21600);
   Logger.log("=== DÉBUT MISE EN CACHE SÉQUENTIEL ===");
   
-  // 1. ISP Stats (500ms)
-  setTimeout(() => {
-    try {
-      cache.put("cache_status", `Synthèse: ${getTime()} | Données par ISP: EN COURS`, 21600);
-      getAllIspErrorStats();
-      
-      setTimeout(() => {
-        const endTime = getTime();
-        cache.put("cache_status", `Synthèse: ${getTime()} | Données par ISP: ${endTime}`, 21600);
-        Logger.log("Cache ISP terminé");
-        
-        // 2. Admin Data (2000ms après ISP)
-        setTimeout(() => {
-          try {
-            cache.put("cache_status", `Synthèse: ${getTime()} | Données par ISP: ${endTime} | Administration: EN COURS`, 21600);
-            getAdminData("0007");
-            
-            setTimeout(() => {
-              const adminTime = getTime();
-              cache.put("cache_status", `Synthèse: ${getTime()} | Données par ISP: ${endTime} | Administration: ${adminTime}`, 21600);
-              Logger.log("Cache Admin terminé");
-              
-              // 3. Chefferie Counts (2000ms après Admin)
-              setTimeout(() => {
-                try {
-                  cache.put("cache_status", `Synthèse: ${getTime()} | Données par ISP: ${endTime} | Administration: ${adminTime} | Accès APP: EN COURS`, 21600);
-                  getChefferieCounts();
-                  
-                  setTimeout(() => {
-                    const appTime = getTime();
-                    cache.put("cache_status", `Synthèse: ${getTime()} | Données par ISP: ${endTime} | Administration: ${adminTime} | Accès APP: ${appTime}`, 21600);
-                    Logger.log("Cache APP terminé");
-                    
-                    // 4. Chefferie ISP (2000ms après APP)
-                    setTimeout(() => {
-                      try {
-                        cache.put("cache_status", `Synthèse: ${getTime()} | Données par ISP: ${endTime} | Administration: ${adminTime} | Accès APP: ${appTime} | Accès chefferie ISP: EN COURS`, 21600);
-                        getChefferieNextCase('app_isp');
-                        
-                        setTimeout(() => {
-                          const chefTime = getTime();
-                          cache.put("cache_status", `Synthèse: ${getTime()} | Données par ISP: ${endTime} | Administration: ${adminTime} | Accès APP: ${appTime} | Accès chefferie ISP: ${chefTime}`, 21600);
-                          Logger.log("Cache Chefferie ISP terminé");
-                          
-                          // 5. Médecin Chef (2000ms après Chefferie)
-                          setTimeout(() => {
-                            try {
-                              cache.put("cache_status", `Synthèse: ${getTime()} | Données par ISP: ${endTime} | Administration: ${adminTime} | Accès APP: ${appTime} | Accès chefferie ISP: ${chefTime} | Accès médecin chef: EN COURS`, 21600);
-                              getChefferieNextCase('med_chef');
-                              
-                              setTimeout(() => {
-                                const medTime = getTime();
-                                cache.put("cache_status", `Synthèse: ${getTime()} | Données par ISP: ${endTime} | Administration: ${adminTime} | Accès APP: ${appTime} | Accès chefferie ISP: ${chefTime} | Accès médecin chef: ${medTime}`, 21600);
-                                Logger.log("=== MISE EN CACHE TERMINÉE ===");
-                              }, 500);
-                            } catch(e) { Logger.log("Erreur cache Médecin: " + e); }
-                          }, 2000);
-                        }, 500);
-                      } catch(e) { Logger.log("Erreur cache Chefferie: " + e); }
-                    }, 2000);
-                  }, 500);
-                } catch(e) { Logger.log("Erreur cache APP: " + e); }
-              }, 2000);
-            }, 500);
-          } catch(e) { Logger.log("Erreur cache Admin: " + e); }
-        }, 2000);
-      }, 500);
-    } catch(e) { Logger.log("Erreur cache ISP: " + e); }
-  }, 500);
+  try {
+    // 1. ISP Stats
+    cache.put("cache_status", `Synthèse: ${getTime()} | Données par ISP: EN COURS`, 21600);
+    getAllIspErrorStats();
+    const ispTime = getTime();
+    Logger.log("Cache ISP terminé: " + ispTime);
+    
+    // 2. Admin Data
+    cache.put("cache_status", `Synthèse: ${getTime()} | Données par ISP: ${ispTime} | Administration: EN COURS`, 21600);
+    getAdminData("0007");
+    const adminTime = getTime();
+    Logger.log("Cache Admin terminé: " + adminTime);
+    
+    // 3. Chefferie Counts
+    cache.put("cache_status", `Synthèse: ${getTime()} | Données par ISP: ${ispTime} | Administration: ${adminTime} | Accès APP: EN COURS`, 21600);
+    getChefferieCounts();
+    const appTime = getTime();
+    Logger.log("Cache APP terminé: " + appTime);
+    
+    // 4. Chefferie ISP
+    cache.put("cache_status", `Synthèse: ${getTime()} | Données par ISP: ${ispTime} | Administration: ${adminTime} | Accès APP: ${appTime} | Accès chefferie ISP: EN COURS`, 21600);
+    getChefferieNextCase('app_isp');
+    const chefTime = getTime();
+    Logger.log("Cache Chefferie ISP terminé: " + chefTime);
+    
+    // 5. Médecin Chef
+    cache.put("cache_status", `Synthèse: ${getTime()} | Données par ISP: ${ispTime} | Administration: ${adminTime} | Accès APP: ${appTime} | Accès chefferie ISP: ${chefTime} | Accès médecin chef: EN COURS`, 21600);
+    getChefferieNextCase('med_chef');
+    const medTime = getTime();
+    Logger.log("Cache Médecin Chef terminé: " + medTime);
+    
+    // Statut final
+    cache.put("cache_status", `Synthèse: ${getTime()} | Données par ISP: ${ispTime} | Administration: ${adminTime} | Accès APP: ${appTime} | Accès chefferie ISP: ${chefTime} | Accès médecin chef: ${medTime}`, 21600);
+    Logger.log("=== MISE EN CACHE TERMINÉE ===");
+    
+  } catch(e) {
+    Logger.log("Erreur dans preCacheAllData: " + e.toString());
+    cache.put("cache_status", `Erreur: ${e.toString()}`, 21600);
+  }
 }
 
 function getCacheStatus() {
@@ -1070,50 +1038,56 @@ function saveCase(form) {
         if(!shApp) return { success: false, error: "Sheet not found" };
         
         const row = form.rowNumber;
-    
-    // Sauvegarder les données
-    shApp.getRange(row, C_ISP_ANALYSE + 1).setValue(form.isp);
-    
-    // Protocoles: checks est un objet {colIdx: boolean, colIdx: boolean, ...}
-    Object.keys(form.checks).forEach(colIdxStr => {
-        const colIdx = parseInt(colIdxStr);
-        // colIdx est déjà en 0-indexed (22, 23, ...), ajouter 1 pour Google Sheets
-        shApp.getRange(row, colIdx + 1).setValue(form.checks[colIdxStr] ? true : false);
-    });
-    
-    // Critères
-    shApp.getRange(row, C_AKIM + 1).setValue(form.criteres.ax);
-    shApp.getRange(row, C_SMUR + 1).setValue(form.criteres.ay);
-    shApp.getRange(row, C_CCMU + 1).setValue(form.criteres.az);
-    shApp.getRange(row, C_DEVENIR + 1).setValue(form.criteres.ba);
-    shApp.getRange(row, C_SOUSAN + 1).setValue(form.criteres.bb);
-    shApp.getRange(row, C_NBVICTIMES + 1).setValue(form.criteres.bc);
-    
-    // Résultats
-    shApp.getRange(row, C_BG_EXAM + 1).setValue(form.resultats.bg);
-    shApp.getRange(row, C_BH_ABS + 1).setValue(form.resultats.bh ? true : false);
-    shApp.getRange(row, C_BILAN_OK + 1).setValue(form.resultats.bi ? true : false);
-    shApp.getRange(row, C_BILAN_KO + 1).setValue(form.resultats.bj ? true : false);
-    shApp.getRange(row, C_PISU_OK + 1).setValue(form.resultats.bk ? true : false);
-    shApp.getRange(row, C_PISU_KO + 1).setValue(form.resultats.bl ? true : false);
-    shApp.getRange(row, C_BM_SURV_TRANSPORT + 1).setValue(form.resultats.bm ? true : false);
-    
-    // Textes
-    shApp.getRange(row, C_TXTBILAN_KO + 1).setValue(form.txtBn);
-    shApp.getRange(row, C_TXTPISU_KO + 1).setValue(form.txtBo);
-    
-    // Clôture
-    shApp.getRange(row, C_BP_CLOSE + 1).setValue(true);
-    
-    // Problème Brice
-    shApp.getRange(row, C_BS_PROBLEM + 1).setValue(form.pbCheck ? true : false);
-    shApp.getRange(row, C_BT_PROBLEM_TXT + 1).setValue(form.pbTxt || "");
-    
-    // Clear cache
-    CacheService.getScriptCache().remove("chefferie_counts");
-    
-    return { success: true };
+        const updates = [];
+        
+        // ISP Analyse
+        updates.push([row, C_ISP_ANALYSE + 1, form.isp]);
+        
+        // Protocoles
+        Object.keys(form.checks).forEach(colIdxStr => {
+            const colIdx = parseInt(colIdxStr);
+            updates.push([row, colIdx + 1, form.checks[colIdxStr] ? true : false]);
+        });
+        
+        // Critères
+        updates.push([row, C_AKIM + 1, form.criteres.ax]);
+        updates.push([row, C_SMUR + 1, form.criteres.ay]);
+        updates.push([row, C_CCMU + 1, form.criteres.az]);
+        updates.push([row, C_DEVENIR + 1, form.criteres.ba]);
+        updates.push([row, C_SOUSAN + 1, form.criteres.bb]);
+        updates.push([row, C_NBVICTIMES + 1, form.criteres.bc]);
+        
+        // Résultats
+        updates.push([row, C_BG_EXAM + 1, form.resultats.bg]);
+        updates.push([row, C_BH_ABS + 1, form.resultats.bh ? true : false]);
+        updates.push([row, C_BILAN_OK + 1, form.resultats.bi ? true : false]);
+        updates.push([row, C_BILAN_KO + 1, form.resultats.bj ? true : false]);
+        updates.push([row, C_PISU_OK + 1, form.resultats.bk ? true : false]);
+        updates.push([row, C_PISU_KO + 1, form.resultats.bl ? true : false]);
+        updates.push([row, C_BM_SURV_TRANSPORT + 1, form.resultats.bm ? true : false]);
+        
+        // Textes
+        updates.push([row, C_TXTBILAN_KO + 1, form.txtBn]);
+        updates.push([row, C_TXTPISU_KO + 1, form.txtBo]);
+        
+        // Clôture
+        updates.push([row, C_BP_CLOSE + 1, true]);
+        
+        // Problème Brice
+        updates.push([row, C_BS_PROBLEM + 1, form.pbCheck ? true : false]);
+        updates.push([row, C_BT_PROBLEM_TXT + 1, form.pbTxt || ""]);
+        
+        // Batch update
+        updates.forEach(u => {
+            shApp.getRange(u[0], u[1]).setValue(u[2]);
+        });
+        
+        // Clear cache
+        CacheService.getScriptCache().remove("chefferie_counts");
+        
+        return { success: true };
     } catch(e) {
+        Logger.log("saveCase error: " + e.toString());
         return { success: false, error: e.toString() };
     }
 }
