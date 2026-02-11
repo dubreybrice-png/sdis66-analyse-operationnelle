@@ -97,15 +97,15 @@ function WorldBuilder.CreateTown()
 	ground.Size = Vector3.new(200, 1, 200)
 	ground.Position = Vector3.new(0, -0.5, 0)
 	ground.Anchored = true
-	ground.BrickColor = BrickColor.new("Slate gray")
-	ground.Material = Enum.Material.Slate
+	ground.BrickColor = BrickColor.new("Dark green")
+	ground.Material = Enum.Material.Grass
 	ground.Parent = town
 	
-	-- Texture de sol
+	-- Texture de sol (herbe detaillee)
 	local texture = Instance.new("Texture")
 	texture.Texture = "rbxasset://textures/terrain/grass.png"
-	texture.StudsPerTileU = 4
-	texture.StudsPerTileV = 4
+	texture.StudsPerTileU = 8
+	texture.StudsPerTileV = 8
 	texture.Face = Enum.NormalId.Top
 	texture.Parent = ground
 	
@@ -115,9 +115,10 @@ function WorldBuilder.CreateTown()
 		local angle = (i / 8) * math.pi * 2
 		local tile = Instance.new("Part")
 		tile.Name = "PlazaSacred" .. i
-		tile.Size = Vector3.new(10, 0.4, 10)
-		tile.Position = Vector3.new(math.cos(angle) * 18, 0.7, math.sin(angle) * 18)
+		tile.Size = Vector3.new(10, 0.05, 10)
+		tile.Position = Vector3.new(math.cos(angle) * 18, 0.03, math.sin(angle) * 18)
 		tile.Anchored = true
+		tile.CanCollide = false
 		tile.BrickColor = BrickColor.new("Institutional white")
 		tile.Material = Enum.Material.Marble
 		tile.Parent = town
@@ -128,9 +129,10 @@ function WorldBuilder.CreateTown()
 		local angle = (i / 16) * math.pi * 2
 		local tile = Instance.new("Part")
 		tile.Name = "PlazaInner" .. i
-		tile.Size = Vector3.new(9, 0.3, 9)
-		tile.Position = Vector3.new(math.cos(angle) * 32, 0.65, math.sin(angle) * 32)
+		tile.Size = Vector3.new(9, 0.05, 9)
+		tile.Position = Vector3.new(math.cos(angle) * 32, 0.03, math.sin(angle) * 32)
 		tile.Anchored = true
+		tile.CanCollide = false
 		tile.BrickColor = BrickColor.new("White")
 		tile.Material = Enum.Material.Marble
 		tile.Parent = town
@@ -141,9 +143,10 @@ function WorldBuilder.CreateTown()
 		local angle = (i / 24) * math.pi * 2
 		local tile = Instance.new("Part")
 		tile.Name = "PlazaMid" .. i
-		tile.Size = Vector3.new(8, 0.25, 8)
-		tile.Position = Vector3.new(math.cos(angle) * 48, 0.62, math.sin(angle) * 48)
+		tile.Size = Vector3.new(8, 0.05, 8)
+		tile.Position = Vector3.new(math.cos(angle) * 48, 0.03, math.sin(angle) * 48)
 		tile.Anchored = true
+		tile.CanCollide = false
 		tile.BrickColor = BrickColor.new("Light stone grey")
 		tile.Material = Enum.Material.Concrete
 		tile.Parent = town
@@ -154,9 +157,10 @@ function WorldBuilder.CreateTown()
 		local angle = (i / 32) * math.pi * 2
 		local tile = Instance.new("Part")
 		tile.Name = "PlazaOuter" .. i
-		tile.Size = Vector3.new(7, 0.2, 7)
-		tile.Position = Vector3.new(math.cos(angle) * 65, 0.6, math.sin(angle) * 65)
+		tile.Size = Vector3.new(7, 0.05, 7)
+		tile.Position = Vector3.new(math.cos(angle) * 65, 0.03, math.sin(angle) * 65)
 		tile.Anchored = true
+		tile.CanCollide = false
 		tile.BrickColor = BrickColor.new("Medium stone grey")
 		tile.Material = Enum.Material.Brick
 		tile.Parent = town
@@ -167,9 +171,10 @@ function WorldBuilder.CreateTown()
 	-- CHEMIN NORD: Forêt (vert, bois)
 	for i = 1, 15 do
 		local path = Instance.new("Part")
-		path.Size = Vector3.new(12, 0.3, 8)
-		path.Position = Vector3.new(0, 0.65, -70 - i * 8)
+		path.Size = Vector3.new(12, 0.05, 8)
+		path.Position = Vector3.new(0, 0.03, -70 - i * 8)
 		path.Anchored = true
+		path.CanCollide = false
 		path.BrickColor = BrickColor.new("Dark green")
 		path.Material = Enum.Material.Grass
 		path.Parent = town
@@ -200,9 +205,10 @@ function WorldBuilder.CreateTown()
 	-- CHEMIN EST: Montagne (gris, roche)
 	for i = 1, 15 do
 		local path = Instance.new("Part")
-		path.Size = Vector3.new(8, 0.3, 12)
-		path.Position = Vector3.new(70 + i * 8, 0.65, 0)
+		path.Size = Vector3.new(8, 0.05, 12)
+		path.Position = Vector3.new(70 + i * 8, 0.03, 0)
 		path.Anchored = true
+		path.CanCollide = false
 		path.BrickColor = BrickColor.new("Medium stone grey")
 		path.Material = Enum.Material.Slate
 		path.Parent = town
@@ -224,9 +230,10 @@ function WorldBuilder.CreateTown()
 	-- CHEMIN SUD: Mer (bleu, sable)
 	for i = 1, 15 do
 		local path = Instance.new("Part")
-		path.Size = Vector3.new(12, 0.3, 8)
-		path.Position = Vector3.new(0, 0.65, 70 + i * 8)
+		path.Size = Vector3.new(12, 0.05, 8)
+		path.Position = Vector3.new(0, 0.03, 70 + i * 8)
 		path.Anchored = true
+		path.CanCollide = false
 		path.BrickColor = BrickColor.new("Sand blue")
 		path.Material = Enum.Material.Sand
 		path.Parent = town
@@ -249,9 +256,10 @@ function WorldBuilder.CreateTown()
 	-- CHEMIN OUEST: Zone sombre enfumée (noir, brouillard)
 	for i = 1, 15 do
 		local path = Instance.new("Part")
-		path.Size = Vector3.new(8, 0.3, 12)
-		path.Position = Vector3.new(-70 - i * 8, 0.65, 0)
+		path.Size = Vector3.new(8, 0.05, 12)
+		path.Position = Vector3.new(-70 - i * 8, 0.03, 0)
 		path.Anchored = true
+		path.CanCollide = false
 		path.BrickColor = BrickColor.new("Black")
 		path.Material = Enum.Material.Cobblestone
 		path.Parent = town
@@ -272,169 +280,7 @@ function WorldBuilder.CreateTown()
 		end
 	end
 	
-	-- ZONE DE STOCKAGE (Nord-Ouest)
-	local storage = Instance.new("Part")
-	storage.Name = "StorageBuilding"
-	storage.Size = Vector3.new(30, 12, 25)
-	storage.Position = Vector3.new(-60, 6, -60)
-	storage.Anchored = true
-	storage.BrickColor = BrickColor.new("Brown")
-	storage.Material = Enum.Material.Wood
-	storage.Parent = town
-	
-	local storageSign = Instance.new("SurfaceGui")
-	storageSign.Face = Enum.NormalId.Front
-	storageSign.Parent = storage
-	local storageLabel = Instance.new("TextLabel")
-	storageLabel.Size = UDim2.new(1, 0, 0.2, 0)
-	storageLabel.Position = UDim2.new(0, 0, 0.4, 0)
-	storageLabel.BackgroundTransparency = 1
-	storageLabel.Text = "📦 STOCKAGE"
-	storageLabel.TextScaled = true
-	storageLabel.TextColor3 = Color3.new(1, 1, 1)
-	storageLabel.Font = Enum.Font.SourceSansBold
-	storageLabel.Parent = storageSign
-	
-	-- MINE / BANQUE (Nord-Est) avec lingot d'or
-	local bank = Instance.new("Part")
-	bank.Name = "BankBuilding"
-	bank.Size = Vector3.new(30, 15, 30)
-	bank.Position = Vector3.new(60, 7.5, -60)
-	bank.Anchored = true
-	bank.BrickColor = BrickColor.new("Dark stone grey")
-	bank.Material = Enum.Material.Cobblestone
-	bank.Parent = town
-	
-	local bankSign = Instance.new("SurfaceGui")
-	bankSign.Face = Enum.NormalId.Front
-	bankSign.Parent = bank
-	local bankLabel = Instance.new("TextLabel")
-	bankLabel.Size = UDim2.new(1, 0, 0.2, 0)
-	bankLabel.Position = UDim2.new(0, 0, 0.4, 0)
-	bankLabel.BackgroundTransparency = 1
-	bankLabel.Text = "⛏️ MINE / BANQUE"
-	bankLabel.TextScaled = true
-	bankLabel.TextColor3 = Color3.new(1, 0.8, 0)
-	bankLabel.Font = Enum.Font.SourceSansBold
-	bankLabel.Parent = bankSign
-	
-	-- Lingot d'or géant dans la mine
-	local goldIngot = Instance.new("Part")
-	goldIngot.Name = "GoldIngot"
-	goldIngot.Size = Vector3.new(8, 4, 3)
-	goldIngot.Position = Vector3.new(60, 2, -60)
-	goldIngot.Anchored = true
-	goldIngot.BrickColor = BrickColor.new("Gold")
-	goldIngot.Material = Enum.Material.Neon
-	goldIngot.Parent = bank
-	
-	-- === EMPLACEMENTS MAGASINS - VRAIES RUINES ===
-	local shopSlots = {
-		{name = "Forge", pos = Vector3.new(-85, 0, 85), color = "Rust"},
-		{name = "Alchimie", pos = Vector3.new(-45, 0, 85), color = "Bright violet"},
-		{name = "Armurerie", pos = Vector3.new(45, 0, 85), color = "Medium stone grey"},
-		{name = "Marchand", pos = Vector3.new(85, 0, 85), color = "Bright yellow"}
-	}
-	
-	for _, slot in ipairs(shopSlots) do
-		-- FONDATIONS (sol en pierre)
-		local foundation = Instance.new("Part")
-		foundation.Size = Vector3.new(22, 0.5, 22)
-		foundation.Position = slot.pos + Vector3.new(0, 0.25, 0)
-		foundation.Anchored = true
-		foundation.BrickColor = BrickColor.new("Medium stone grey")
-		foundation.Material = Enum.Material.Cobblestone
-		foundation.Parent = town
-		
-		-- MURS CASSÉS (4 murs partiels)
-		local walls = {
-			{size = Vector3.new(20, 7, 2), offset = Vector3.new(0, 3.5, -10), intact = 0.6},
-			{size = Vector3.new(20, 5, 2), offset = Vector3.new(0, 2.5, 10), intact = 0.4},
-			{size = Vector3.new(2, 6, 20), offset = Vector3.new(-10, 3, 0), intact = 0.5},
-			{size = Vector3.new(2, 4, 20), offset = Vector3.new(10, 2, 0), intact = 0.3}
-		}
-		
-		for _, w in ipairs(walls) do
-			local wall = Instance.new("Part")
-			wall.Size = w.size
-			wall.Position = slot.pos + w.offset
-			wall.Anchored = true
-			wall.BrickColor = BrickColor.new("Dark stone grey")
-			wall.Material = Enum.Material.Brick
-			wall.Parent = town
-			
-			-- Brèches dans le mur
-			if math.random() > w.intact then
-				wall.Size = wall.Size * Vector3.new(0.6, 1, 1)
-			end
-		end
-		
-		-- DÉBRIS (gravats au sol)
-		for i = 1, 8 do
-			local debris = Instance.new("Part")
-			debris.Size = Vector3.new(
-				math.random(2, 4),
-				math.random(1, 3),
-				math.random(2, 4)
-			)
-			debris.Position = slot.pos + Vector3.new(
-				math.random(-10, 10),
-				debris.Size.Y/2,
-				math.random(-10, 10)
-			)
-			debris.Anchored = true
-			debris.BrickColor = BrickColor.new("Dark stone grey")
-			debris.Material = Enum.Material.Slate
-			debris.Orientation = Vector3.new(
-				math.random(-30, 30),
-				math.random(0, 360),
-				math.random(-30, 30)
-			)
-			debris.Parent = town
-		end
-		
-		-- POUTRELLES EN BOIS (effondrées)
-		for i = 1, 3 do
-			local beam = Instance.new("Part")
-			beam.Size = Vector3.new(2, 2, 15)
-			beam.Position = slot.pos + Vector3.new(
-				math.random(-8, 8),
-				2,
-				math.random(-8, 8)
-			)
-			beam.Anchored = true
-			beam.BrickColor = BrickColor.new("Brown")
-			beam.Material = Enum.Material.Wood
-			beam.Orientation = Vector3.new(
-				math.random(-45, 45),
-				math.random(0, 360),
-				0
-			)
-			beam.Parent = town
-		end
-		
-		-- PANNEAU INDICATEUR
-		local sign = Instance.new("Part")
-		sign.Size = Vector3.new(8, 5, 0.5)
-		sign.Position = slot.pos + Vector3.new(0, 2.5, -12)
-		sign.Anchored = true
-		sign.BrickColor = BrickColor.new(slot.color)
-		sign.Material = Enum.Material.Wood
-		sign.Parent = town
-		
-		local gui = Instance.new("SurfaceGui")
-		gui.Face = Enum.NormalId.Front
-		gui.Parent = sign
-		local label = Instance.new("TextLabel")
-		label.Size = UDim2.new(1, 0, 1, 0)
-		label.BackgroundTransparency = 1
-		label.Text = "⚠️ " .. slot.name .. "\n(EN RUINE)"
-		label.TextScaled = true
-		label.TextColor3 = Color3.new(1, 1, 1)
-		label.Font = Enum.Font.SourceSansBold
-		label.Parent = gui
-	end
-	
+	-- (Anciens batiments statiques supprimes - geres dynamiquement par BuildingSystem)
 	-- (PlayerZones et DojoMarker supprimés - le Dojo est géré par DojoBuilder)
 	
 	print("[WorldBuilder] Large town created (200x200) with zones")
@@ -813,17 +659,48 @@ function WorldBuilder.SetupLighting()
 	rays.Spread = 0.6
 	
 	-- Lighting properties
-	Lighting.Ambient = Color3.fromRGB(50, 55, 70)
-	Lighting.OutdoorAmbient = Color3.fromRGB(80, 90, 110)
-	Lighting.Brightness = 2.5
-	Lighting.ClockTime = 11
+	Lighting.Ambient = Color3.fromRGB(60, 65, 80)
+	Lighting.OutdoorAmbient = Color3.fromRGB(90, 100, 120)
+	Lighting.Brightness = 2.2
+	Lighting.ClockTime = 14
 	Lighting.GeographicLatitude = 35
-	Lighting.EnvironmentDiffuseScale = 0.5
-	Lighting.EnvironmentSpecularScale = 0.3
+	Lighting.EnvironmentDiffuseScale = 0.6
+	Lighting.EnvironmentSpecularScale = 0.4
 	Lighting.GlobalShadows = true
-	Lighting.ShadowSoftness = 0.3
+	Lighting.ShadowSoftness = 0.2
+	Lighting.ExposureCompensation = 0.1
 	
-	print("[WorldBuilder] Lighting setup complete! (Atmosphere + Bloom + SunRays + ColorCorrection)")
+	-- Sky (ciel realiste)
+	local sky = Lighting:FindFirstChildOfClass("Sky")
+	if not sky then
+		sky = Instance.new("Sky")
+		sky.Parent = Lighting
+	end
+	sky.CelestialBodiesShown = true
+	sky.StarCount = 3000
+	sky.MoonAngularSize = 11
+	sky.SunAngularSize = 21
+	-- Skybox textures (Roblox free blue sky)
+	sky.SkyboxBk = "rbxassetid://6444884337"
+	sky.SkyboxDn = "rbxassetid://6444884785"
+	sky.SkyboxFt = "rbxassetid://6444884337"
+	sky.SkyboxLf = "rbxassetid://6444884337"
+	sky.SkyboxRt = "rbxassetid://6444884337"
+	sky.SkyboxUp = "rbxassetid://6444885122"
+	
+	-- DepthOfField (flou de profondeur subtil)
+	local dof = Lighting:FindFirstChild("DepthOfField")
+	if not dof then
+		dof = Instance.new("DepthOfFieldEffect")
+		dof.Name = "DepthOfField"
+		dof.Parent = Lighting
+	end
+	dof.FarIntensity = 0.1
+	dof.FocusDistance = 50
+	dof.InFocusRadius = 30
+	dof.NearIntensity = 0
+	
+	print("[WorldBuilder] Lighting setup complete! (Sky + Atmosphere + Bloom + SunRays + DOF)")
 end
 
 return WorldBuilder

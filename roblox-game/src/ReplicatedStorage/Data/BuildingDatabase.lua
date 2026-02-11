@@ -31,7 +31,7 @@ BuildingDatabase.BUILDINGS = {
 			slotsBase = 5,
 			slotsPerLevel = 3,
 		},
-		position = Vector3.new(20, 0, -15),
+		position = Vector3.new(70, 0, -50),
 		unlockOrder = 1,
 	},
 
@@ -51,7 +51,7 @@ BuildingDatabase.BUILDINGS = {
 			goldPerMinBase = 5,
 			goldPerMinPerLevel = 3,
 		},
-		position = Vector3.new(-30, 0, -20),
+		position = Vector3.new(-75, 0, -45),
 		unlockOrder = 2,
 	},
 
@@ -68,7 +68,7 @@ BuildingDatabase.BUILDINGS = {
 		effects = {
 			advancedClassLevel = 2,
 		},
-		position = Vector3.new(40, 0, -30),
+		position = Vector3.new(85, 0, 25),
 		unlockOrder = 3,
 	},
 
@@ -88,7 +88,7 @@ BuildingDatabase.BUILDINGS = {
 			crystalHPBonus = 200,
 			crystalRegenBonus = 0.002,
 		},
-		position = Vector3.new(30, 0, 15),
+		position = Vector3.new(-80, 0, 35),
 		unlockOrder = 4,
 	},
 
@@ -106,7 +106,7 @@ BuildingDatabase.BUILDINGS = {
 			maxProtectedBase = 500,
 			maxProtectedPerLevel = 500,
 		},
-		position = Vector3.new(-20, 0, 30),
+		position = Vector3.new(55, 0, 75),
 		unlockOrder = 5,
 	},
 
@@ -128,7 +128,7 @@ BuildingDatabase.BUILDINGS = {
 			laserChanceBonus = 0.02,
 			laserRetryChance = 0.03,
 		},
-		position = Vector3.new(-35, 0, 15),
+		position = Vector3.new(-60, 0, 70),
 		unlockOrder = 6,
 	},
 
@@ -146,7 +146,7 @@ BuildingDatabase.BUILDINGS = {
 			maxSkillTier = 1,
 			skillCostReduction = 0.05,
 		},
-		position = Vector3.new(45, 0, 10),
+		position = Vector3.new(80, 0, -30),
 		unlockOrder = 7,
 	},
 
@@ -166,7 +166,7 @@ BuildingDatabase.BUILDINGS = {
 			trainingXPBonus = 0.10,
 			evolutionUnlock = 3,
 		},
-		position = Vector3.new(-45, 0, 0),
+		position = Vector3.new(-70, 0, -75),
 		unlockOrder = 8,
 	},
 
@@ -185,7 +185,7 @@ BuildingDatabase.BUILDINGS = {
 			healAfterWave = true,
 			healPercent = 0.10,        -- +10% heal par level
 		},
-		position = Vector3.new(50, 0, -15),
+		position = Vector3.new(100, 0, -60),
 	},
 
 	-- ====== TOUR DE GUET ======
@@ -201,7 +201,7 @@ BuildingDatabase.BUILDINGS = {
 		effects = {
 			rareSpawnBonus = 0.05,     -- +5% chance rare par level
 		},
-		position = Vector3.new(55, 0, 25),
+		position = Vector3.new(-100, 0, 55),
 	},
 
 	-- ====== LABORATOIRE D'ESSENCES ======
@@ -218,7 +218,7 @@ BuildingDatabase.BUILDINGS = {
 			recipeTier = 1,
 			efficiencyBonus = 0.10,
 		},
-		position = Vector3.new(-50, 0, 30),
+		position = Vector3.new(95, 0, 70),
 	},
 
 	-- ====== SANCTUAIRE D'EVOLUTION ======
@@ -235,7 +235,7 @@ BuildingDatabase.BUILDINGS = {
 			evolutionCostReduction = 0.05,
 			traitRarityBonus = 0.02,
 		},
-		position = Vector3.new(60, 0, 0),
+		position = Vector3.new(-95, 0, -20),
 	},
 
 	-- ====== ENTREPOT ======
@@ -252,7 +252,7 @@ BuildingDatabase.BUILDINGS = {
 			extraMonsterSlots = 5,     -- par level
 			extraResourceSlots = 10,
 		},
-		position = Vector3.new(-55, 0, -25),
+		position = Vector3.new(-50, 0, -95),
 	},
 
 	-- ====== MARCHE ======
@@ -269,7 +269,7 @@ BuildingDatabase.BUILDINGS = {
 			tradeCategories = 1,       -- par level
 			priceBonus = 0.05,         -- meilleur taux par level
 		},
-		position = Vector3.new(25, 0, 35),
+		position = Vector3.new(60, 0, 95),
 	},
 
 	-- ====== CENTRE DE COMMANDEMENT ======
@@ -287,7 +287,7 @@ BuildingDatabase.BUILDINGS = {
 			defenderRangeBonus = 2,    -- studs par level
 			auraBonus = 0.03,          -- +3% stats defenseurs par level
 		},
-		position = Vector3.new(-10, 0, -40),
+		position = Vector3.new(-95, 0, -60),
 	},
 
 	-- ====== MUR D'ENCEINTE ======
@@ -304,7 +304,7 @@ BuildingDatabase.BUILDINGS = {
 			barrierHP = 100,           -- par level
 			barrierRegenPerWave = 0.20, -- % regen entre vagues
 		},
-		position = Vector3.new(10, 0, 40),
+		position = Vector3.new(30, 0, 100),
 	},
 
 	-- ====== TECHNIQUES DE GUERRE ======
@@ -320,7 +320,7 @@ BuildingDatabase.BUILDINGS = {
 		effects = {
 			tacticSlots = 1,           -- par level
 		},
-		position = Vector3.new(-40, 0, -35),
+		position = Vector3.new(-45, 0, 95),
 	},
 
 	-- ====== BUREAU DES CONTRATS ======
@@ -338,7 +338,7 @@ BuildingDatabase.BUILDINGS = {
 			weeklyQuests = 0,          -- 1 a partir level 3
 			rerollsPerDay = 0,
 		},
-		position = Vector3.new(35, 0, -40),
+		position = Vector3.new(90, 0, -85),
 	},
 
 	-- ====== HALL DES TROPHEES ======
@@ -354,7 +354,7 @@ BuildingDatabase.BUILDINGS = {
 		effects = {
 			activeTrophySlots = 2,     -- par level
 		},
-		position = Vector3.new(-60, 0, 10),
+		position = Vector3.new(-105, 0, 15),
 	},
 
 	-- ====== PORTAIL EXPEDITION ======
@@ -371,7 +371,7 @@ BuildingDatabase.BUILDINGS = {
 			expeditionTypes = 1,       -- par level
 			cooldownReduction = 0.10,
 		},
-		position = Vector3.new(0, 0, -50),
+		position = Vector3.new(0, 0, -110),
 	},
 
 	-- ====== DOJO DE VILLE ======
@@ -387,7 +387,7 @@ BuildingDatabase.BUILDINGS = {
 		effects = {
 			dojoGuildLevel = 1,        -- prerequis pour level dojo guilde
 		},
-		position = Vector3.new(60, 0, -30),
+		position = Vector3.new(110, 0, -15),
 	},
 
 	-- ====== ARENE D'ENTRAINEMENT ======
@@ -403,7 +403,7 @@ BuildingDatabase.BUILDINGS = {
 		effects = {
 			arenaModesUnlocked = 1,    -- par level
 		},
-		position = Vector3.new(-65, 0, -10),
+		position = Vector3.new(-110, 0, -40),
 	},
 }
 

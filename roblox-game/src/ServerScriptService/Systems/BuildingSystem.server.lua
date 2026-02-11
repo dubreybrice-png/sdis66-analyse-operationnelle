@@ -13,6 +13,7 @@ local ServerScriptService = game:GetService("ServerScriptService")
 local Workspace = game.Workspace
 
 local PlayerDataService = require(ServerScriptService.Services.PlayerDataService)
+local WeaponSystem = require(ServerScriptService.Services.WeaponSystem)
 local BuildingDB = require(ReplicatedStorage.Data.BuildingDatabase)
 local GameConfig = require(ReplicatedStorage.Data.GameConfig)
 
@@ -304,6 +305,19 @@ local function createBuildingPlaceholder(player, buildingId)
 		
 		applyBuildingEffects(clickPlayer, buildingId, 1)
 		
+		-- Donner le laser si c'est le centre de stockage
+		if buildingId == "monster_storage" then
+			local pData = PlayerDataService:GetData(clickPlayer)
+			if pData and not pData.HasCaptureLaser then
+				pData.HasCaptureLaser = true
+				local laserGun = WeaponSystem.WEAPONS.LASER_GUN
+				if laserGun then
+					WeaponSystem:GiveWeapon(clickPlayer, laserGun)
+				end
+				notify(clickPlayer, "🔫 Aldric t'a donne le Laser de Capture! Appuie sur E pres d'un monstre assomme!")
+			end
+		end
+		
 		-- Detruire le placeholder
 		model:Destroy()
 		buildingModels[key] = nil
@@ -405,6 +419,18 @@ if purchaseRemote then
 		
 		-- Appliquer les effets du batiment
 		applyBuildingEffects(player, buildingId, 1)
+		
+		-- Donner le laser si c'est le centre de stockage
+		if buildingId == "monster_storage" then
+			if not data.HasCaptureLaser then
+				data.HasCaptureLaser = true
+				local laserGun = WeaponSystem.WEAPONS.LASER_GUN
+				if laserGun then
+					WeaponSystem:GiveWeapon(player, laserGun)
+				end
+				notify(player, "🔫 Aldric t'a donne le Laser de Capture! Appuie sur E pres d'un monstre assomme!")
+			end
+		end
 		
 		-- Detruire le placeholder s'il existe
 		local key = player.UserId .. "_" .. buildingId

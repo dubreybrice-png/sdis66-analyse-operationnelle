@@ -178,17 +178,18 @@ skillBtn.Text = "SKILLS (0 pts)"
 skillBtn.Parent = playerPanel
 Instance.new("UICorner", skillBtn).CornerRadius = UDim.new(0, 6)
 
--- Orbs info
-local orbsLabel = Instance.new("TextLabel")
-orbsLabel.Name = "OrbsInfo"
-orbsLabel.Size = UDim2.new(0.5, -10, 0, 22)
-orbsLabel.Position = UDim2.new(0.5, 0, 0, 172)
-orbsLabel.BackgroundTransparency = 1
-orbsLabel.TextColor3 = Color3.fromRGB(100, 255, 200)
-orbsLabel.TextSize = 10
-orbsLabel.Font = Enum.Font.Gotham
-orbsLabel.Text = "Laser: ∞"
-orbsLabel.Parent = playerPanel
+-- Inventory button
+local invBtn = Instance.new("TextButton")
+invBtn.Name = "InventoryBtn"
+invBtn.Size = UDim2.new(0.45, 0, 0, 22)
+invBtn.Position = UDim2.new(0.5, 5, 0, 172)
+invBtn.BackgroundColor3 = Color3.fromRGB(120, 80, 180)
+invBtn.TextColor3 = Color3.new(1, 1, 1)
+invBtn.TextSize = 10
+invBtn.Font = Enum.Font.GothamBold
+invBtn.Text = "🎒 INVENTAIRE (I)"
+invBtn.Parent = playerPanel
+Instance.new("UICorner", invBtn).CornerRadius = UDim.new(0, 6)
 
 -- =========================================
 -- PLAYER HP BAR (below player panel)
@@ -298,7 +299,7 @@ hotbarStroke.Color = Color3.fromRGB(100, 100, 120)
 hotbarStroke.Thickness = 1
 hotbarStroke.Parent = hotbarPanel
 
-local slotLabels = {"Arme", "Laser", "Item", "Item", "Item"}
+local slotLabels = {"Arme", "Vide", "Item", "Item", "Item"}
 local hotbarSlots = {}
 
 for i = 1, 5 do
@@ -435,6 +436,111 @@ skillBtn.MouseButton1Click:Connect(function()
 end)
 
 -- =========================================
+-- INVENTORY PANEL (toggle avec bouton I)
+-- =========================================
+local inventoryPanel = Instance.new("Frame")
+inventoryPanel.Name = "InventoryPanel"
+inventoryPanel.Size = UDim2.new(0, 300, 0, 250)
+inventoryPanel.Position = UDim2.new(0, 10, 0, 260)
+inventoryPanel.BackgroundColor3 = Color3.fromRGB(25, 15, 35)
+inventoryPanel.BackgroundTransparency = 0.1
+inventoryPanel.BorderSizePixel = 0
+inventoryPanel.Visible = false
+inventoryPanel.Parent = screenGui
+Instance.new("UICorner", inventoryPanel).CornerRadius = UDim.new(0, 10)
+Instance.new("UIStroke", inventoryPanel).Color = Color3.fromRGB(160, 100, 220)
+
+local invTitle = Instance.new("TextLabel")
+invTitle.Size = UDim2.new(1, 0, 0, 24)
+invTitle.BackgroundTransparency = 1
+invTitle.TextColor3 = Color3.fromRGB(200, 150, 255)
+invTitle.TextSize = 14
+invTitle.Font = Enum.Font.GothamBold
+invTitle.Text = "🎒 INVENTAIRE"
+invTitle.Parent = inventoryPanel
+
+local invMonsterTitle = Instance.new("TextLabel")
+invMonsterTitle.Size = UDim2.new(1, -20, 0, 18)
+invMonsterTitle.Position = UDim2.new(0, 10, 0, 28)
+invMonsterTitle.BackgroundTransparency = 1
+invMonsterTitle.TextColor3 = Color3.fromRGB(180, 180, 180)
+invMonsterTitle.TextSize = 11
+invMonsterTitle.Font = Enum.Font.Gotham
+invMonsterTitle.TextXAlignment = Enum.TextXAlignment.Left
+invMonsterTitle.Text = "Monstres: 0/5"
+invMonsterTitle.Parent = inventoryPanel
+
+local invLaserInfo = Instance.new("TextLabel")
+invLaserInfo.Name = "LaserInfo"
+invLaserInfo.Size = UDim2.new(1, -20, 0, 18)
+invLaserInfo.Position = UDim2.new(0, 10, 0, 50)
+invLaserInfo.BackgroundTransparency = 1
+invLaserInfo.TextColor3 = Color3.fromRGB(100, 255, 200)
+invLaserInfo.TextSize = 11
+invLaserInfo.Font = Enum.Font.Gotham
+invLaserInfo.TextXAlignment = Enum.TextXAlignment.Left
+invLaserInfo.Text = "🔫 Laser: Non obtenu"
+invLaserInfo.Parent = inventoryPanel
+
+local invGoldInfo = Instance.new("TextLabel")
+invGoldInfo.Name = "GoldInfo"
+invGoldInfo.Size = UDim2.new(1, -20, 0, 18)
+invGoldInfo.Position = UDim2.new(0, 10, 0, 72)
+invGoldInfo.BackgroundTransparency = 1
+invGoldInfo.TextColor3 = Color3.fromRGB(255, 215, 50)
+invGoldInfo.TextSize = 11
+invGoldInfo.Font = Enum.Font.Gotham
+invGoldInfo.TextXAlignment = Enum.TextXAlignment.Left
+invGoldInfo.Text = "💰 Or: 0g | Banque: 0g"
+invGoldInfo.Parent = inventoryPanel
+
+local invClassInfo = Instance.new("TextLabel")
+invClassInfo.Name = "ClassInfo"
+invClassInfo.Size = UDim2.new(1, -20, 0, 18)
+invClassInfo.Position = UDim2.new(0, 10, 0, 94)
+invClassInfo.BackgroundTransparency = 1
+invClassInfo.TextColor3 = Color3.fromRGB(150, 200, 255)
+invClassInfo.TextSize = 11
+invClassInfo.Font = Enum.Font.Gotham
+invClassInfo.TextXAlignment = Enum.TextXAlignment.Left
+invClassInfo.Text = "📋 Classe: Novice"
+invClassInfo.Parent = inventoryPanel
+
+local invStatsInfo = Instance.new("TextLabel")
+invStatsInfo.Name = "StatsInfo"
+invStatsInfo.Size = UDim2.new(1, -20, 0, 18)
+invStatsInfo.Position = UDim2.new(0, 10, 0, 116)
+invStatsInfo.BackgroundTransparency = 1
+invStatsInfo.TextColor3 = Color3.fromRGB(180, 180, 180)
+invStatsInfo.TextSize = 11
+invStatsInfo.Font = Enum.Font.Gotham
+invStatsInfo.TextXAlignment = Enum.TextXAlignment.Left
+invStatsInfo.Text = "⚔ATK:0 ⚡AGI:0 ❤VIT:0"
+invStatsInfo.Parent = inventoryPanel
+
+local invHint = Instance.new("TextLabel")
+invHint.Size = UDim2.new(1, -20, 0, 30)
+invHint.Position = UDim2.new(0, 10, 1, -35)
+invHint.BackgroundTransparency = 1
+invHint.TextColor3 = Color3.fromRGB(120, 120, 120)
+invHint.TextSize = 9
+invHint.Font = Enum.Font.Gotham
+invHint.TextWrapped = true
+invHint.Text = "Appuie sur I pour fermer | Construis le Centre de Stockage pour obtenir le laser"
+invHint.Parent = inventoryPanel
+
+local inventoryPanelOpen = false
+invBtn.MouseButton1Click:Connect(function()
+	inventoryPanelOpen = not inventoryPanelOpen
+	inventoryPanel.Visible = inventoryPanelOpen
+	-- Close skill panel if open
+	if inventoryPanelOpen and skillPanelOpen then
+		skillPanelOpen = false
+		skillPanel.Visible = false
+	end
+end)
+
+-- =========================================
 -- NOTIFICATION SYSTEM (bottom-right)
 -- =========================================
 local notifContainer = Instance.new("Frame")
@@ -527,7 +633,7 @@ controls.Font = Enum.Font.Gotham
 controls.TextWrapped = true
 controls.TextXAlignment = Enum.TextXAlignment.Left
 controls.TextYAlignment = Enum.TextYAlignment.Top
-controls.Text = "Click: Attaquer monstre\nE: Capturer monstre assomme\nF: Parler au PNJ\n1-5: Hotbar | P: Skills"
+controls.Text = "Click: Attaquer monstre\nE: Capturer monstre assomme\nF: Parler au PNJ\n1-5: Hotbar | P: Skills | I: Inv"
 controls.Parent = screenGui
 Instance.new("UICorner", controls).CornerRadius = UDim.new(0, 6)
 
@@ -615,8 +721,16 @@ task.spawn(function()
 		villeLabel.Text = "🏘 Ville Nv." .. villeLevel .. " | Ere " .. eraName
 		monsterLabel.Text = "🐾 Monstres: " .. monsterCount .. "/" .. storageCapacity
 		killsLabel.Text = "Kills: " .. totalKills .. " | Captures: " .. totalCaptures .. " | Boss: " .. bossKills
+		
+		-- Update hotbar slot 2: show Laser when obtained
 		local hasLaser = player:GetAttribute("HasCaptureLaser")
-		orbsLabel.Text = hasLaser and "Laser: ∞" or "Pas de laser"
+		if hasLaser then
+			hotbarSlots[2].Text = "Laser"
+			hotbarSlots[2].TextColor3 = Color3.fromRGB(100, 255, 200)
+		else
+			hotbarSlots[2].Text = "Vide"
+			hotbarSlots[2].TextColor3 = Color3.fromRGB(150, 150, 150)
+		end
 		
 		-- Skill points button
 		skillBtn.Text = "SKILLS (" .. skillPts .. " pts)"
@@ -640,6 +754,13 @@ task.spawn(function()
 			starterName.Text = "⭐ " .. sName
 			starterInfo.Text = "Nv." .. (player:GetAttribute("StarterLevel") or 1) .. " XP:" .. (player:GetAttribute("StarterXP") or 0)
 		end
+		
+		-- Inventory panel data update
+		invMonsterTitle.Text = "🐾 Monstres: " .. monsterCount .. "/" .. storageCapacity
+		invLaserInfo.Text = hasLaser and "🔫 Laser: Actif (∞ tirs)" or "🔫 Laser: Non obtenu (construis le Stockage)"
+		invGoldInfo.Text = "💰 Or: " .. goldW .. "g | Banque: " .. goldB .. "g"
+		invClassInfo.Text = "📋 Classe: " .. currentClass .. " Nv." .. level
+		invStatsInfo.Text = "⚔ATK:" .. atkPts .. " ⚡AGI:" .. agiPts .. " ❤VIT:" .. vitPts
 		
 		-- Player HP bar
 		local character = player.Character
@@ -733,6 +854,12 @@ UIS.InputBegan:Connect(function(input, gameProcessed)
 		skillPanelOpen = not skillPanelOpen
 		skillPanel.Visible = skillPanelOpen
 	end
+	
+	-- I for inventory panel
+	if input.KeyCode == Enum.KeyCode.I then
+		inventoryPanelOpen = not inventoryPanelOpen
+		inventoryPanel.Visible = inventoryPanelOpen
+	end
 end)
 
-print("[PlayerHUD V21] Ready!")
+print("[PlayerHUD V22] Ready!")
