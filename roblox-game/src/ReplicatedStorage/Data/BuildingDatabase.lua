@@ -1,0 +1,439 @@
+--[[
+	BuildingDatabase V20 - Tous les batiments du jeu
+	Chaque batiment a un cout, un niveau max par ere, des effets
+	Certains commencent "en ruine" et doivent etre repares
+]]
+
+local BuildingDatabase = {}
+
+-- ===============================
+-- BATIMENTS
+-- ===============================
+-- era = ere minimum pour debloquer
+-- repairCost = cout pour reparer (nil = pas besoin, achetable directement)
+-- baseCost = cout initial pour construire
+-- upgradeCostBase = cout de base pour upgrade (x2 par level)
+-- maxLevelPerEra = niveau max par ere (table indexee par ere)
+-- effects = description des effets par niveau
+
+BuildingDatabase.BUILDINGS = {
+	-- ====== STOCKAGE (Premier batiment!) ======
+	monster_storage = {
+		name = "Centre de Stockage",
+		desc = "Stocke tes monstres captures. Assigne-les a la defense, mine ou repos.",
+		icon = "📦",
+		era = 1,
+		repairCost = nil,
+		baseCost = 50,
+		upgradeCostBase = 80,
+		maxLevelPerEra = {5, 10, 15, 20, 25, 30},
+		effects = {
+			slotsBase = 5,
+			slotsPerLevel = 3,
+		},
+		position = Vector3.new(20, 0, -15),
+	},
+
+	-- ====== MINE D'OR ======
+	gold_mine = {
+		name = "Mine d'Or",
+		desc = "Envoie tes monstres miner de l'or. Type roche qui entre dans le sol.",
+		icon = "⛏️",
+		era = 1,
+		repairCost = nil,
+		baseCost = 150,
+		upgradeCostBase = 120,
+		maxLevelPerEra = {5, 10, 15, 20, 25, 30},
+		effects = {
+			slotsBase = 1,
+			slotsPerLevel = 1,
+			goldPerMinBase = 5,
+			goldPerMinPerLevel = 3,
+		},
+		position = Vector3.new(-30, 0, -20),
+	},
+
+	-- ====== BUREAU DES DEFENSES ======
+	defense_bureau = {
+		name = "Bureau des Defenses",
+		desc = "Augmente HP cristal, regen, et slots de defense monstres.",
+		icon = "🛡️",
+		era = 1,
+		repairCost = 200,
+		baseCost = 0,
+		upgradeCostBase = 150,
+		maxLevelPerEra = {3, 7, 12, 17, 22, 28},
+		effects = {
+			defenseSlotsBase = 2,
+			defenseSlotsPerLevel = 1,
+			crystalHPBonus = 200,      -- par level
+			crystalRegenBonus = 0.002, -- par level
+		},
+		position = Vector3.new(30, 0, 15),
+	},
+
+	-- ====== ARMURERIE ======
+	armory = {
+		name = "Armurerie",
+		desc = "Contient la Forge et l'Autel des Lasers. Reparer pour debloquer.",
+		icon = "⚔️",
+		era = 1,
+		repairCost = 300,
+		baseCost = 0,
+		upgradeCostBase = 200,
+		maxLevelPerEra = {3, 7, 12, 17, 22, 28},
+		effects = {
+			-- Sous-batiments debloques par level
+			forgeUnlock = 1,          -- level 1 = forge dispo
+			laserAltarUnlock = 2,     -- level 2 = autel des lasers
+			forgeTierPerLevel = 1,    -- tier d'armes disponibles
+			laserSpeedBonus = 0.10,   -- -10% temps capture par level
+			laserChanceBonus = 0.02,  -- +2% capture par level
+			laserRetryChance = 0.03,  -- +3% chance retry par level
+		},
+		position = Vector3.new(-35, 0, 15),
+	},
+
+	-- ====== HALL DES CLASSES ======
+	class_hall = {
+		name = "Hall des Classes",
+		desc = "Choisis ta classe au niveau 10. Guerrier, Archer, Mage, Acolyte.",
+		icon = "🏛️",
+		era = 1,
+		repairCost = nil,
+		baseCost = 0,
+		upgradeCostBase = 500,
+		maxLevelPerEra = {1, 2, 3, 4, 5, 6},
+		effects = {
+			-- Level 1 = classes de base
+			-- Level 2+ = classes avancees
+			advancedClassLevel = 2,
+		},
+		position = Vector3.new(40, 0, -30),
+	},
+
+	-- ====== ECOLE DES MONSTRES ======
+	monster_school = {
+		name = "Ecole des Monstres",
+		desc = "Debloque les skills de tes monstres contre de l'or.",
+		icon = "📚",
+		era = 1,
+		repairCost = 400,
+		baseCost = 0,
+		upgradeCostBase = 250,
+		maxLevelPerEra = {3, 6, 10, 15, 20, 25},
+		effects = {
+			maxSkillTier = 1,         -- tier de skills disponibles par level
+			skillCostReduction = 0.05, -- -5% cout par level
+		},
+		position = Vector3.new(45, 0, 10),
+	},
+
+	-- ====== CENTRE D'ENTRAINEMENT ======
+	training_center = {
+		name = "Centre d'Entrainement",
+		desc = "Sac de frappe (XP passive) et Ecole Quantique (evolution).",
+		icon = "🥊",
+		era = 2,
+		repairCost = nil,
+		baseCost = 500,
+		upgradeCostBase = 300,
+		maxLevelPerEra = {0, 5, 10, 15, 20, 25},
+		effects = {
+			trainingSlotsBase = 1,
+			trainingSlotsPerLevel = 1,
+			trainingXPBonus = 0.10,    -- +10% XP training par level
+			evolutionUnlock = 3,       -- level 3 = Ecole Quantique
+		},
+		position = Vector3.new(-45, 0, 0),
+	},
+
+	-- ====== INFIRMERIE ======
+	infirmary = {
+		name = "Infirmerie",
+		desc = "Accelere la recuperation de fatigue et regen HP monstres.",
+		icon = "🏥",
+		era = 2,
+		repairCost = 600,
+		baseCost = 0,
+		upgradeCostBase = 350,
+		maxLevelPerEra = {0, 5, 10, 15, 20, 25},
+		effects = {
+			fatigueRegenBonus = 5,     -- +5 fatigue/min recup par level
+			healAfterWave = true,
+			healPercent = 0.10,        -- +10% heal par level
+		},
+		position = Vector3.new(50, 0, -15),
+	},
+
+	-- ====== BANQUE ======
+	bank = {
+		name = "Banque",
+		desc = "Protege ton or dans un coffre. Or de banque jamais perdu.",
+		icon = "🏦",
+		era = 1,
+		repairCost = nil,
+		baseCost = 200,
+		upgradeCostBase = 180,
+		maxLevelPerEra = {5, 10, 15, 20, 25, 30},
+		effects = {
+			maxProtectedBase = 500,
+			maxProtectedPerLevel = 500,
+		},
+		position = Vector3.new(-20, 0, 30),
+	},
+
+	-- ====== TOUR DE GUET ======
+	watchtower = {
+		name = "Tour de Guet",
+		desc = "Augmente les chances d'apparition de monstres rares.",
+		icon = "🗼",
+		era = 2,
+		repairCost = 800,
+		baseCost = 0,
+		upgradeCostBase = 400,
+		maxLevelPerEra = {0, 3, 6, 10, 15, 20},
+		effects = {
+			rareSpawnBonus = 0.05,     -- +5% chance rare par level
+		},
+		position = Vector3.new(55, 0, 25),
+	},
+
+	-- ====== LABORATOIRE D'ESSENCES ======
+	essence_lab = {
+		name = "Laboratoire d'Essences",
+		desc = "Transforme les essences elementaires en runes et items.",
+		icon = "🧪",
+		era = 3,
+		repairCost = 1500,
+		baseCost = 0,
+		upgradeCostBase = 600,
+		maxLevelPerEra = {0, 0, 5, 10, 15, 20},
+		effects = {
+			recipeTier = 1,
+			efficiencyBonus = 0.10,
+		},
+		position = Vector3.new(-50, 0, 30),
+	},
+
+	-- ====== SANCTUAIRE D'EVOLUTION ======
+	evolution_sanctuary = {
+		name = "Sanctuaire d'Evolution",
+		desc = "Permet l'Ascension (rebirth) des monstres. Reduit cout evolutions.",
+		icon = "⭐",
+		era = 3,
+		repairCost = 2000,
+		baseCost = 0,
+		upgradeCostBase = 800,
+		maxLevelPerEra = {0, 0, 3, 7, 12, 18},
+		effects = {
+			evolutionCostReduction = 0.05,
+			traitRarityBonus = 0.02,
+		},
+		position = Vector3.new(60, 0, 0),
+	},
+
+	-- ====== ENTREPOT ======
+	warehouse = {
+		name = "Entrepot",
+		desc = "Augmente le stockage monstres et ressources.",
+		icon = "🏭",
+		era = 2,
+		repairCost = nil,
+		baseCost = 400,
+		upgradeCostBase = 250,
+		maxLevelPerEra = {0, 5, 10, 15, 20, 25},
+		effects = {
+			extraMonsterSlots = 5,     -- par level
+			extraResourceSlots = 10,
+		},
+		position = Vector3.new(-55, 0, -25),
+	},
+
+	-- ====== MARCHE ======
+	market = {
+		name = "Marche",
+		desc = "Achat/vente de ressources avec des PNJ marchands.",
+		icon = "🏪",
+		era = 2,
+		repairCost = nil,
+		baseCost = 350,
+		upgradeCostBase = 200,
+		maxLevelPerEra = {0, 3, 7, 12, 18, 25},
+		effects = {
+			tradeCategories = 1,       -- par level
+			priceBonus = 0.05,         -- meilleur taux par level
+		},
+		position = Vector3.new(25, 0, 35),
+	},
+
+	-- ====== CENTRE DE COMMANDEMENT ======
+	command_center = {
+		name = "Centre de Commandement",
+		desc = "Augmente slots defense, range defenseurs, bonus aura.",
+		icon = "🎖️",
+		era = 3,
+		repairCost = 2500,
+		baseCost = 0,
+		upgradeCostBase = 1000,
+		maxLevelPerEra = {0, 0, 3, 7, 12, 18},
+		effects = {
+			extraDefenseSlots = 1,
+			defenderRangeBonus = 2,    -- studs par level
+			auraBonus = 0.03,          -- +3% stats defenseurs par level
+		},
+		position = Vector3.new(-10, 0, -40),
+	},
+
+	-- ====== MUR D'ENCEINTE ======
+	wall = {
+		name = "Mur d'Enceinte",
+		desc = "Ajoute HP barriere avant le cristal. Regen entre vagues.",
+		icon = "🧱",
+		era = 2,
+		repairCost = nil,
+		baseCost = 300,
+		upgradeCostBase = 250,
+		maxLevelPerEra = {0, 5, 10, 15, 20, 25},
+		effects = {
+			barrierHP = 100,           -- par level
+			barrierRegenPerWave = 0.20, -- % regen entre vagues
+		},
+		position = Vector3.new(10, 0, 40),
+	},
+
+	-- ====== TECHNIQUES DE GUERRE ======
+	war_tactics = {
+		name = "Techniques de Guerre",
+		desc = "Debloque des tactiques: focus proche, fort, faible, protect cristal.",
+		icon = "📋",
+		era = 2,
+		repairCost = 500,
+		baseCost = 0,
+		upgradeCostBase = 300,
+		maxLevelPerEra = {0, 3, 6, 10, 15, 20},
+		effects = {
+			tacticSlots = 1,           -- par level
+		},
+		position = Vector3.new(-40, 0, -35),
+	},
+
+	-- ====== BUREAU DES CONTRATS ======
+	contract_bureau = {
+		name = "Bureau des Contrats",
+		desc = "Quetes quotidiennes/hebdo avec recompenses.",
+		icon = "📜",
+		era = 3,
+		repairCost = 1200,
+		baseCost = 0,
+		upgradeCostBase = 500,
+		maxLevelPerEra = {0, 0, 3, 7, 12, 18},
+		effects = {
+			dailyQuests = 1,           -- par level
+			weeklyQuests = 0,          -- 1 a partir level 3
+			rerollsPerDay = 0,
+		},
+		position = Vector3.new(35, 0, -40),
+	},
+
+	-- ====== HALL DES TROPHEES ======
+	trophy_hall = {
+		name = "Hall des Trophees",
+		desc = "Affiche exploits. Bonus passif selon trophees collectes.",
+		icon = "🏆",
+		era = 3,
+		repairCost = nil,
+		baseCost = 800,
+		upgradeCostBase = 400,
+		maxLevelPerEra = {0, 0, 3, 7, 12, 18},
+		effects = {
+			activeTrophySlots = 2,     -- par level
+		},
+		position = Vector3.new(-60, 0, 10),
+	},
+
+	-- ====== PORTAIL EXPEDITION ======
+	expedition_portal = {
+		name = "Portail d'Expedition",
+		desc = "Attaque des villages PNJ (glacier, volcan, desert). Loot special.",
+		icon = "🌀",
+		era = 4,
+		repairCost = 5000,
+		baseCost = 0,
+		upgradeCostBase = 2000,
+		maxLevelPerEra = {0, 0, 0, 3, 7, 12},
+		effects = {
+			expeditionTypes = 1,       -- par level
+			cooldownReduction = 0.10,
+		},
+		position = Vector3.new(0, 0, -50),
+	},
+
+	-- ====== DOJO DE VILLE ======
+	dojo = {
+		name = "Dojo",
+		desc = "Cree ou rejoins un dojo de guilde. PvP et raids.",
+		icon = "⛩️",
+		era = 2,
+		repairCost = nil,
+		baseCost = 1000,
+		upgradeCostBase = 800,
+		maxLevelPerEra = {0, 3, 6, 10, 15, 20},
+		effects = {
+			dojoGuildLevel = 1,        -- prerequis pour level dojo guilde
+		},
+		position = Vector3.new(60, 0, -30),
+	},
+
+	-- ====== ARENE D'ENTRAINEMENT ======
+	training_arena = {
+		name = "Arene d'Entrainement",
+		desc = "Duel PvE contre hologrammes. Test tes builds.",
+		icon = "🏟️",
+		era = 3,
+		repairCost = 1500,
+		baseCost = 0,
+		upgradeCostBase = 700,
+		maxLevelPerEra = {0, 0, 3, 7, 12, 18},
+		effects = {
+			arenaModesUnlocked = 1,    -- par level
+		},
+		position = Vector3.new(-65, 0, -10),
+	},
+}
+
+-- ===============================
+-- FONCTIONS UTILITAIRES
+-- ===============================
+
+function BuildingDatabase:Get(buildingId)
+	return self.BUILDINGS[buildingId]
+end
+
+-- Cout d'upgrade pour un batiment a un certain level
+function BuildingDatabase:GetUpgradeCost(buildingId, currentLevel)
+	local building = self.BUILDINGS[buildingId]
+	if not building then return 999999 end
+	return math.floor(building.upgradeCostBase * math.pow(2, currentLevel - 1))
+end
+
+-- Niveau max pour une ere donnee
+function BuildingDatabase:GetMaxLevel(buildingId, era)
+	local building = self.BUILDINGS[buildingId]
+	if not building then return 0 end
+	era = math.clamp(era, 1, #building.maxLevelPerEra)
+	return building.maxLevelPerEra[era] or 0
+end
+
+-- Liste des batiments disponibles pour une ere
+function BuildingDatabase:GetAvailableBuildings(era)
+	local result = {}
+	for id, building in pairs(self.BUILDINGS) do
+		if building.era <= era then
+			table.insert(result, {id = id, data = building})
+		end
+	end
+	return result
+end
+
+return BuildingDatabase

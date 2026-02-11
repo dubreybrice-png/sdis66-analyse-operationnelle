@@ -75,6 +75,11 @@ function onOpen() {
 }
 
 function doGet(e) {
+  // Test mode: ?test=1 returns minimal HTML to verify server works
+  if (e && e.parameter && e.parameter.test === "1") {
+    return HtmlService.createHtmlOutput("<h1>Server OK</h1><p>doGet works. scriptUrl = " + ScriptApp.getService().getUrl() + "</p>")
+      .setTitle("Test").setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  }
   const t = HtmlService.createTemplateFromFile("Home");
   t.scriptUrl = ScriptApp.getService().getUrl();
   return t.evaluate().setTitle("SDIS 66 - SDS").setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
@@ -124,7 +129,7 @@ function getStats2026() {
     psud: psud2026, total: total2026, sect: secteur2026, ast: astreintes2026,
     cis: cisNames.map((n, i) => ({ name:n, v26:Number(cisCounts2026[i])||0, v25:Number(cisCounts2025ytd[i])||0, v25tot:Number(cisTotals2025[i])||0 })),
     secteurs: sectNames.map((n, i) => ({ name:n, v26:Number(sectCounts2026[i])||0, v25:Number(sectCounts2025ytd[i])||0, v25tot:Number(sectTotals2025[i])||0 })),
-    cntApp: countApp, cntIspG: counts.isp, cntIspR: counts.med
+    cntApp: countApp, cntIspG: counts.isp, cntMed: counts.med, cntAction: counts.action
   };
 }
 
@@ -281,7 +286,7 @@ function getCacheStatus() {
 function clearIspCache(mat) {
   const cache = CacheService.getScriptCache();
   const normalizedMat = normalizeMat(mat);
-  cache.remove("isp_v2_" + normalizedMat); // Cache de getIspStats (v2)
+  cache.remove("isp_v3_" + normalizedMat); // Cache de getIspStats (v3)
   cache.remove("isp_detail_" + normalizedMat); // Cache de getIspDetailsAdmin
   return true;
 }
@@ -292,7 +297,7 @@ function getAdminData(password) {
   
   // === CHERCHER CACHE ===
   const cache = CacheService.getScriptCache();
-  const adminCached = cache.get("admin_data_full");
+  const adminCached = cache.get("admin_data_full_v2");
   if(adminCached) {
     const result = JSON.parse(adminCached);
     result.fromCache = true;
@@ -311,7 +316,9 @@ function getAdminData(password) {
         nom: String(rawAgents[i][0]).trim(), mat: mat, 
         interHg26:0, interG26:0, hAst26:0, hGarde26:0, 
         interHg25:0, interG25:0, hAst25:0, hGarde25:0,
-        txSoll: Number(rawAgents[i][24]) || 0 
+        txSoll: Number(rawAgents[i][24]) || 0,
+        mAst: new Array(12).fill(0),
+        mGarde: new Array(12).fill(0)
       };
     }
   }
@@ -323,8 +330,16 @@ function getAdminData(password) {
     for (let i = 1; i < data.length; i++) {
       const matAst = normalizeMat(data[i][C_TEMPS_MAT_AST]); 
       const matGarde = normalizeMat(data[i][C_TEMPS_MAT_GARDE]);
-      if (matAst && agentMap[matAst]) agentMap[matAst].hAst26 += 0.5;
-      if (matGarde && agentMap[matGarde]) agentMap[matGarde].hGarde26 += 0.5;
+      if (matAst && agentMap[matAst]) {
+        agentMap[matAst].hAst26 += 0.5;
+        const dA = coerceToDateTime_(data[i][C_TEMPS_DATE_AST]);
+        if(dA) agentMap[matAst].mAst[dA.getMonth()] += 0.5;
+      }
+      if (matGarde && agentMap[matGarde]) {
+        agentMap[matGarde].hGarde26 += 0.5;
+        const dG = coerceToDateTime_(data[i][C_TEMPS_DATE_GARDE]);
+        if(dG) agentMap[matGarde].mGarde[dG.getMonth()] += 0.5;
+      }
     }
   }
   const shApp26 = ss.getSheetByName(APP_SHEET_NAME);
@@ -391,10 +406,16 @@ function getAdminData(password) {
   stats.sort((a, b) => b.interHg26 - a.interHg26);
   const soll = [...stats].sort((a, b) => b.txSoll - a.txSoll).map(s => ({ nom: s.nom, tx: (s.txSoll*100).toFixed(1)+"%" }));
   
-  const result = { activity: stats, sollicitation: soll };
+  const monthly = stats.map(s => ({
+    nom: s.nom,
+    months: s.mAst.map((a, i) => Math.ceil(a + s.mGarde[i])),
+    total: Math.ceil(s.hAst26 + s.hGarde26)
+  })).sort((a, b) => b.total - a.total);
+  
+  const result = { activity: stats, sollicitation: soll, monthly: monthly };
   
   // === METTRE EN CACHE ===
-  cache.put("admin_data_full", JSON.stringify(result), 21600);
+  cache.put("admin_data_full_v2", JSON.stringify(result), 21600);
   
   return result;
 }
@@ -406,7 +427,7 @@ function getIspStats(matriculeInput, dobInput) {
     
     // === CHERCHER CACHE D'ABORD ===
     const cache = CacheService.getScriptCache();
-    const cacheKey = "isp_v2_" + mat;
+    const cacheKey = "isp_v3_" + mat;
     const cached = cache.get(cacheKey);
     if(cached) {
         const result = JSON.parse(cached);
@@ -427,12 +448,22 @@ function getIspStats(matriculeInput, dobInput) {
     // 2026
     let hAst26=0, hGarde26=0, interHg26=0, inter26=0;
     let bilanConf=0, pisuConf=0;
+    const monthlyAst26 = new Array(12).fill(0);
+    const monthlyGarde26 = new Array(12).fill(0);
     const shTemps = ss.getSheetByName(TEMPS_SHEET_NAME);
     if(shTemps) {
         const data = shTemps.getDataRange().getValues();
         for(let i=1; i<data.length; i++) {
-            if(normalizeMat(data[i][C_TEMPS_MAT_AST]) === mat) hAst26 += 0.5;
-            if(normalizeMat(data[i][C_TEMPS_MAT_GARDE]) === mat) hGarde26 += 0.5;
+            if(normalizeMat(data[i][C_TEMPS_MAT_AST]) === mat) {
+                hAst26 += 0.5;
+                const dA = coerceToDateTime_(data[i][C_TEMPS_DATE_AST]);
+                if(dA) monthlyAst26[dA.getMonth()] += 0.5;
+            }
+            if(normalizeMat(data[i][C_TEMPS_MAT_GARDE]) === mat) {
+                hGarde26 += 0.5;
+                const dG = coerceToDateTime_(data[i][C_TEMPS_DATE_GARDE]);
+                if(dG) monthlyGarde26[dG.getMonth()] += 0.5;
+            }
         }
     }
     const shApp = ss.getSheetByName(APP_SHEET_NAME);
@@ -692,6 +723,8 @@ function getIspStats(matriculeInput, dobInput) {
         errLegereBilan: errLegereBilanList,
         errLegerePisu: errLegerePisuList,
         errLourde: errLourdeList,
+        monthlyAst26: monthlyAst26,
+        monthlyGarde26: monthlyGarde26,
         debugInfo: {
             totalIds: thisAgentIds.size,
             idsWithTags: Object.keys(alexTags).length,
@@ -709,12 +742,12 @@ function getIspStats(matriculeInput, dobInput) {
 /* --- CHEFFERIE --- */
 function getChefferieCounts() {
     const cache = CacheService.getScriptCache();
-    const cacheKey = "chefferie_counts_v2";
+    const cacheKey = "chefferie_counts_v3";
     const cached = cache.get(cacheKey);
     if(cached) return JSON.parse(cached);
     
     const ss = getSS_();
-    let isp = 0, med = 0;
+    let isp = 0, med = 0, action = 0;
     try {
         const shApp = ss.getSheetByName(APP_SHEET_NAME);
         const shAlex = ss.getSheetByName("APP Alex");
@@ -753,9 +786,17 @@ function getChefferieCounts() {
         for(let id of alexGraves) {
             if(!eveDone.has(id)) med++;
         }
+        
+        // RED (action) = dans APP Eve, O ou Q rempli, S (col 18) pas coché
+        for(let i=1; i<dEve.length; i++) {
+            const hasAnalyse = !!dEve[i][14]; // O
+            const hasAction = !!dEve[i][16];  // Q
+            const isClosed = isCheckboxChecked(dEve[i][18]); // S
+            if((hasAnalyse || hasAction) && !isClosed) action++;
+        }
     } catch(e) {}
     
-    const result = { isp, med };
+    const result = { isp, med, action };
     cache.put(cacheKey, JSON.stringify(result), 60);
     return result;
 }
@@ -1104,7 +1145,7 @@ function saveAppChefferie(form) {
         shAlex.getRange(row, 14).setValue(true);
         
         // Clear cache
-        CacheService.getScriptCache().remove("chefferie_counts_v2");
+        CacheService.getScriptCache().remove("chefferie_counts_v3");
         
         return { success: true };
     } catch(e) {
@@ -1144,7 +1185,7 @@ function saveMedecinAnalyse(form) {
         shEve.getRange(row, 17).setValue(form.action || "");
         
         // Clear cache
-        CacheService.getScriptCache().remove("chefferie_counts_v2");
+        CacheService.getScriptCache().remove("chefferie_counts_v3");
         
         return { success: true };
     } catch(e) {
@@ -1368,7 +1409,7 @@ function saveCase(form) {
         });
         
         // Clear cache
-        CacheService.getScriptCache().remove("chefferie_counts_v2");
+        CacheService.getScriptCache().remove("chefferie_counts_v3");
         
         return { success: true };
     } catch(e) {
@@ -1653,7 +1694,7 @@ function saveActionChefferie(form) {
         shEve.getRange(row, 19).setValue(true);
         
         // Clear cache
-        CacheService.getScriptCache().remove("chefferie_counts_v2");
+        CacheService.getScriptCache().remove("chefferie_counts_v3");
         
         return { success: true };
     } catch(e) {

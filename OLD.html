@@ -9,8 +9,8 @@
   // Mapping des protocoles: colonne Excel (0-indexed) => label
   const PROTOCOLS_MAP = {
     22: "VVP (1A)",
-    23: "Hypoglycémie (2A)",
-    24: "Détr. Circu (3A)",
+    23: "Hypoglyc├⌐mie (2A)",
+    24: "D├⌐tr. Circu (3A)",
     25: "Brulures (4A)",
     26: "Dlr Aigue (5A)",
     27: "Penthrox (5A2)",
@@ -18,7 +18,7 @@
     29: "ACR (6A)",
     30: "Allergie (7A)",
     31: "DRA (8A)",
-    32: "Intox Fumées (9A)",
+    32: "Intox Fum├⌐es (9A)",
     33: "Convulsions (10A)",
     34: "Accouchement (11A)",
     35: "Dlr Tho (12A)",
@@ -26,15 +26,15 @@
     37: "Fracture fem'/bassin (14A)",
     38: "Hors Protocole (HPA)",
     39: "VVP (1E)",
-    40: "Hypoglycémie (2E)",
+    40: "Hypoglyc├⌐mie (2E)",
     41: "Brulures (4E)",
     42: "Dlr Aigue (5E)",
     43: "ACR (6E)",
     44: "Allergie (7E)",
     45: "DRA (8E)",
-    46: "Intox Fumées (9E)",
+    46: "Intox Fum├⌐es (9E)",
     47: "Convulsions (10E)",
-    48: "Nouveau Né (11E)",
+    48: "Nouveau N├⌐ (11E)",
     49: "Hors Protocole (HPE)"
   };</script>
   <style>
@@ -49,8 +49,8 @@
 
     .app{ display:grid; grid-template-columns: 260px 1fr; min-height:100vh; }
     .sidebar{ position:sticky; top:0; height:100vh; padding:20px 15px; border-right:1px solid var(--border); background:rgba(18,26,59,.65); backdrop-filter:blur(10px); display:flex; flex-direction:column; overflow-y:auto; }
-    .sideTop{ display:flex; flex-direction:column; align-items:center; text-align:center; gap:10px; margin-bottom:30px; }
-    .sideLogo{ width:70px; height:70px; border-radius:14px; overflow:hidden; border:1px solid var(--border); }
+    .sideTop{ display:flex; gap:12px; align-items:center; margin-bottom:30px; }
+    .sideLogo{ width:50px; height:50px; border-radius:12px; overflow:hidden; border:1px solid var(--border); }
     .sideLogo img{ width:100%; height:100%; object-fit:cover; }
     .sideTitle{ line-height:1.2; } .sideTitle b{ color:#fff; font-size:14px; }
     .sideBtns{ display:flex; flex-direction:column; gap:10px; }
@@ -60,10 +60,11 @@
     .badgeBtn { background:var(--ok); color:#000; padding:2px 6px; border-radius:6px; font-size:11px; font-weight:bold; }
     .badgeBtn.red { background:var(--red); color:#fff; }
 
-    .main{ padding:25px; overflow-y:auto; height:100vh; position:relative; }
+    .main{ padding:25px; overflow-y:auto; height:100vh; }
+    .main:has(#viewChefferie.active) { padding:0; overflow:hidden; }
     .view { display:none; animation:fadeIn 0.3s; }
     .view.active { display:block; }
-    #viewChefferie.active { display:flex !important; flex-direction:column; position:absolute; top:0; left:0; right:0; bottom:0; overflow:hidden; background:#0b0f1f; z-index:50; }
+    #viewChefferie.active { display:flex !important; flex-direction:column; height:100vh; overflow:hidden; background:var(--bg); }
     @keyframes fadeIn { from{opacity:0;transform:translateY(5px);} to{opacity:1;transform:translateY(0);} }
 
     .topbar{ border-bottom:1px solid var(--border); padding-bottom:8px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center; }
@@ -127,8 +128,8 @@
     
     .modalBody { display:flex; flex:1; overflow:hidden; }
     
-    #modalPdf { flex:2.5; border:0; background:#000; position:relative; width:auto; height:auto; }
-    #modalPdfInfo { flex:1; min-width:350px; background:#1a2245; padding:20px; border-left:1px solid var(--border); overflow-y:auto; display:flex; flex-direction:column; gap:15px; }
+    #modalPdf { flex:1; border:0; background:#000; }
+    #modalPdfInfo { flex:0 0 300px; background:#1a2245; padding:20px; border-left:1px solid var(--border); overflow-y:auto; display:flex; flex-direction:column; gap:15px; }
     
     .detail-row { padding:12px; border-bottom:1px solid rgba(255,255,255,0.05); cursor:pointer; }
     .detail-row:hover { background:rgba(255,255,255,0.05); }
@@ -205,7 +206,7 @@
     .appContainer { display:none; }
     .appContainer.active { display:flex; flex-direction:column; height:100%; }
     
-    /* Flèche scroll clignotante */
+    /* Fl├¿che scroll clignotante */
     .scroll-arrow { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); width:40px; height:40px; background:linear-gradient(135deg, rgba(110,168,254,.2), rgba(71,209,140,.2)); border:2px solid var(--accent3); border-radius:50%; display:none; align-items:center; justify-content:center; font-size:20px; color:var(--accent3); cursor:pointer; animation:pulse 2s infinite; box-shadow:0 0 20px rgba(79,195,247,0.4); z-index:5000; }
     @keyframes pulse { 0%, 100% { opacity:1; transform:translateX(-50%) scale(1); } 50% { opacity:0.7; transform:translateX(-50%) scale(1.1); } }
     .scroll-arrow:hover { background:linear-gradient(135deg, rgba(110,168,254,.4), rgba(71,209,140,.4)); }
@@ -222,8 +223,8 @@
     <div class="neo-track"><div id="loadFill25" class="neo-fill"></div></div>
   </div>
 
-  <!-- Flèche de scroll -->
-  <div class="scroll-arrow" id="scrollArrow" onclick="document.querySelector('.main').scrollTo({top: document.querySelector('.main').scrollHeight, behavior: 'smooth'});">↓</div>
+  <!-- Fl├¿che de scroll -->
+  <div class="scroll-arrow" id="scrollArrow" onclick="document.querySelector('.main').scrollTo({top: document.querySelector('.main').scrollHeight, behavior: 'smooth'});">Γåô</div>
 
   <!-- VUE DASHBOARD -->
   <div class="app" id="viewContainer">
@@ -232,13 +233,14 @@
         <div class="sideLogo"><img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTytvs_50DuR6nodg_2fA5DzNfpdDSR1s_YaQ&s"></div>
         <div class="sideTitle">
             <b>Sdis 66 - SDS</b>
-            <span style="display:block;margin-top:2px;">Outil de données<br>opérationnelles</span>
+            <span style="display:block;margin-top:2px;">Outil de donn├⌐es<br>op├⌐rationnelles</span>
             <div id="cacheTime" style="font-size:10px;color:gray;margin-top:5px;"></div>
         </div>
       </div>
       <div class="sideBtns">
-        <button class="sideBtn primary" id="btnAppAccess" onclick="openAppView()"><span>Accès APP</span><span class="badgeBtn" id="cntAppBadge">...</span></button>
-        <button class="sideBtn" onclick="askPass('chef')"><span>Accès chefferie</span><span style="display:flex;align-items:center;gap:4px;"><span class="badgeBtn" id="cntIspGBadge">...</span><span class="badgeBtn" style="background:var(--orange);color:#000;" id="cntMedBadge">...</span><span class="badgeBtn red" id="cntActionBadge">...</span></span></button>
+        <button class="sideBtn primary" id="btnAppAccess" onclick="openAppView()"><span>Acc├¿s APP</span><span class="badgeBtn" id="cntAppBadge">...</span></button>
+        <button class="sideBtn" onclick="askPass('chef')"><span>Acc├¿s chefferie ISP</span><span style="display:flex;align-items:center;gap:4px;"><span class="badgeBtn" id="cntIspGBadge">...</span><span style="color:var(--muted);">/</span><span class="badgeBtn red" id="cntIspRBadge">...</span></span></button>
+        <button class="sideBtn" onclick="askPass('med')"><span>Analyse m├⌐decin cheffe</span><span class="badgeBtn" id="cntMedBadge">...</span></button>
       </div>
     </aside>
 
@@ -246,19 +248,19 @@
       
       <div id="viewDashboard" class="view active">
         <div class="topbar">
-            <div><h1>Synthèse</h1><p style="color:var(--muted)">Activité opérationnelle 2026 — comparaison à date de la période 2025</p></div>
+            <div><h1>Synth├¿se</h1><p style="color:var(--muted)">Activit├⌐ op├⌐rationnelle 2026 ΓÇö comparaison ├á date de la p├⌐riode 2025</p></div>
         </div>
         
-        <div class="periodHero">Les données sont comparées du <b style="color:#fff;font-size:16px;">01/01/2026</b> au <b style="color:#fff;font-size:16px;"><span id="cutoffDateBig">...</span></b></div>
+        <div class="periodHero">Les donn├⌐es sont compar├⌐es du <b style="color:#fff;font-size:16px;">01/01/2026</b> au <b style="color:#fff;font-size:16px;"><span id="cutoffDateBig">...</span></b></div>
 
         <div class="kpiGrid">
            <div class="panel"><div class="panelBody">
-              <div style="font-size:11px;color:var(--muted)">Interventions — Garde PSud</div><div style="font-size:32px;font-weight:900" id="psud2026">...</div>
+              <div style="font-size:11px;color:var(--muted)">Interventions ΓÇö Garde PSud</div><div style="font-size:32px;font-weight:900" id="psud2026">...</div>
               <div class="kpiBottom"><span style="color:var(--muted);font-size:11px">Total 2025:</span><span class="badge" id="psud2025Badge">...</span></div>
               <div style="font-size:9px;color:var(--muted);margin-top:4px;">Comparaison du 1er janvier au <span id="cutoffCompPsud">...</span></div>
            </div></div>
            <div class="panel"><div class="panelBody">
-              <div style="font-size:11px;color:var(--muted)">Interventions — Secteur</div><div style="font-size:32px;font-weight:900" id="secteur2026">...</div>
+              <div style="font-size:11px;color:var(--muted)">Interventions ΓÇö Secteur</div><div style="font-size:32px;font-weight:900" id="secteur2026">...</div>
               <div class="kpiBottom"><span style="color:var(--muted);font-size:11px">Total 2025:</span><span class="badge" id="sect2025Badge">...</span></div>
               <div style="font-size:9px;color:var(--muted);margin-top:4px;">Comparaison du 1er janvier au <span id="cutoffCompSect">...</span></div>
            </div></div>
@@ -280,12 +282,12 @@
         </div>
 
         <div class="panel" style="margin-bottom:20px;">
-            <div class="panelHead">Données par ISP</div>
+            <div class="panelHead">Donn├⌐es par ISP</div>
             <div class="panelBody">
                 <div id="ispLogin" style="display:flex;gap:10px;align-items:center;">
                     <input type="text" id="matInput" class="inp" placeholder="Matricule" style="width:120px;">
                     <input type="text" id="dobInput" class="inp" placeholder="JJ/MM/AAAA" style="width:140px;">
-                    <button class="btnGo" style="width:auto;margin:0" onclick="loginIsp()">Voir mes données</button>
+                    <button class="btnGo" style="width:auto;margin:0" onclick="loginIsp()">Voir mes donn├⌐es</button>
                     <div id="ispLoadBox" class="mini-load-box">
                        <div class="mini-load-text"><span id="ispPct">0</span>%</div>
                        <div class="mini-load-track"><div id="ispFill" class="mini-load-fill"></div></div>
@@ -294,23 +296,17 @@
                 <div id="ispData" style="display:none;margin-top:15px;">
                     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;">
                         <div>
-                            <h4 style="color:var(--accent3);margin:0 0 5px 0">Temps (Agent: <span id="ispNameDisplay">—</span>)</h4>
+                            <h4 style="color:var(--accent3);margin:0 0 5px 0">Temps (Agent: <span id="ispNameDisplay">ΓÇö</span>)</h4>
                             <div style="font-size:12px;"><b>Astreinte 2026:</b> <span id="ispAst26"></span>h <span id="ispAstTrend"></span></div>
-                            <div style="font-size:11px;color:var(--muted)">Comparatif 2025 à date: <span id="ispAst25Ytd"></span>h | Total 2025: <span id="ispAst25Tot"></span>h</div>
+                            <div style="font-size:11px;color:var(--muted)">Comparatif 2025 ├á date: <span id="ispAst25Ytd"></span>h | Total 2025: <span id="ispAst25Tot"></span>h</div>
                             <hr style="border:0;border-top:1px solid #333;margin:5px 0">
                             <div style="font-size:12px;"><b>Garde 2026:</b> <span id="ispGarde26"></span>h <span id="ispGardeTrend"></span></div>
-                            <div style="font-size:11px;color:var(--muted)">Comparatif 2025 à date: <span id="ispGarde25Ytd"></span>h | Total 2025: <span id="ispGarde25Tot"></span>h</div>
-                            <hr style="border:0;border-top:1px solid #333;margin:8px 0 4px 0">
-                            <div style="font-size:11px;font-weight:bold;margin-bottom:3px;">Détail mensuel 2026 :</div>
-                            <table style="font-size:10px;width:100%;border-collapse:collapse;">
-                                <thead><tr style="border-bottom:1px solid #444;"><th style="text-align:left;padding:2px 4px;">Mois</th><th style="text-align:right;padding:2px 4px;">Astreinte</th><th style="text-align:right;padding:2px 4px;">Garde</th></tr></thead>
-                                <tbody id="ispMonthlyTbody"></tbody>
-                            </table>
+                            <div style="font-size:11px;color:var(--muted)">Comparatif 2025 ├á date: <span id="ispGarde25Ytd"></span>h | Total 2025: <span id="ispGarde25Tot"></span>h</div>
                         </div>
                         <div>
                             <h4 style="color:var(--accent3);margin:0 0 5px 0">Nbr Inters (Hors Garde)</h4>
                             <div style="font-size:12px;"><b>2026:</b> <span id="ispInter26"></span> <span id="ispInterTrend"></span></div>
-                            <div style="font-size:11px;color:var(--muted)">Comparatif 2025 à date: <span id="ispInter25Ytd"></span> | Total 2025: <span id="ispInter25Tot"></span></div>
+                            <div style="font-size:11px;color:var(--muted)">Comparatif 2025 ├á date: <span id="ispInter25Ytd"></span> | Total 2025: <span id="ispInter25Tot"></span></div>
                         </div>
                         <div>
                             <h4 style="color:var(--accent3);margin:0 0 5px 0">Etude qualitative des BPV</h4>
@@ -318,22 +314,22 @@
                             <div style="font-size:12px;cursor:pointer;text-decoration:underline;" class="text-green" onclick="openErrorList('Bilan')">Bilan OK: <b id="ispBilanOk"></b></div>
                             <div style="font-size:12px;cursor:pointer;text-decoration:underline;" class="text-green" onclick="openErrorList('Pisu')">Pisu OK: <b id="ispPisuOk"></b></div>
                             
-                            <div style="margin-top:8px;cursor:pointer;text-decoration:underline;" class="text-orange" onclick="openErrorList('BilanLeg')">Erreur Bilan Légère: <span id="ispErrBil"></span></div>
-                            <div style="cursor:pointer;text-decoration:underline;" class="text-orange" onclick="openErrorList('PisuLeg')">Erreur Pisu Légère: <span id="ispErrPisu"></span></div>
+                            <div style="margin-top:8px;cursor:pointer;text-decoration:underline;" class="text-orange" onclick="openErrorList('BilanLeg')">Erreur Bilan L├⌐g├¿re: <span id="ispErrBil"></span></div>
+                            <div style="cursor:pointer;text-decoration:underline;" class="text-orange" onclick="openErrorList('PisuLeg')">Erreur Pisu L├⌐g├¿re: <span id="ispErrPisu"></span></div>
                             
                             <div style="margin-top:8px;cursor:pointer;text-decoration:underline;" class="text-red" onclick="openErrorList('Grave')">Erreur Grave: <span id="ispErrLourd"></span></div>
                         </div>
                     </div>
                     <div style="display:flex;gap:10px;margin-top:15px;">
-                        <button class="btnGo" style="width:auto;background:#333;color:#fff" onclick="logoutIsp()">Déconnexion</button>
-                        <button class="btnGo" style="width:auto;background:#444;color:#fff" onclick="refreshIspData()">🔄 Rafraîchir</button>
+                        <button class="btnGo" style="width:auto;background:#333;color:#fff" onclick="logoutIsp()">D├⌐connexion</button>
+                        <button class="btnGo" style="width:auto;background:#444;color:#fff" onclick="refreshIspData()">≡ƒöä Rafra├«chir</button>
                     </div>
                 </div>
             </div>
         </div>
 
         <div class="panel">
-            <div class="panelHead">Administration (à date)</div>
+            <div class="panelHead">Administration (├á date)</div>
             <div class="panelBody">
                 <div id="adminLogin" style="display:flex;gap:10px;align-items:center;">
                     <input type="password" id="adminPwd" class="inp" placeholder="Code...">
@@ -344,23 +340,23 @@
                    <div class="mini-load-track"><div id="adminFill" class="mini-load-fill"></div></div>
                 </div>
                 <div id="adminData" style="display:none;margin-top:10px;">
-                    <input type="text" id="adminSearch" class="inp" placeholder="Filtrer (séparer par ;)" style="width:100%;margin-bottom:10px;" onkeyup="filterAdmin()">
+                    <input type="text" id="adminSearch" class="inp" placeholder="Filtrer (s├⌐parer par ;)" style="width:100%;margin-bottom:10px;" onkeyup="filterAdmin()">
                     
                     <div class="adminSplit">
                         <div class="adminLeft">
-                            <div class="table-title">Données par ISP</div>
+                            <div class="table-title">Donn├⌐es par ISP</div>
                             <div class="admin-scroll">
                                 <table id="adminTable">
                                     <thead><tr>
-                                        <th onclick="sortAdmin(0)">Nom <span id="sortA0">↕</span></th>
-                                        <th onclick="sortAdmin(1)" class="num">Nbr inter<br>hors garde<br>2026 <span id="sortA1">▼</span></th>
-                                        <th onclick="sortAdmin(2)" class="num" style="color:var(--muted)">Nbr inter<br>hors garde<br>2025 <span id="sortA2">↕</span></th>
-                                        <th onclick="sortAdmin(3)" class="num">Nbr inter<br>en garde<br>2026 <span id="sortA3">↕</span></th>
-                                        <th onclick="sortAdmin(4)" class="num" style="color:var(--muted)">Nbr inter<br>en garde<br>2025 <span id="sortA4">↕</span></th>
-                                        <th onclick="sortAdmin(5)" class="num">Temps astreinte<br>et dispo<br>2026 <span id="sortA5">↕</span></th>
-                                        <th onclick="sortAdmin(6)" class="num" style="color:var(--muted)">Temps astreinte<br>et dispo<br>2025 <span id="sortA6">↕</span></th>
-                                        <th onclick="sortAdmin(7)" class="num">Temps passé<br>en garde<br>2026 <span id="sortA7">↕</span></th>
-                                        <th onclick="sortAdmin(8)" class="num" style="color:var(--muted)">Temps passé<br>en garde<br>2025 <span id="sortA8">↕</span></th>
+                                        <th onclick="sortAdmin(0)">Nom <span id="sortA0">Γåò</span></th>
+                                        <th onclick="sortAdmin(1)" class="num">Inter<br>Hors Garde<br>26 <span id="sortA1">Γû╝</span></th>
+                                        <th onclick="sortAdmin(2)" class="num" style="color:var(--muted)">Inter<br>Hors Garde<br>25 <span id="sortA2">Γåò</span></th>
+                                        <th onclick="sortAdmin(3)" class="num">Inter<br>En Garde<br>26 <span id="sortA3">Γåò</span></th>
+                                        <th onclick="sortAdmin(4)" class="num" style="color:var(--muted)">Inter<br>En Garde<br>25 <span id="sortA4">Γåò</span></th>
+                                        <th onclick="sortAdmin(5)" class="num">Astreinte<br>26 <span id="sortA5">Γåò</span></th>
+                                        <th onclick="sortAdmin(6)" class="num" style="color:var(--muted)">Astreinte<br>25 <span id="sortA6">Γåò</span></th>
+                                        <th onclick="sortAdmin(7)" class="num">Garde<br>26 <span id="sortA7">Γåò</span></th>
+                                        <th onclick="sortAdmin(8)" class="num" style="color:var(--muted)">Garde<br>25 <span id="sortA8">Γåò</span></th>
                                     </tr></thead>
                                     <tbody id="adminTbody"></tbody>
                                 </table>
@@ -368,34 +364,16 @@
                         </div>
                         <div class="adminRight">
                             <div class="table-title">Taux sollicitation</div>
-                            <div style="font-size:10px;color:gray;margin-bottom:5px;padding:0 8px;">(% de temps passé en intervention par rapport temps dispo total hors garde)</div>
                             <div class="admin-scroll">
                                 <table><thead><tr><th>Nom</th><th>Taux</th></tr></thead><tbody id="adminSollTbody"></tbody></table>
                             </div>
                         </div>
                     </div>
                     
-                    <!-- Fenêtres CIS et Secteurs après -->
+                    <!-- Fen├¬tres CIS et Secteurs apr├¿s -->
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:20px;">
-                        <div class="panel"><div class="panelHead">Interventions par CIS (décroissant)</div><div class="panelScrollWrapper" style="max-height:250px;"><table id="tableAdminCis"><thead><tr><th>CIS</th><th class="num">Nbr intervention<br>en 2026</th><th class="num">Nbr intervention<br>en 2025 (Date)</th><th class="num">Nbr intervention<br>en 2025 (Total)</th></tr></thead><tbody></tbody></table></div></div>
-                        <div class="panel"><div class="panelHead">Interventions par Secteur (décroissant)</div><div class="panelScrollWrapper" style="max-height:250px;"><table id="tableAdminSect"><thead><tr><th>Secteur</th><th class="num">Nbr intervention<br>en 2026</th><th class="num">Nbr intervention<br>en 2025 (Date)</th><th class="num">Nbr intervention<br>en 2025 (Total)</th></tr></thead><tbody></tbody></table></div></div>
-                    </div>
-                    
-                    <div class="panel" style="margin-top:20px;">
-                        <div class="panelHead">Temps de disponibilité et astreinte par ISP et par mois — 2026</div>
-                        <div class="panelScrollWrapper" style="max-height:400px;">
-                            <table id="adminMonthlyTable" style="font-size:11px;">
-                                <thead><tr>
-                                    <th>Nom</th>
-                                    <th class="num">Jan</th><th class="num">Fév</th><th class="num">Mar</th>
-                                    <th class="num">Avr</th><th class="num">Mai</th><th class="num">Jun</th>
-                                    <th class="num">Jul</th><th class="num">Aoû</th><th class="num">Sep</th>
-                                    <th class="num">Oct</th><th class="num">Nov</th><th class="num">Déc</th>
-                                    <th class="num" style="font-weight:bold;">Total</th>
-                                </tr></thead>
-                                <tbody id="adminMonthlyTbody"></tbody>
-                            </table>
-                        </div>
+                        <div class="panel"><div class="panelHead">Interventions par CIS (d├⌐croissant)</div><div class="panelScrollWrapper" style="max-height:250px;"><table id="tableAdminCis"><thead><tr><th>CIS</th><th class="num">2026</th><th class="num">2025 (Date)</th><th class="num">2025 (Total)</th></tr></thead><tbody></tbody></table></div></div>
+                        <div class="panel"><div class="panelHead">Interventions par Secteur (d├⌐croissant)</div><div class="panelScrollWrapper" style="max-height:250px;"><table id="tableAdminSect"><thead><tr><th>Secteur</th><th class="num">2026</th><th class="num">2025 (Date)</th><th class="num">2025 (Total)</th></tr></thead><tbody></tbody></table></div></div>
                     </div>
                 </div>
                 </div>
@@ -406,28 +384,23 @@
       <!-- NOUVELLE INTERFACE CHEFFERIE -->
       <div id="viewChefferie" class="view">
           <!-- Header fixe -->
-          <div style="background:var(--bg); border-bottom:2px solid var(--border); padding:12px 20px; display:flex; align-items:center; gap:15px;">
-              <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTytvs_50DuR6nodg_2fA5DzNfpdDSR1s_YaQ&s" style="width:40px;height:40px;border-radius:10px;border:1px solid var(--border);">
-              <button class="btnGo" style="width:auto;padding:8px 16px;" onclick="goHome()">← Retour Dashboard</button>
-              <h1 style="margin:0;font-size:18px;font-weight:800;">Espace Chefferie</h1>
+          <div style="background:var(--bg); border-bottom:2px solid var(--border); padding:12px 20px;">
+              <button class="btnGo" style="width:auto;padding:8px 16px;" onclick="goHome()">ΓåÉ Retour Dashboard</button>
+              <h1 style="display:inline;margin-left:20px;font-size:18px;font-weight:800;">Espace Chefferie ISP</h1>
           </div>
           
-          <!-- 4 Boutons TOUJOURS EN HAUT -->
+          <!-- 3 Boutons TOUJOURS EN HAUT -->
           <div style="background:rgba(11,15,31,0.98); border-bottom:1px solid var(--border); padding:15px 20px; display:flex; gap:12px; position:sticky; top:0; z-index:100;">
               <button class="c-btn" style="flex:1;" onclick="showChefferieMode('app')">
-                  <h3 style="margin:0 0 4px 0; font-size:14px;">📋 Faire APP Chefferie <span class="badgeBtn" id="btnBadgeIspG" style="font-size:10px;">...</span></h3>
+                  <h3 style="margin:0 0 4px 0; font-size:14px;">≡ƒôï Faire APP Chefferie</h3>
                   <p style="margin:0; font-size:11px; opacity:0.8;">Fiches Bilan/Pisu incomplets</p>
               </button>
               <button class="c-btn" style="flex:1;" onclick="showChefferieMode('med')">
-                  <h3 style="margin:0 0 4px 0; font-size:14px;">⚠️ Analyse Médecin Cheffe <span class="badgeBtn" style="background:var(--orange);color:#000;font-size:10px;" id="btnBadgeMed">...</span></h3>
+                  <h3 style="margin:0 0 4px 0; font-size:14px;">ΓÜá∩╕Å Analyse M├⌐decin Cheffe</h3>
                   <p style="margin:0; font-size:11px; opacity:0.8;">Erreurs graves</p>
               </button>
-              <button class="c-btn" style="flex:1;" onclick="showChefferieMode('action')">
-                  <h3 style="margin:0 0 4px 0; font-size:14px;">🎯 Réaliser actions chefferie <span class="badgeBtn red" style="font-size:10px;" id="btnBadgeAction">...</span></h3>
-                  <p style="margin:0; font-size:11px; opacity:0.8;">Actions finales à mener</p>
-              </button>
               <button class="c-btn" style="flex:1;" onclick="showChefferieMode('data')">
-                  <h3 style="margin:0 0 4px 0; font-size:14px;">📊 Voir Données APP</h3>
+                  <h3 style="margin:0 0 4px 0; font-size:14px;">≡ƒôè Voir Donn├⌐es APP</h3>
                   <p style="margin:0; font-size:11px; opacity:0.8;">Tous les ISP</p>
               </button>
           </div>
@@ -439,33 +412,23 @@
                   <div id="chefAppContent"></div>
               </div>
               
-              <!-- Mode Médecin -->
+              <!-- Mode M├⌐decin -->
               <div id="chefModeMed" style="display:none;">
                   <div id="chefMedContent"></div>
               </div>
               
-              <!-- Mode Action -->
-              <div id="chefModeAction" style="display:none;">
-                  <div id="chefActionContent"></div>
-              </div>
-
               <!-- Mode Data -->
               <div id="chefModeData" style="display:none;">
-                  <div style="display:flex; gap:10px; margin-bottom:15px;">
-                      <button class="btnGo" style="flex:1; background:var(--red); border-color:var(--red); color:#fff;" onclick="showErrorsByType('Erreur Grave')">🚨 Voir erreurs graves</button>
-                      <button class="btnGo" style="flex:1; background:var(--orange); border-color:var(--orange); color:#000;" onclick="showErrorsByType('Erreur Pisu Légère')">⚠ Voir erreurs pisu légères</button>
-                      <button class="btnGo" style="flex:1; background:var(--orange); border-color:var(--orange); color:#000;" onclick="showErrorsByType('Erreur Bilan Légère')">⚠ Voir erreurs bilan légères</button>
-                  </div>
                   <div class="panel">
-                      <div class="panelHead">Récapitulatif par ISP</div>
+                      <div class="panelHead">R├⌐capitulatif par ISP</div>
                       <div class="panelBody">
                           <table id="globalTable" style="width:100%;">
                               <thead><tr>
                                   <th>Nom ISP</th>
                                   <th>Bilan OK</th>
                                   <th>Pisu OK</th>
-                                  <th>Err. Bilan Lég.</th>
-                                  <th>Err. Pisu Lég.</th>
+                                  <th>Err. Bilan L├⌐g.</th>
+                                  <th>Err. Pisu L├⌐g.</th>
                                   <th>Err. Grave</th>
                               </tr></thead>
                               <tbody id="globalTbody"></tbody>
@@ -477,7 +440,7 @@
       </div>
 
       <div id="viewMedecin" class="view">
-          <div class="topbar"><button class="btnGo" style="width:auto;margin:0" onclick="goHome()">← Retour Dashboard</button><h1 style="display:inline-block;margin-left:15px;">Espace Médecin Cheffe</h1></div>
+          <div class="topbar"><button class="btnGo" style="width:auto;margin:0" onclick="goHome()">ΓåÉ Retour Dashboard</button><h1 style="display:inline-block;margin-left:15px;">Espace M├⌐decin Cheffe</h1></div>
           <div id="medFormArea" style="height:85vh;margin-top:20px;"></div>
       </div>
     </main>
@@ -491,7 +454,7 @@
         <h1>APP par ISP</h1>
       </div>
       <div class="rightHead">
-        <div class="pill" id="statusPill">Chargement…</div>
+        <div class="pill" id="statusPill">ChargementΓÇª</div>
         <button class="btnTop" onclick="loadNext(currentAppRow)">Recharger</button>
         <button class="btnTop" onclick="closeAppView()">Accueil</button>
       </div>
@@ -502,12 +465,12 @@
         <div class="card">
             <div class="cardHead">
             <div class="interInfos">
-                <div class="interItem"><span class="interLabel">Intervention</span><span class="interVal" id="iNum">—</span></div>
-                <div class="interItem"><span class="interLabel">Date</span><span class="interVal" id="iDate">—</span></div>
-                <div class="interItem"><span class="interLabel">Infirmier</span><span class="interVal highlight" id="iInf">—</span></div>
-                <div class="interItem"><span class="interLabel">Centre</span><span class="interVal" id="iCis">—</span></div>
-                <div class="interItem"><span class="interLabel">Motif</span><span class="interVal" id="iMotif">—</span></div>
-                <div class="interItem"><span class="interLabel">Engin</span><span class="interVal" id="iEngin">—</span></div>
+                <div class="interItem"><span class="interLabel">Intervention</span><span class="interVal" id="iNum">ΓÇö</span></div>
+                <div class="interItem"><span class="interLabel">Date</span><span class="interVal" id="iDate">ΓÇö</span></div>
+                <div class="interItem"><span class="interLabel">Infirmier</span><span class="interVal highlight" id="iInf">ΓÇö</span></div>
+                <div class="interItem"><span class="interLabel">Centre</span><span class="interVal" id="iCis">ΓÇö</span></div>
+                <div class="interItem"><span class="interLabel">Motif</span><span class="interVal" id="iMotif">ΓÇö</span></div>
+                <div class="interItem"><span class="interLabel">Engin</span><span class="interVal" id="iEngin">ΓÇö</span></div>
             </div>
             </div>
             <div class="pdfBox">
@@ -515,8 +478,8 @@
             <div id="pdfPlaceholder" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:var(--muted);">Chargement PDF...</div>
             </div>
             <div style="padding:4px; text-align:center; border-top:1px solid var(--border); background:rgba(0,0,0,0.3); font-size:10px;">
-            <a id="openPdfLink" href="#" target="_blank" style="color:var(--accent); text-decoration:none;">Ouvrir dans Drive ↗</a> 
-            <span class="pill" id="remainingPill" style="margin-left:10px; font-size:9px; padding:2px 6px;">Reste : —</span>
+            <a id="openPdfLink" href="#" target="_blank" style="color:var(--accent); text-decoration:none;">Ouvrir dans Drive Γåù</a> 
+            <span class="pill" id="remainingPill" style="margin-left:10px; font-size:9px; padding:2px 6px;">Reste : ΓÇö</span>
             </div>
         </div>
       </div>
@@ -536,12 +499,12 @@
                 <div class="groupTitle">Protocoles</div>
                 <div style="margin-bottom:2px;font-size:10px;color:var(--muted);font-weight:700;">Adultes</div>
                 <div class="grid-checks" id="protoAdultBox"></div>
-                <div style="margin:6px 0 2px;font-size:10px;color:var(--muted);font-weight:700;border-top:1px solid rgba(255,255,255,.05);padding-top:4px;">Pédiatriques</div>
+                <div style="margin:6px 0 2px;font-size:10px;color:var(--muted);font-weight:700;border-top:1px solid rgba(255,255,255,.05);padding-top:4px;">P├⌐diatriques</div>
                 <div class="grid-checks" id="protoPediaBox"></div>
             </div>
 
             <div class="group">
-                <div class="groupTitle">Critères</div>
+                <div class="groupTitle">Crit├¿res</div>
                 <div class="grid-selects">
                     <div><label id="lblAx">AKIM</label><select id="selAx"></select></div>
                     <div><label id="lblAy">SMUR</label><select id="selAy"></select></div>
@@ -556,7 +519,7 @@
             </div>
 
             <div class="group">
-                <div class="groupTitle">Résultat</div>
+                <div class="groupTitle">R├⌐sultat</div>
                 <div style="margin-bottom:8px;">
                     <label class="cb"><input type="checkbox" id="chkBh"> <span id="lblBh">Absence / erreur commande PUI</span></label>
                 </div>
@@ -573,15 +536,15 @@
             <div class="group" style="border-color: rgba(255,107,107,.3); padding:4px;">
                 <label class="cb red" style="margin:0;">
                     <input type="checkbox" id="pbCheck" class="danger-cb">
-                    Signaler un problème à Brice
+                    Signaler un probl├¿me ├á Brice
                 </label>
                 <div id="pbDetails" style="margin-top:4px; display:none;">
-                    <input type="text" id="pbTxt" placeholder="Précisez..." style="width:100%;">
+                    <input type="text" id="pbTxt" placeholder="Pr├⌐cisez..." style="width:100%;">
                 </div>
             </div>
 
             <div class="actions">
-                <button class="btn ok" id="sendBtn" onclick="sendApp()">Envoyer et Clôturer</button>
+                <button class="btn ok" id="sendBtn" onclick="sendApp()">Envoyer et Cl├┤turer</button>
                 <button class="btn warn" id="skipBtn" onclick="skipApp()">Ignorer</button>
             </div>
             </div>
@@ -593,15 +556,15 @@
   <div id="modalDetail" class="modalOverlay" style="z-index:20000;">
     <div class="modalCard" style="width:95%; max-width:1600px; height:98vh;">
       <div class="modalHead">
-        <span>Détail de l'intervention</span>
-        <button class="closeBtn" onclick="closeModal('modalDetail')">×</button>
+        <span>D├⌐tail de l'intervention</span>
+        <button class="closeBtn" onclick="closeModal('modalDetail')">├ù</button>
       </div>
       <div class="modalBody" style="display:flex; gap:0;">
         <iframe id="modalPdf" style="flex:2.5; border:0; background:#000;"></iframe>
         <div id="modalPdfInfo" style="flex:1; min-width:350px; background:#1a2245; padding:20px; border-left:1px solid var(--border); overflow-y:auto; display:flex; flex-direction:column; gap:15px;">
           <h4 style="color:var(--accent3);margin:0 0 15px 0;">Informations</h4>
           <div style="display:flex;flex-direction:column;gap:12px;font-size:13px;">
-            <div><span style="color:var(--muted);font-size:11px;">N° Intervention</span><br><b id="detailId" style="font-size:15px;color:#fff;"></b></div>
+            <div><span style="color:var(--muted);font-size:11px;">N┬░ Intervention</span><br><b id="detailId" style="font-size:15px;color:#fff;"></b></div>
             <div><span style="color:var(--muted);font-size:11px;">Date</span><br><b id="detailDate"></b></div>
             <div><span style="color:var(--muted);font-size:11px;">Statut</span><br><b id="detailCentre"></b></div>
             <div><span style="color:var(--muted);font-size:11px;">Motif d'intervention</span><br><b id="detailMotif"></b></div>
@@ -610,22 +573,22 @@
           <h4 style="color:var(--accent3);margin:15px 0 10px 0;">Commentaire Chefferie</h4>
           <div id="commChef" class="static-box"></div>
           <div id="blockMed" style="display:none;">
-            <h4 style="color:var(--red);margin:15px 0 10px 0;">Analyse Médecin</h4>
+            <h4 style="color:var(--red);margin:15px 0 10px 0;">Analyse M├⌐decin</h4>
             <div id="commMed" class="static-box" style="color:var(--red);"></div>
           </div>
-          <button class="btnGo" style="width:100%;margin-bottom:8px;" onclick="document.getElementById('modalDetail').style.display='none'; document.getElementById('modalList').style.display='flex';">← Retour aux fiches</button>
+          <button class="btnGo" style="width:100%;margin-bottom:8px;" onclick="document.getElementById('modalDetail').style.display='none'; document.getElementById('modalList').style.display='flex';">ΓåÉ Retour aux fiches</button>
           <button class="btnGo" style="width:100%;" onclick="closeModal('modalDetail')">Fermer</button>
         </div>
       </div>
     </div>
   </div>
   
-  <div id="modalList" class="modalOverlay" style="z-index:15000;"><div class="modalCard" style="max-width:800px;height:80vh;"><div class="modalHead"><span id="modalListTitle">Liste des dossiers</span><button class="closeBtn" onclick="closeModal('modalList')">×</button></div>
+  <div id="modalList" class="modalOverlay" style="z-index:15000;"><div class="modalCard" style="max-width:800px;height:80vh;"><div class="modalHead"><span id="modalListTitle">Liste des dossiers</span><button class="closeBtn" onclick="closeModal('modalList')">├ù</button></div>
       <div style="padding:15px;border-bottom:1px solid var(--border);display:flex;gap:15px;flex-wrap:wrap;background:rgba(0,0,0,0.3);" id="filterBox">
           <label><input type="checkbox" checked onchange="filterDetails()" value="Bilan OK"> Bilan OK</label>
           <label><input type="checkbox" checked onchange="filterDetails()" value="Pisu OK"> Pisu OK</label>
-          <label><input type="checkbox" checked onchange="filterDetails()" value="Erreur Bilan Légère"> Erreur Bilan Lég.</label>
-          <label><input type="checkbox" checked onchange="filterDetails()" value="Erreur Pisu Légère"> Erreur Pisu Lég.</label>
+          <label><input type="checkbox" checked onchange="filterDetails()" value="Erreur Bilan L├⌐g├¿re"> Erreur Bilan L├⌐g.</label>
+          <label><input type="checkbox" checked onchange="filterDetails()" value="Erreur Pisu L├⌐g├¿re"> Erreur Pisu L├⌐g.</label>
           <label><input type="checkbox" checked onchange="filterDetails()" value="Erreur Grave"> Erreur Grave</label>
       </div>
       <div class="modalBody" id="modalListContent" style="display:block;padding:0;overflow-y:auto;flex-direction:column;"></div>
@@ -647,7 +610,7 @@
     function toast(m){ const t=document.getElementById("toast"); t.textContent=m; t.style.display="block"; setTimeout(()=>t.style.display="none",3000); }
     function goHome(){ document.querySelectorAll('.view').forEach(v=>v.classList.remove('active')); document.getElementById('viewDashboard').classList.add('active'); }
     function setText(id,v){ const e=document.getElementById(id); if(e) e.textContent=(v==null?"-":v); }
-    function getTrendHtml(a,b){ const v1=parseFloat(a)||0, v2=parseFloat(b)||0; if(v2===0 && v1>0) return '<span class="trendUp">▲</span>'; if(v1>v2) return '<span class="trendUp">▲</span>'; if(v1<v2) return '<span class="trendDown">▼</span>'; return '<span class="trendEq">=</span>'; }
+    function getTrendHtml(a,b){ const v1=parseFloat(a)||0, v2=parseFloat(b)||0; if(v2===0 && v1>0) return '<span class="trendUp">Γû▓</span>'; if(v1>v2) return '<span class="trendUp">Γû▓</span>'; if(v1<v2) return '<span class="trendDown">Γû╝</span>'; return '<span class="trendEq">=</span>'; }
     document.getElementById('dobInput').addEventListener('input', function(e){ if(e.inputType!="deleteContentBackward"){ let v=this.value; if(v.length==2||v.length==5) this.value=v+'/'; } });
 
     function updateCacheDisplay() {
@@ -675,13 +638,8 @@
             document.querySelector("#tableCis tbody").innerHTML = (d.cis||[]).map(x=>`<tr id="cis_${x.name}"><td>${x.name}</td><td class="num">${x.v26}</td><td class="num v25">...</td><td class="num" style="color:gray">${x.v25tot}</td></tr>`).join('');
             document.querySelector("#tableSect tbody").innerHTML = (d.secteurs||[]).map(x=>`<tr id="sect_${x.name}"><td>${x.name}</td><td class="num">${x.v26}</td><td class="num v25">...</td><td class="num" style="color:gray">${x.v25tot}</td></tr>`).join('');
             
-            setText("cntAppBadge", d.cntApp||0);
-            setText("cntIspGBadge", d.cntIspG||0);
-            setText("cntMedBadge", d.cntMed||0);
-            setText("cntActionBadge", d.cntAction||0);
-            setText("btnBadgeIspG", d.cntIspG||0);
-            setText("btnBadgeMed", d.cntMed||0);
-            setText("btnBadgeAction", d.cntAction||0);
+            setText("cntAppBadge", d.cntApp||0); setText("cntIspGBadge", d.cntIspG||0); setText("cntIspRBadge", d.cntIspR||0); setText("cntMedBadge", d.cntMed||0);
+            setText("btnBadgeIspG", d.cntIspG||0); setText("btnBadgeIspR", d.cntIspR||0);
 
             // 2025 (Deferred)
             const l25 = document.getElementById("loadingBox25"), f25=document.getElementById("loadFill25"), p25=document.getElementById("loadPct25");
@@ -708,7 +666,7 @@
 
         }).getStats2026();
         
-        // Gestion flèche scroll
+        // Gestion fl├¿che scroll
         const checkScroll = () => {
             const scrollArrow = document.getElementById('scrollArrow');
             const mainEl = document.querySelector('.main');
@@ -792,7 +750,7 @@
         document.getElementById("remainingPill").textContent = "Reste : "+(res.remaining||0);
 
         if(res.done){
-          setStatus("Terminé"); 
+          setStatus("Termin├⌐"); 
           toast(res.message);
           document.getElementById("mainForm").innerHTML = `<div style="text-align:center;color:var(--muted);margin-top:50px;">${res.message}</div>`;
           document.getElementById("pdfFrame").src="";
@@ -801,7 +759,7 @@
 
         currentAppRow = res.rowNumber;
         currentAppRowNumber = res.rowNumber;
-        setStatus("Fiche prête");
+        setStatus("Fiche pr├¬te");
         
         const info = res.info;
         setText("iNum", info.interId);
@@ -833,17 +791,17 @@
          box.innerHTML = "";
          if (!items || !Array.isArray(items)) return;
          
-         // Pour biBmBox, créer un layout groupé
+         // Pour biBmBox, cr├⌐er un layout group├⌐
          if(boxId === "biBmBox") {
             let currentRow = null;
             let itemsInRow = 0;
             
             items.forEach((item, idx) => {
-               // "Absence traçabilité" seule sur sa ligne
-               const isAbsenceTracabilite = item.label.includes("Absence traçabilité");
+               // "Absence tra├ºabilit├⌐" seule sur sa ligne
+               const isAbsenceTracabilite = item.label.includes("Absence tra├ºabilit├⌐");
                const itemsPerRow = isAbsenceTracabilite ? 1 : 2;
                
-               // Créer une nouvelle ligne si nécessaire
+               // Cr├⌐er une nouvelle ligne si n├⌐cessaire
                if(itemsInRow === 0) {
                   currentRow = document.createElement("div");
                   currentRow.style.display = "grid";
@@ -853,7 +811,7 @@
                   box.appendChild(currentRow);
                   itemsInRow = 0;
                } else if(itemsInRow >= 2) {
-                  // Si on a 2 items et qu'on en ajoute un 3e, créer une nouvelle ligne
+                  // Si on a 2 items et qu'on en ajoute un 3e, cr├⌐er une nouvelle ligne
                   currentRow = document.createElement("div");
                   currentRow.style.display = "grid";
                   currentRow.style.gridTemplateColumns = "1fr 1fr";
@@ -876,7 +834,7 @@
                currentRow.appendChild(lbl);
                itemsInRow++;
                
-               // Si c'est "Absence traçabilité", reset pour la prochaine ligne
+               // Si c'est "Absence tra├ºabilit├⌐", reset pour la prochaine ligne
                if(isAbsenceTracabilite) {
                   itemsInRow = 0;
                }
@@ -932,7 +890,7 @@
        // Ajouter logique conditionnelle pour afficher/masquer les motifs
        updateMotifVisibility();
        
-       // Ajouter event listeners sur les checkboxes du résultat
+       // Ajouter event listeners sur les checkboxes du r├⌐sultat
        const checkboxes = document.querySelectorAll('#biBmBox input[type="checkbox"]');
        checkboxes.forEach(cb => {
            cb.addEventListener('change', updateMotifVisibility);
@@ -940,13 +898,13 @@
     }
 
     function updateMotifVisibility() {
-       // Récupérer les checkboxes de biBmBox
+       // R├⌐cup├⌐rer les checkboxes de biBmBox
        const checkboxes = document.querySelectorAll('#biBmBox input[type="checkbox"]');
        let hasBilanIncomplet = false;
        let hasPisuPasOk = false;
        
        checkboxes.forEach(cb => {
-           // Chercher le texte du label - peut être dans un span ou directement après l'input
+           // Chercher le texte du label - peut ├¬tre dans un span ou directement apr├¿s l'input
            let labelText = '';
            const parent = cb.closest('label');
            if(parent) {
@@ -981,7 +939,7 @@
 
     function fillSelect(id, opts, currentVal) {
        const s = document.getElementById(id);
-       s.innerHTML = '<option value="">—</option>';
+       s.innerHTML = '<option value="">ΓÇö</option>';
        if(opts) {
            opts.forEach(o => {
                const op = document.createElement("option");
@@ -995,7 +953,7 @@
     function sendApp(){
       if(!currentAppRow){ toast("Erreur: aucune fiche","err"); return; }
       const isp = document.getElementById("ispSelect").value;
-      if(!isp) { toast("Veuillez sélectionner l'ISP Analyse","err"); return; }
+      if(!isp) { toast("Veuillez s├⌐lectionner l'ISP Analyse","err"); return; }
 
       isAppSubmitting = true;
       setStatus("Enregistrement..."); setButtons(true);
@@ -1037,8 +995,8 @@
       google.script.run.withSuccessHandler((res)=>{ 
           console.log("saveCase success:", res);
           isAppSubmitting = false;
-          setStatus("Sauvegardé"); 
-          toast("Enregistré et Clôturé ✅"); 
+          setStatus("Sauvegard├⌐"); 
+          toast("Enregistr├⌐ et Cl├┤tur├⌐ Γ£à"); 
           loadNext(); 
       })
       .withFailureHandler(e=>{ 
@@ -1080,17 +1038,6 @@
             
             setText("ispBilanOk", (res.bilanOkCount||0)); setText("ispPisuOk", (res.pisuOkCount||0));
             setText("ispErrBil", (res.errLegereBilan||[]).length); setText("ispErrPisu", (res.errLegerePisu||[]).length); setText("ispErrLourd", (res.errLourde||[]).length);
-            
-            // Monthly breakdown
-            const moisNoms = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
-            const mA = res.monthlyAst26 || new Array(12).fill(0);
-            const mG = res.monthlyGarde26 || new Array(12).fill(0);
-            document.getElementById("ispMonthlyTbody").innerHTML = moisNoms.map((m, i) => {
-                const a = Math.ceil(mA[i]), g = Math.ceil(mG[i]);
-                if(a === 0 && g === 0) return '';
-                return `<tr style="border-bottom:1px solid #333;"><td style="padding:2px 4px;">${m}</td><td style="text-align:right;padding:2px 4px;">${a}h</td><td style="text-align:right;padding:2px 4px;">${g}h</td></tr>`;
-            }).join('');
-            
             window_currentIspData = res;
         }).getIspStats(m, d);
     }
@@ -1103,7 +1050,7 @@
         document.getElementById("modalList").style.display = "none";
         currentDetailList = []; // Vider la liste en cache
         google.script.run.withSuccessHandler(() => {
-            toast("Cache vidé - rechargement...");
+            toast("Cache vid├⌐ - rechargement...");
             loginIsp();
         }).clearIspCache(mat);
     }
@@ -1111,35 +1058,35 @@
     function openErrorList(type) {
         if(!window_currentIspData || !window_currentIspData.nom) return;
         
-        // Récupérer le matricule depuis les inputs
+        // R├⌐cup├⌐rer le matricule depuis les inputs
         const mat = document.getElementById("matInput").value;
         if(!mat) { toast("Matricule requis"); return; }
         
-        // Si les données sont déjà chargées ET le modal est visible, juste mettre à jour les checkboxes
+        // Si les donn├⌐es sont d├⌐j├á charg├⌐es ET le modal est visible, juste mettre ├á jour les checkboxes
         if(currentDetailList && currentDetailList.length > 0 && document.getElementById("modalList").style.display === "flex") {
             const typeMap = {
                 'Bilan': 'Bilan OK',
                 'Pisu': 'Pisu OK',
-                'BilanLeg': 'Erreur Bilan Légère',
-                'PisuLeg': 'Erreur Pisu Légère',
+                'BilanLeg': 'Erreur Bilan L├⌐g├¿re',
+                'PisuLeg': 'Erreur Pisu L├⌐g├¿re',
                 'Grave': 'Erreur Grave'
             };
             const filterValue = typeMap[type] || "";
             
-            // Cocher seulement le type cliqué
+            // Cocher seulement le type cliqu├⌐
             document.querySelectorAll('#filterBox input[type="checkbox"]').forEach(cb => {
                 cb.checked = cb.value === filterValue;
             });
             filterDetails();
-            return; // Pas besoin de recharger les données
+            return; // Pas besoin de recharger les donn├⌐es
         }
         
-        // Chargement: charger TOUTES les données fraîches
+        // Chargement: charger TOUTES les donn├⌐es fra├«ches
         google.script.run.withSuccessHandler(fullList => {
-            // Stocker toutes les données en mémoire pour filtrage côté client
+            // Stocker toutes les donn├⌐es en m├⌐moire pour filtrage c├┤t├⌐ client
             currentDetailList = fullList;
             
-            // Initialiser tous les checkboxes à coché
+            // Initialiser tous les checkboxes ├á coch├⌐
             document.querySelectorAll('#filterBox input[type="checkbox"]').forEach(cb => {
                 cb.checked = true;
             });
@@ -1178,23 +1125,15 @@
             renderAdminTable();
             document.getElementById("adminSollTbody").innerHTML = res.sollicitation.map(s => `<tr><td>${s.nom}</td><td class="num"><b>${s.tx}</b></td></tr>`).join('');
             
-            // Monthly table
-            if(res.monthly && res.monthly.length) {
-                document.getElementById("adminMonthlyTbody").innerHTML = res.monthly.map(r => {
-                    const cells = r.months.map(v => `<td class="num">${v||''}</td>`).join('');
-                    return `<tr><td><b>${r.nom}</b></td>${cells}<td class="num" style="font-weight:bold;">${r.total}</td></tr>`;
-                }).join('');
-            }
-            
-            // Remplir tableaux CIS et Secteurs depuis getStats2025() pour avoir les bonnes données YTD
+            // Remplir tableaux CIS et Secteurs depuis getStats2025() pour avoir les bonnes donn├⌐es YTD
             google.script.run.withSuccessHandler(stats25 => {
-                // Récupérer les comptages 2025 YTD depuis cisMap et sectMap
+                // R├⌐cup├⌐rer les comptages 2025 YTD depuis cisMap et sectMap
                 const cisNames = Object.keys(stats25.cisMap || {});
                 const sectNames = Object.keys(stats25.sectMap || {});
                 
-                // Récupérer aussi les totaux 2026 et 2025 total depuis getStats2026
+                // R├⌐cup├⌐rer aussi les totaux 2026 et 2025 total depuis getStats2026
                 google.script.run.withSuccessHandler(stats26 => {
-                    // Combiner les données: cisMap pour 2025 YTD, cis array pour 2026 et 2025 total
+                    // Combiner les donn├⌐es: cisMap pour 2025 YTD, cis array pour 2026 et 2025 total
                     const cisData = (stats26.cis || []).map(x => ({
                         name: x.name,
                         v26: x.v26,
@@ -1208,7 +1147,7 @@
                         v25tot: x.v25tot
                     }));
                     
-                    // Trier par 2026 décroissant
+                    // Trier par 2026 d├⌐croissant
                     const cisSorted = cisData.sort((a,b) => b.v26 - a.v26);
                     const sectSorted = sectData.sort((a,b) => b.v26 - a.v26);
                     
@@ -1231,8 +1170,8 @@
     function sortAdmin(colIdx) {
         if(adminSortCol === colIdx) adminSortDir *= -1; else { adminSortCol = colIdx; adminSortDir = colIdx===0?1:-1; }
         adminDataCache.sort((a,b) => { let v1=a[colIdx], v2=b[colIdx]; if(typeof v1==='string'){v1=v1.toLowerCase();v2=v2.toLowerCase();} if(v1>v2)return adminSortDir; if(v1<v2)return -adminSortDir; return 0; });
-        for(let i=0; i<9; i++) document.getElementById("sortA"+i).textContent="↕";
-        document.getElementById("sortA"+colIdx).textContent = adminSortDir===1 ? "▲" : "▼";
+        for(let i=0; i<9; i++) document.getElementById("sortA"+i).textContent="Γåò";
+        document.getElementById("sortA"+colIdx).textContent = adminSortDir===1 ? "Γû▓" : "Γû╝";
         renderAdminTable();
     }
     
@@ -1255,7 +1194,6 @@
         // Masquer tous les modes
         document.getElementById('chefModeApp').style.display = 'none';
         document.getElementById('chefModeMed').style.display = 'none';
-        document.getElementById('chefModeAction').style.display = 'none';
         document.getElementById('chefModeData').style.display = 'none';
         
         if(mode === 'app') {
@@ -1264,9 +1202,6 @@
         } else if(mode === 'med') {
             document.getElementById('chefModeMed').style.display = 'block';
             loadMedecinChef();
-        } else if(mode === 'action') {
-            document.getElementById('chefModeAction').style.display = 'block';
-            loadActionChefferie();
         } else if(mode === 'data') {
             document.getElementById('chefModeData').style.display = 'block';
             loadGlobalList();
@@ -1275,13 +1210,10 @@
     
     function loadChefferieCounts() {
         google.script.run.withSuccessHandler(res => {
-            if(res) {
+            if(res && res.valid) {
                 setText("cntIspGBadge", res.isp||0);
+                setText("cntIspRBadge", res.med||0);
                 setText("cntMedBadge", res.med||0);
-                setText("cntActionBadge", res.action||0);
-                setText("btnBadgeIspG", res.isp||0);
-                setText("btnBadgeMed", res.med||0);
-                setText("btnBadgeAction", res.action||0);
             }
         }).getChefferieCounts();
     }
@@ -1306,12 +1238,12 @@
         
         div.innerHTML = `
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; height:calc(100vh - 200px);">
-                <!-- PDF à gauche -->
+                <!-- PDF ├á gauche -->
                 <div style="border:1px solid var(--border); border-radius:12px; overflow:hidden;">
-                    <iframe src="${(info.pdf||'').replace('/view','/preview')}" style="width:100%; height:100%; border:none; position:relative;"></iframe>
+                    <iframe src="${info.pdf}" style="width:100%; height:100%; border:none;"></iframe>
                 </div>
                 
-                <!-- Formulaire à droite -->
+                <!-- Formulaire ├á droite -->
                 <div style="overflow-y:auto; padding:15px;">
                     <div class="panel">
                         <div class="panelHead">Fiche Intervention</div>
@@ -1328,39 +1260,39 @@
                     ${info.bilanKo ? `<div class="panel" style="margin-top:15px;">
                         <div class="panelHead">Motif Bilan Incomplet (lecture seule)</div>
                         <div class="panelBody">
-                            <div style="background:rgba(255,255,255,0.05); padding:10px; border-radius:6px; font-size:12px;">${info.motifBilan || 'Aucun motif renseigné'}</div>
+                            <div style="background:rgba(255,255,255,0.05); padding:10px; border-radius:6px; font-size:12px;">${info.motifBilan || 'Aucun motif renseign├⌐'}</div>
                         </div>
                     </div>` : ''}
                     
                     ${info.pisuKo ? `<div class="panel" style="margin-top:15px;">
                         <div class="panelHead">Motif Pisu Incomplet (lecture seule)</div>
                         <div class="panelBody">
-                            <div style="background:rgba(255,255,255,0.05); padding:10px; border-radius:6px; font-size:12px;">${info.motifPisu || 'Aucun motif renseigné'}</div>
+                            <div style="background:rgba(255,255,255,0.05); padding:10px; border-radius:6px; font-size:12px;">${info.motifPisu || 'Aucun motif renseign├⌐'}</div>
                         </div>
                     </div>` : ''}
                     
                     <div class="panel" style="margin-top:15px;">
-                        <div class="panelHead">Côter la fiche</div>
+                        <div class="panelHead">C├┤ter la fiche</div>
                         <div class="panelBody">
                             <label class="cb" style="background:rgba(71,209,140,.1); border-color:rgba(71,209,140,.3); margin-bottom:8px;">
                                 <input type="checkbox" id="chkH" ${data.checks.H?'checked':''}>
-                                <span style="color:var(--ok);">✓ Passer Bilan en OK</span>
+                                <span style="color:var(--ok);">Γ£ô Passer Bilan en OK</span>
                             </label>
                             <label class="cb" style="background:rgba(71,209,140,.1); border-color:rgba(71,209,140,.3); margin-bottom:8px;">
                                 <input type="checkbox" id="chkI" ${data.checks.I?'checked':''}>
-                                <span style="color:var(--ok);">✓ Passer Pisu en OK</span>
+                                <span style="color:var(--ok);">Γ£ô Passer Pisu en OK</span>
                             </label>
                             <label class="cb" style="background:rgba(255,165,0,.1); border-color:rgba(255,165,0,.3); margin-bottom:8px;">
                                 <input type="checkbox" id="chkJ" ${data.checks.J?'checked':''}>
-                                <span style="color:orange;">⚠ Erreur Bilan Légère</span>
+                                <span style="color:orange;">ΓÜá Erreur Bilan L├⌐g├¿re</span>
                             </label>
                             <label class="cb" style="background:rgba(255,165,0,.1); border-color:rgba(255,165,0,.3); margin-bottom:8px;">
                                 <input type="checkbox" id="chkK" ${data.checks.K?'checked':''}>
-                                <span style="color:orange;">⚠ Erreur Pisu Légère</span>
+                                <span style="color:orange;">ΓÜá Erreur Pisu L├⌐g├¿re</span>
                             </label>
                             <label class="cb" style="background:rgba(255,107,107,.1); border-color:rgba(255,107,107,.3); margin-bottom:8px;">
                                 <input type="checkbox" id="chkL" ${data.checks.L?'checked':''}>
-                                <span style="color:var(--danger);">🚨 Erreur Grave</span>
+                                <span style="color:var(--danger);">≡ƒÜ¿ Erreur Grave</span>
                             </label>
                             
                             <div style="margin-top:15px;">
@@ -1369,7 +1301,7 @@
                             </div>
                             
                             <div style="margin-top:20px; display:flex; gap:10px;">
-                                <button class="btn ok" style="flex:1;" onclick="saveAndNextAppChef()">💾 Clôturer et Suivant</button>
+                                <button class="btn ok" style="flex:1;" onclick="saveAndNextAppChef()">≡ƒÆ╛ Cl├┤turer et Suivant</button>
                             </div>
                         </div>
                     </div>
@@ -1395,8 +1327,8 @@
         document.getElementById('chefAppContent').innerHTML = '<div style="text-align:center;padding:40px;">Enregistrement...</div>';
         
         google.script.run.withSuccessHandler(() => {
-            toast("Fiche clôturée ✅");
-            loadChefferieCounts(); // Mettre à jour les badges
+            toast("Fiche cl├┤tur├⌐e Γ£à");
+            loadChefferieCounts(); // Mettre ├á jour les badges
             loadAppChefferie(); // Charger la suivante
         }).withFailureHandler(e => {
             toast("Erreur: " + e.message, "err");
@@ -1424,15 +1356,15 @@
         
         div.innerHTML = `
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; height:calc(100vh - 200px);">
-                <!-- PDF à gauche -->
+                <!-- PDF ├á gauche -->
                 <div style="border:1px solid var(--border); border-radius:12px; overflow:hidden;">
-                    <iframe src="${(info.pdf||'').replace('/view','/preview')}" style="width:100%; height:100%; border:none; position:relative;"></iframe>
+                    <iframe src="${info.pdf}" style="width:100%; height:100%; border:none;"></iframe>
                 </div>
                 
-                <!-- Formulaire à droite -->
+                <!-- Formulaire ├á droite -->
                 <div style="overflow-y:auto; padding:15px;">
                     <div class="panel">
-                        <div class="panelHead" style="background:rgba(255,107,107,.2);">⚠️ Erreur Grave</div>
+                        <div class="panelHead" style="background:rgba(255,107,107,.2);">ΓÜá∩╕Å Erreur Grave</div>
                         <div class="panelBody">
                             <div style="margin-bottom:10px;"><strong>ID:</strong> ${info.interId}</div>
                             <div style="margin-bottom:10px;"><strong>Date:</strong> ${info.date}</div>
@@ -1451,7 +1383,7 @@
                     </div>` : ''}
                     
                     <div class="panel" style="margin-top:15px;">
-                        <div class="panelHead">Analyse Médecin Cheffe</div>
+                        <div class="panelHead">Analyse M├⌐decin Cheffe</div>
                         <div class="panelBody">
                             <div style="margin-bottom:15px;">
                                 <label style="display:block; margin-bottom:5px; font-size:11px; font-weight:bold;">Analyse</label>
@@ -1460,11 +1392,11 @@
                             
                             <div>
                                 <label style="display:block; margin-bottom:5px; font-size:11px; font-weight:bold;">Action Requise</label>
-                                <textarea id="txtAction" style="width:100%; min-height:80px;" placeholder="Actions à mener..."></textarea>
+                                <textarea id="txtAction" style="width:100%; min-height:80px;" placeholder="Actions ├á mener..."></textarea>
                             </div>
                             
                             <div style="margin-top:20px;">
-                                <button class="btn ok" style="width:100%;" onclick="saveAndNextMedChef()">💾 Enregistrer et Suivant</button>
+                                <button class="btn ok" style="width:100%;" onclick="saveAndNextMedChef()">≡ƒÆ╛ Enregistrer et Suivant</button>
                             </div>
                         </div>
                     </div>
@@ -1483,8 +1415,8 @@
         document.getElementById('chefMedContent').innerHTML = '<div style="text-align:center;padding:40px;">Enregistrement...</div>';
         
         google.script.run.withSuccessHandler(() => {
-            toast("Analyse enregistrée ✅");
-            loadChefferieCounts(); // Mettre à jour les badges
+            toast("Analyse enregistr├⌐e Γ£à");
+            loadChefferieCounts(); // Mettre ├á jour les badges
             loadMedecinChef(); // Charger la suivante
         }).withFailureHandler(e => {
             toast("Erreur: " + e.message, "err");
@@ -1492,117 +1424,7 @@
         }).saveMedecinAnalyse(form);
     }
 
-    // === ACTION CHEFFERIE ===
-    function loadActionChefferie() {
-        const div = document.getElementById('chefActionContent');
-        div.innerHTML = '<div style="text-align:center;padding:40px;color:gray;">Chargement...</div>';
-        
-        google.script.run.withSuccessHandler(res => {
-            if(!res.found) {
-                div.innerHTML = `<div style="text-align:center;padding:40px;color:var(--accent3);">${res.message}</div>`;
-                return;
-            }
-            currentChefData = res;
-            renderActionChefferie(res);
-        }).getNextActionChefferie();
-    }
-    
-    function renderActionChefferie(data) {
-        const div = document.getElementById('chefActionContent');
-        const info = data.info;
-        
-        div.innerHTML = `
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; height:calc(100vh - 200px);">
-                <div style="border:1px solid var(--border); border-radius:12px; overflow:hidden;">
-                    <iframe src="${(info.pdf||'').replace('/view','/preview')}" style="width:100%; height:100%; border:none; position:relative;"></iframe>
-                </div>
-                <div style="overflow-y:auto; padding:15px;">
-                    <div class="panel">
-                        <div class="panelHead" style="background:rgba(255,165,0,.2);">🎯 Action Chefferie</div>
-                        <div class="panelBody">
-                            <div style="margin-bottom:10px;"><strong>ID:</strong> ${info.interId}</div>
-                            <div style="margin-bottom:10px;"><strong>Date:</strong> ${info.date}</div>
-                            <div style="margin-bottom:10px;"><strong>ISP:</strong> ${info.infName}</div>
-                            <div style="margin-bottom:10px;"><strong>Statut:</strong> ${info.status}</div>
-                            <div style="margin-bottom:10px;"><strong>Motif:</strong> ${info.motif}</div>
-                            <div style="margin-bottom:10px;"><strong>Engin:</strong> ${info.engin}</div>
-                        </div>
-                    </div>
-                    
-                    ${info.commChef ? `<div class="panel" style="margin-top:15px;">
-                        <div class="panelHead">Commentaire Chefferie</div>
-                        <div class="panelBody">
-                            <div style="background:rgba(255,255,255,0.05); padding:10px; border-radius:6px; font-size:12px;">${info.commChef}</div>
-                        </div>
-                    </div>` : ''}
-                    
-                    ${info.analyseMed ? `<div class="panel" style="margin-top:15px;">
-                        <div class="panelHead" style="color:var(--red);">Analyse Médecin</div>
-                        <div class="panelBody">
-                            <div style="background:rgba(255,107,107,0.1); padding:10px; border-radius:6px; font-size:12px; color:var(--red);">${info.analyseMed}</div>
-                        </div>
-                    </div>` : ''}
-                    
-                    ${info.actionRequise ? `<div class="panel" style="margin-top:15px;">
-                        <div class="panelHead" style="color:var(--orange);">Action Requise par Médecin</div>
-                        <div class="panelBody">
-                            <div style="background:rgba(255,165,0,0.1); padding:10px; border-radius:6px; font-size:12px; color:var(--orange);">${info.actionRequise}</div>
-                        </div>
-                    </div>` : ''}
-                    
-                    <div class="panel" style="margin-top:15px;">
-                        <div class="panelHead">Action Réalisée</div>
-                        <div class="panelBody">
-                            <textarea id="txtActionFaite" style="width:100%; min-height:100px;" placeholder="Décrivez l'action réalisée...">${info.actionFaite || ''}</textarea>
-                            <div style="margin-top:20px;">
-                                <button class="btn ok" style="width:100%;" onclick="saveAndNextAction()">💾 Clôturer et Suivant</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-    }
-    
-    function saveAndNextAction() {
-        const form = {
-            rowEve: currentChefData.rowEve,
-            actionFaite: document.getElementById('txtActionFaite').value
-        };
-        
-        if(!form.actionFaite) { toast("Veuillez décrire l'action réalisée"); return; }
-        
-        document.getElementById('chefActionContent').innerHTML = '<div style="text-align:center;padding:40px;">Enregistrement...</div>';
-        
-        google.script.run.withSuccessHandler(res => {
-            if(res.success) {
-                toast("Action clôturée");
-                refreshChefferieBadges();
-                loadActionChefferie();
-            } else {
-                toast("Erreur: " + (res.error||"inconnue"), "err");
-                loadActionChefferie();
-            }
-        }).withFailureHandler(e => {
-            toast("Erreur: " + e.message, "err");
-            loadActionChefferie();
-        }).saveActionChefferie(form);
-    }
-    
-    function refreshChefferieBadges() {
-        google.script.run.withSuccessHandler(res => {
-            if(res) {
-                setText("cntIspGBadge", res.isp||0);
-                setText("cntMedBadge", res.med||0);
-                setText("cntActionBadge", res.action||0);
-                setText("btnBadgeIspG", res.isp||0);
-                setText("btnBadgeMed", res.med||0);
-                setText("btnBadgeAction", res.action||0);
-            }
-        }).getChefferieCounts();
-    }
-
-    // CHEFFERIE (ANCIENNE - à garder pour compatibilité)
+    // CHEFFERIE (ANCIENNE - ├á garder pour compatibilit├⌐)
     let currentSchema = null;
     function hideGlobal() { document.getElementById("globalListArea").style.display="none"; document.getElementById("chefFormArea").style.display="block"; }
     function loadChefCase(mode) {
@@ -1620,15 +1442,15 @@
         const html = `
         <div style="height:100%;">
             <div class="info-banner">
-                <div class="info-banner-row"><span>N° Inter: <b>${i.interId}</b></span> <span>ISP: <b>${i.infName}</b></span></div>
-                <div class="info-banner-row"><span>Motif: <b>${i.motif || '—'}</b></span> <span>${i.date}</span></div>
+                <div class="info-banner-row"><span>N┬░ Inter: <b>${i.interId}</b></span> <span>ISP: <b>${i.infName}</b></span></div>
+                <div class="info-banner-row"><span>Motif: <b>${i.motif || 'ΓÇö'}</b></span> <span>${i.date}</span></div>
             </div>
             <div class="chef-layout">
                 <div class="chef-pdf"><iframe src="${(i.pdf||'').replace('/view','/preview')}" style="width:100%;height:100%;border:0"></iframe></div>
                 <div class="chef-form">
                     ${s.mode==='app_isp' ? `
                        <div><label>Commentaire ISP</label><div class="static-box">${i.commBN||"-"}</div></div>
-                       <div><label>Checklist Qualité</label><div class="check-list">
+                       <div><label>Checklist Qualit├⌐</label><div class="check-list">
                           ${s.checks.map((c,k) => {
                               let cls = ""; if(c.label.includes("OK")) cls="chk-green"; if(c.label.includes("KO")) cls="chk-red";
                               const checked = c.checked ? " checked" : "";
@@ -1639,10 +1461,10 @@
                        <button class="btnGo" onclick="sendChef()">Valider</button>
                     ` : s.mode==='med_chef' ? `
                        <div><label>Analyse</label><div class="static-box">${i.motif||"-"}</div></div>
-                       <div><label>Analyse Médecin</label><textarea id="medAnalyse"></textarea></div>
+                       <div><label>Analyse M├⌐decin</label><textarea id="medAnalyse"></textarea></div>
                        <div><label>Actions</label><textarea id="medAction"></textarea></div>
                        <button class="btnGo" onclick="sendChef()">Valider</button>
-                    ` : `<div>Formulaire non défini</div>`}
+                    ` : `<div>Formulaire non d├⌐fini</div>`}
                 </div>
             </div>
         </div>`;
@@ -1667,7 +1489,7 @@
         }
         const areaId = (s.mode==='med_chef') ? 'medFormArea' : 'chefFormArea';
         document.getElementById(areaId).innerHTML = "<div style='text-align:center;padding:50px'>Enregistrement...</div>";
-        google.script.run.withSuccessHandler(() => { toast("Enregistré"); loadChefCase(s.mode); }).saveChefferie(payload);
+        google.script.run.withSuccessHandler(() => { toast("Enregistr├⌐"); loadChefCase(s.mode); }).saveChefferie(payload);
     }
 
     // LIST & SORT
@@ -1695,8 +1517,8 @@
         const keys = ['nom', 'bilanOk', 'pisuOk', 'errBilL', 'errPisuL', 'errGrave'];
         const k = keys[idx];
         globalList.sort((a,b) => { if(a[k]>b[k]) return sortDir; if(a[k]<b[k]) return -sortDir; return 0; });
-        for(let i=0; i<6; i++) document.getElementById("sortIcon"+i).textContent="↕";
-        document.getElementById("sortIcon"+idx).textContent = sortDir===1 ? "▼" : "▲";
+        for(let i=0; i<6; i++) document.getElementById("sortIcon"+i).textContent="Γåò";
+        document.getElementById("sortIcon"+idx).textContent = sortDir===1 ? "Γû╝" : "Γû▓";
         renderGlobalTable(globalList);
     }
     
@@ -1706,7 +1528,6 @@
         google.script.run.withSuccessHandler(list => {
             stopLoad();
             currentDetailList = list;
-            document.getElementById('filterBox').style.display = 'flex';
             document.querySelectorAll('#filterBox input[type="checkbox"]').forEach(cb => cb.checked = true);
             document.getElementById("modalListTitle").textContent = `Dossiers de ${ispName || mat}`;
             filterDetails();
@@ -1720,7 +1541,7 @@
         let loaded = 0;
         let totalIsps = globalList.length;
 
-        if(totalIsps === 0) { toast("Aucune donnée"); stopLoad(); return; }
+        if(totalIsps === 0) { toast("Aucune donn├⌐e"); stopLoad(); return; }
 
         globalList.forEach(isp => {
             google.script.run.withSuccessHandler(list => {
@@ -1752,13 +1573,13 @@
         const filtered = currentDetailList.filter(x => x.types.some(t => filters.includes(t)));
         if(filtered.length===0) c.innerHTML="<div style='padding:20px;text-align:center;color:gray'>Aucun dossier</div>";
         filtered.forEach(x => {
-            // Créer les tags pour chaque type (peut être "Bilan OK", "Pisu OK", "Erreur Grave", etc.)
+            // Cr├⌐er les tags pour chaque type (peut ├¬tre "Bilan OK", "Pisu OK", "Erreur Grave", etc.)
             const tagHtml = x.types.map(t => {
                 let tagBg = "#47d18c", tagColor = "white";
                 if(t.includes("Grave")) {
                     tagBg = "#d32f2f";
                     tagColor = "white";
-                } else if(t.includes("Légère")) {
+                } else if(t.includes("L├⌐g├¿re")) {
                     tagBg = "#ff9800";
                     tagColor = "white";
                 }
@@ -1769,7 +1590,7 @@
                 <div class="detail-row" onclick="loadInterDetail('${x.id}', '${x.date || ''}', '${(x.motif || '').replace(/'/g, "\\'")}', '${x.status || ''}', '${x.centre || ''}', '${x.engin || ''}')" style="padding:12px;border-bottom:1px solid #333;cursor:pointer;">
                     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
                         <div style="flex:1;">
-                            <div style="font-weight:bold;color:#39ff14;font-size:13px;">Numéro d'intervention: ${x.id}</div>
+                            <div style="font-weight:bold;color:#39ff14;font-size:13px;">Num├⌐ro d'intervention: ${x.id}</div>
                             <div style="font-size:10px;color:#aaa;margin-top:3px;">Date: <b>${x.date || '-'}</b></div>
                         </div>
                         <div style="margin-left:10px;">${tagHtml}</div>
@@ -1785,96 +1606,6 @@
         });
     }
     
-    function showErrorsByType(errorType) {
-        if(!globalList || globalList.length === 0) { toast("Chargez d'abord les donn\u00e9es"); return; }
-        
-        document.getElementById("modalListTitle").textContent = errorType + ' \u2014 par ISP';
-        document.getElementById('filterBox').style.display = 'none';
-        const c = document.getElementById("modalListContent");
-        c.innerHTML = '<div style="padding:30px;text-align:center;color:gray;">Chargement des donn\u00e9es...</div>';
-        document.getElementById("modalList").style.display = "flex";
-        
-        let colorMap = { 'Erreur Grave': 'var(--red)', 'Erreur Pisu L\u00e9g\u00e8re': 'var(--orange)', 'Erreur Bilan L\u00e9g\u00e8re': 'var(--orange)' };
-        let color = colorMap[errorType] || 'var(--red)';
-        
-        let loaded = 0;
-        let totalIsps = globalList.length;
-        let ispResults = [];
-        
-        globalList.forEach(isp => {
-            google.script.run.withSuccessHandler(list => {
-                loaded++;
-                const matched = list.filter(x => x.types.some(t => t === errorType));
-                if(matched.length > 0) {
-                    ispResults.push({ nom: isp.nom, mat: isp.mat, count: matched.length, fiches: matched });
-                }
-                if(loaded === totalIsps) {
-                    ispResults.sort((a,b) => b.count - a.count);
-                    if(ispResults.length === 0) {
-                        c.innerHTML = '<div style="padding:30px;text-align:center;color:gray;">Aucun ISP avec ce type d\'erreur</div>';
-                        return;
-                    }
-                    let tagBg = errorType.includes('Grave') ? '#d32f2f' : '#ff9800';
-                    c.innerHTML = ispResults.map(r => {
-                        let fichesHtml = r.fiches.map(x => {
-                            let safeMotif = (x.motif||'').replace(/'/g, "\\'");
-                            let safeDate = (x.date||'').replace(/'/g, "\\'");
-                            let safeStatus = (x.status||'').replace(/'/g, "\\'");
-                            let safeCentre = (x.centre||'').replace(/'/g, "\\'");
-                            let safeEngin = (x.engin||'').replace(/'/g, "\\'");
-                            return '<div class="detail-row" onclick="event.stopPropagation();loadInterDetailFromGroup(\''+x.id+'\', \''+safeDate+'\', \''+safeMotif+'\', \''+safeStatus+'\', \''+safeCentre+'\', \''+safeEngin+'\');" style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05);cursor:pointer;">'
-                                +'<div style="display:flex;justify-content:space-between;align-items:center;">'
-                                +'<div><span style="color:#39ff14;font-weight:bold;font-size:12px;">'+x.id+'</span><span style="color:#aaa;font-size:11px;margin-left:10px;">'+(x.date||'-')+'</span></div>'
-                                +'<span style="background:'+tagBg+';color:#fff;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:bold;">'+errorType+'</span>'
-                                +'</div>'
-                                +'<div style="font-size:11px;color:#ccc;margin-top:4px;">Motif: <b>'+(x.motif||'-')+'</b></div>'
-                                +(x.commChef ? '<div style="font-size:10px;color:var(--accent3);margin-top:2px;">Chef: '+x.commChef+'</div>' : '')
-                                +'</div>';
-                        }).join('');
-                        return '<div style="border-bottom:1px solid #333;">'
-                            +'<div class="detail-row" onclick="toggleExpand(this)" style="padding:14px 16px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;">'
-                            +'<div style="flex:1;"><b style="color:#fff;font-size:14px;">'+r.nom+'</b></div>'
-                            +'<div style="display:flex;align-items:center;gap:8px;">'
-                            +'<span style="background:'+color+';color:#fff;padding:4px 10px;border-radius:6px;font-weight:bold;font-size:12px;">'+r.count+' fiche'+(r.count>1?'s':'')+'</span>'
-                            +'<span class="expand-arrow" style="color:var(--muted);font-size:16px;">\u25b6</span>'
-                            +'</div></div>'
-                            +'<div class="isp-expand" style="display:none;background:rgba(0,0,0,0.2);padding:0 16px;">'+fichesHtml+'</div>'
-                            +'</div>';
-                    }).join('');
-                }
-            }).getIspDetailsAdmin(isp.mat);
-        });
-    }
-    
-    function toggleExpand(btn) {
-        const expandDiv = btn.nextElementSibling;
-        const arrow = btn.querySelector('.expand-arrow');
-        if(expandDiv.style.display === 'block') {
-            expandDiv.style.display = 'none';
-            arrow.textContent = '\u25b6';
-        } else {
-            expandDiv.style.display = 'block';
-            arrow.textContent = '\u25bc';
-        }
-    }
-
-        function loadInterDetailFromGroup(id, date, motif, status, centre, engin) {
-        startLoad();
-        google.script.run.withSuccessHandler(res => {
-            stopLoad();
-            document.getElementById("modalPdf").src = (res.pdfUrl||'').replace('/view','/preview');
-            setText("detailId", id);
-            setText("detailDate", date || "-");
-            setText("detailCentre", status || "-");
-            setText("detailMotif", motif || "-");
-            setText("detailEngin", engin || res.engin || "-");
-            document.getElementById("commChef").textContent = res.commentChefferie||"Aucun commentaire.";
-            const m = document.getElementById("blockMed");
-            if(res.analyseMed) { m.style.display="block"; document.getElementById("commMed").textContent=res.analyseMed; } else m.style.display="none";
-            document.getElementById("modalDetail").style.display="flex";
-        }).getInterventionDetails(id);
-    }
-
     function loadInterDetail(id, date, motif, status, centre, engin) {
         // Fermer la liste des interventions
         document.getElementById("modalList").style.display = "none";

@@ -1,0 +1,470 @@
+--[[
+	ClientUI - Version complète
+	UI starter + HUD + combat joueur + métiers
+]]
+
+print("🔴🔴🔴 [ClientUI] SCRIPT STARTING! 🔴🔴🔴")
+
+-- VERSION POPUP VISUELLE (AVANT TOUT!)
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+local versionPopup = Instance.new("ScreenGui")
+versionPopup.Name = "VersionPopup"
+versionPopup.ResetOnSpawn = false
+versionPopup.Parent = playerGui
+
+local versionLabel = Instance.new("TextLabel")
+versionLabel.Size = UDim2.new(0, 500, 0, 150)
+versionLabel.Position = UDim2.new(0.5, -250, 0.5, -75)
+versionLabel.BackgroundColor3 = Color3.fromRGB(0, 100, 255)
+versionLabel.BackgroundTransparency = 0
+versionLabel.BorderSizePixel = 5
+versionLabel.BorderColor3 = Color3.fromRGB(255, 255, 0)
+versionLabel.Text = "VERSION TEST 9\nSYSTÈME OPÉRATIONNEL!"
+versionLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+versionLabel.TextSize = 40
+versionLabel.Font = Enum.Font.SourceSansBold
+versionLabel.Parent = versionPopup
+
+print("🔵 VERSION TEST 9 - Popup créée!")
+
+-- Disparaît après 8 secondes
+task.delay(8, function()
+	versionPopup:Destroy()
+	print("🔵 Popup supprimée")
+end)
+
+-- MAINTENANT on charge les modules
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
+
+local mouse = player:GetMouse()
+
+-- Modules (désactivés temporairement car Shared n'existe pas encore)
+-- local Monsters = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Monsters"))
+local PlayerLevelSystem = require(ReplicatedStorage.Modules.PlayerLevelSystem)
+
+local remotes = ReplicatedStorage:WaitForChild("Remotes")
+local requestStarter = remotes:WaitForChild("RequestStarter", 10)
+local requestAttack  = remotes:WaitForChild("RequestAttack", 10)
+local requestCapture = remotes:WaitForChild("RequestCapture", 10)
+
+print("[ClientUI] 🟢 RequestStarter found:", requestStarter and "YES" or "NO")
+
+-- Nouveaux remotes (avec timeout pour éviter l'attente infinie)
+local playerAttack = remotes:WaitForChild("PlayerAttack", 10)
+local useSkill = remotes:WaitForChild("UseSkill", 10)
+local showDialogue = remotes:WaitForChild("ShowDialogue", 10)
+local closeDialogue = remotes:WaitForChild("CloseDialogue", 10)
+
+if not requestStarter then
+	print("[ClientUI] 🔴 ERROR: RequestStarter not found! Starter selection won't work!")
+end
+
+if not playerAttack or not useSkill then
+	warn("[ClientUI] Combat remotes not found - combat disabled")
+end
+
+local gui = script.Parent
+gui.ResetOnSpawn = false
+
+-- ===== CRÉATION UI =====
+
+-- HUD principal
+local hud = Instance.new("Frame")
+hud.Name = "MainHUD"
+hud.Parent = gui
+hud.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+hud.BackgroundTransparency = 0.3
+hud.BorderSizePixel = 2
+hud.BorderColor3 = Color3.fromRGB(100, 100, 100)
+hud.Size = UDim2.fromOffset(300, 120)
+hud.Position = UDim2.fromOffset(10, 10)
+hud.ZIndex = 10
+
+local hudGold = Instance.new("TextLabel")
+hudGold.Name = "Gold"
+hudGold.Parent = hud
+hudGold.BackgroundTransparency = 1
+hudGold.Size = UDim2.new(1, -10, 0, 25)
+hudGold.Position = UDim2.fromOffset(5, 5)
+hudGold.TextXAlignment = Enum.TextXAlignment.Left
+hudGold.TextSize = 18
+hudGold.TextColor3 = Color3.new(1, 0.85, 0)
+hudGold.Font = Enum.Font.GothamBold
+hudGold.Text = "Or: 0"
+hudGold.ZIndex = 11
+
+local hudCrystal = Instance.new("TextLabel")
+hudCrystal.Name = "Crystal"
+hudCrystal.Parent = hud
+hudCrystal.BackgroundTransparency = 1
+hudCrystal.Size = UDim2.new(1, -10, 0, 25)
+hudCrystal.Position = UDim2.fromOffset(5, 30)
+hudCrystal.TextXAlignment = Enum.TextXAlignment.Left
+hudCrystal.TextSize = 18
+hudCrystal.TextColor3 = Color3.fromRGB(100, 200, 255)
+hudCrystal.Font = Enum.Font.GothamBold
+hudCrystal.Text = "Cristal HP: 500"
+hudCrystal.ZIndex = 11
+
+local hudPlayer = Instance.new("TextLabel")
+hudPlayer.Name = "Player"
+hudPlayer.Parent = hud
+hudPlayer.BackgroundTransparency = 1
+hudPlayer.Size = UDim2.new(1, -10, 0, 25)
+hudPlayer.Position = UDim2.fromOffset(5, 55)
+hudPlayer.TextXAlignment = Enum.TextXAlignment.Left
+hudPlayer.TextSize = 16
+hudPlayer.TextColor3 = Color3.fromRGB(150, 255, 150)
+hudPlayer.Font = Enum.Font.Gotham
+hudPlayer.Text = "Niveau 1 - Novice"
+hudPlayer.ZIndex = 11
+
+local hudInfo = Instance.new("TextLabel")
+hudInfo.Name = "Info"
+hudInfo.Parent = hud
+hudInfo.BackgroundTransparency = 1
+hudInfo.Size = UDim2.new(1, -10, 0, 30)
+hudInfo.Position = UDim2.fromOffset(5, 85)
+hudInfo.TextXAlignment = Enum.TextXAlignment.Left
+hudInfo.TextSize = 14
+hudInfo.TextColor3 = Color3.new(0.9, 0.9, 0.9)
+hudInfo.Font = Enum.Font.Gotham
+hudInfo.Text = "Clic = Attaquer | E = Capturer"
+hudInfo.TextWrapped = true
+hudInfo.ZIndex = 11
+
+-- Fenêtre starter
+local starterFrame = Instance.new("Frame")
+starterFrame.Name = "StarterFrame"
+starterFrame.Parent = gui
+starterFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+starterFrame.Position = UDim2.fromScale(0.5, 0.5)
+starterFrame.Size = UDim2.fromOffset(700, 400)
+starterFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+starterFrame.BorderSizePixel = 3
+starterFrame.BorderColor3 = Color3.fromRGB(150, 150, 200)
+starterFrame.ZIndex = 20
+starterFrame.Visible = false -- CACHÉ - s'affiche via dialogue NPC!
+
+local title = Instance.new("TextLabel")
+title.Parent = starterFrame
+title.Size = UDim2.new(1, -20, 0, 60)
+title.Position = UDim2.fromOffset(10, 10)
+title.BackgroundTransparency = 1
+title.TextSize = 32
+title.Font = Enum.Font.GothamBold
+title.TextColor3 = Color3.new(1, 1, 1)
+title.Text = "🔥 CHOISIS TON STARTER 🔥"
+title.ZIndex = 21
+
+local function createStarterCard(index, def, monsterId)
+	local x = 20 + (index * 220)
+	
+	local card = Instance.new("Frame")
+	card.Parent = starterFrame
+	card.Size = UDim2.fromOffset(200, 280)
+	card.Position = UDim2.fromOffset(x, 90)
+	card.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+	card.BorderSizePixel = 2
+	card.BorderColor3 = Color3.fromRGB(100, 100, 120)
+	card.ZIndex = 21
+	
+	-- Image placeholder (tu mettras ton PNG ici)
+	local img = Instance.new("Frame")
+	img.Parent = card
+	img.Size = UDim2.fromOffset(180, 120)
+	img.Position = UDim2.fromOffset(10, 10)
+	img.BackgroundColor3 = Color3.fromRGB(80, 80, 90)
+	img.ZIndex = 22
+	
+	local imgLabel = Instance.new("TextLabel")
+	imgLabel.Parent = img
+	imgLabel.Size = UDim2.new(1, 0, 1, 0)
+	imgLabel.BackgroundTransparency = 1
+	imgLabel.TextSize = 48
+	imgLabel.Text = def.Element == "Fire" and "🔥" or (def.Element == "Water" and "💧" or "⚡")
+	imgLabel.ZIndex = 23
+	
+	local name = Instance.new("TextLabel")
+	name.Parent = card
+	name.Size = UDim2.fromOffset(180, 30)
+	name.Position = UDim2.fromOffset(10, 140)
+	name.BackgroundTransparency = 1
+	name.TextSize = 20
+	name.Font = Enum.Font.GothamBold
+	name.TextColor3 = Color3.new(1, 1, 1)
+	name.Text = def.Name
+	name.ZIndex = 22
+	
+	local element = Instance.new("TextLabel")
+	element.Parent = card
+	element.Size = UDim2.fromOffset(180, 20)
+	element.Position = UDim2.fromOffset(10, 170)
+	element.BackgroundTransparency = 1
+	element.TextSize = 14
+	element.Font = Enum.Font.Gotham
+	element.TextColor3 = Color3.fromRGB(200, 200, 255)
+	element.Text = "Type: " .. def.Element
+	element.ZIndex = 22
+	
+	local stats = Instance.new("TextLabel")
+	stats.Parent = card
+	stats.Size = UDim2.fromOffset(180, 40)
+	stats.Position = UDim2.fromOffset(10, 195)
+	stats.BackgroundTransparency = 1
+	stats.TextSize = 12
+	stats.Font = Enum.Font.Gotham
+	stats.TextColor3 = Color3.new(0.9, 0.9, 0.9)
+	stats.Text = string.format("HP: %d\nATK: %d | DEF: %d", def.Base.HP, def.Base.ATK, def.Base.DEF)
+	stats.TextWrapped = true
+	stats.ZIndex = 22
+	
+	local btn = Instance.new("TextButton")
+	btn.Parent = card
+	btn.Size = UDim2.fromOffset(180, 35)
+	btn.Position = UDim2.fromOffset(10, 240)
+	btn.BackgroundColor3 = Color3.fromRGB(80, 180, 80)
+	btn.TextSize = 18
+	btn.Font = Enum.Font.GothamBold
+	btn.TextColor3 = Color3.new(1, 1, 1)
+	btn.Text = "CHOISIR"
+	btn.ZIndex = 22
+	
+	btn.MouseButton1Click:Connect(function()
+		requestStarter:FireServer(monsterId)
+		starterFrame.Visible = false
+	end)
+end
+
+local d1 = Monsters.GetDef(1)
+local d2 = Monsters.GetDef(2)
+local d3 = Monsters.GetDef(3)
+
+createStarterCard(0, d1, 1)
+createStarterCard(1, d2, 2)
+createStarterCard(2, d3, 3)
+
+-- ===== MISE À JOUR HUD =====
+
+local function updateHUD()
+	local gold = player:GetAttribute("Gold") or 0
+	local crystal = workspace:FindFirstChild("Crystal")
+	local crystalHP = crystal and crystal:GetAttribute("CrystalHP") or 0
+	local playerLevel = player:GetAttribute("PlayerLevel") or 1
+	local playerXP = player:GetAttribute("PlayerXP") or 0
+	
+	hudGold.Text = "💰 Or: " .. gold
+	hudCrystal.Text = "💎 Cristal HP: " .. crystalHP
+	
+	-- Calculer XP pour prochain niveau
+	local required = PlayerLevelSystem.GetRequiredXP(playerLevel)
+	hudPlayer.Text = string.format("Niv. %d - Novice | XP: %d/%d", playerLevel, playerXP, required)
+end
+
+player:GetAttributeChangedSignal("Gold"):Connect(updateHUD)
+player:GetAttributeChangedSignal("PlayerLevel"):Connect(updateHUD)
+player:GetAttributeChangedSignal("PlayerXP"):Connect(updateHUD)
+
+task.spawn(function()
+	local crystal = workspace:WaitForChild("Crystal", 20)
+	if crystal then
+		crystal:GetAttributeChangedSignal("CrystalHP"):Connect(updateHUD)
+	end
+	updateHUD()
+end)
+
+-- ===== COMBAT JOUEUR =====
+
+-- Attaque au clic (NOUVEAU - attaque du joueur, pas du monstre)
+mouse.Button1Down:Connect(function()
+	if not playerAttack then return end
+	
+	local target = mouse.Target
+	if not target then return end
+	
+	local model = target:FindFirstAncestorOfClass("Model")
+	if model and model.Name:match("^Wild_") then
+		-- Attaque du joueur
+		playerAttack:FireServer(model)
+	end
+end)
+
+-- Capture au E (ancien système)
+UserInputService.InputBegan:Connect(function(input, gp)
+	if gp then return end
+	
+	if input.KeyCode == Enum.KeyCode.E then
+		requestCapture:FireServer()
+	end
+	
+	-- SYSTÈME TEMPORAIRE: Choix starter avec touches 1/2/3 si dialogue ne marche pas
+	if starterFrame.Visible then
+		if input.KeyCode == Enum.KeyCode.One or input.KeyCode == Enum.KeyCode.KeypadOne then
+			print("[ClientUI] Starter 1 selected via keyboard")
+			requestStarter:FireServer(1)
+			starterFrame.Visible = false
+		elseif input.KeyCode == Enum.KeyCode.Two or input.KeyCode == Enum.KeyCode.KeypadTwo then
+			print("[ClientUI] Starter 2 selected via keyboard")
+			requestStarter:FireServer(2)
+			starterFrame.Visible = false
+		elseif input.KeyCode == Enum.KeyCode.Three or input.KeyCode == Enum.KeyCode.KeypadThree then
+			print("[ClientUI] Starter 3 selected via keyboard")
+			requestStarter:FireServer(3)
+			starterFrame.Visible = false
+		end
+	end
+end)
+-- ===== DIALOGUE NPC =====
+
+local dialogueFrame = Instance.new("Frame")
+dialogueFrame.Name = "DialogueFrame"
+dialogueFrame.Parent = gui
+dialogueFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+dialogueFrame.Position = UDim2.fromScale(0.5, 0.5)
+dialogueFrame.Size = UDim2.fromOffset(600, 350)
+dialogueFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+dialogueFrame.BorderSizePixel = 3
+dialogueFrame.BorderColor3 = Color3.fromRGB(200, 150, 100)
+dialogueFrame.Visible = false
+dialogueFrame.ZIndex = 30
+
+local dialogueTitle = Instance.new("TextLabel")
+dialogueTitle.Name = "Title"
+dialogueTitle.Parent = dialogueFrame
+dialogueTitle.Size = UDim2.new(1, -20, 0, 50)
+dialogueTitle.Position = UDim2.fromOffset(10, 10)
+dialogueTitle.BackgroundTransparency = 1
+dialogueTitle.TextSize = 24
+dialogueTitle.Font = Enum.Font.GothamBold
+dialogueTitle.TextColor3 = Color3.fromRGB(255, 220, 100)
+dialogueTitle.Text = "Guide Aldric"
+dialogueTitle.ZIndex = 31
+
+local dialogueText = Instance.new("TextLabel")
+dialogueText.Name = "Text"
+dialogueText.Parent = dialogueFrame
+dialogueText.Size = UDim2.new(1, -20, 1, -120)
+dialogueText.Position = UDim2.fromOffset(10, 70)
+dialogueText.BackgroundTransparency = 1
+dialogueText.TextSize = 16
+dialogueText.Font = Enum.Font.Gotham
+dialogueText.TextColor3 = Color3.new(0.95, 0.95, 0.95)
+dialogueText.TextWrapped = true
+dialogueText.TextXAlignment = Enum.TextXAlignment.Left
+dialogueText.TextYAlignment = Enum.TextYAlignment.Top
+dialogueText.Text = ""
+dialogueText.ZIndex = 31
+
+local closeBtn = Instance.new("TextButton")
+closeBtn.Name = "Close"
+closeBtn.Parent = dialogueFrame
+closeBtn.Size = UDim2.fromOffset(150, 40)
+closeBtn.Position = UDim2.new(0.5, -75, 1, -50)
+closeBtn.BackgroundColor3 = Color3.fromRGB(80, 180, 80)
+closeBtn.TextSize = 18
+closeBtn.Font = Enum.Font.GothamBold
+closeBtn.TextColor3 = Color3.new(1, 1, 1)
+closeBtn.Text = "COMPRIS"
+closeBtn.ZIndex = 31
+
+closeBtn.MouseButton1Click:Connect(function()
+	dialogueFrame.Visible = false
+	if closeDialogue then
+		closeDialogue:FireServer()
+	end
+end)
+
+-- Recevoir les dialogues du serveur
+if showDialogue then
+	print("[ClientUI] 🟢 ShowDialogue remote found, connecting...")
+	showDialogue.OnClientEvent:Connect(function(dialogue)
+		print("[ClientUI] 🔵 DIALOGUE RECEIVED!")
+		print("[ClientUI] 🔵 Title:", dialogue.Title)
+		print("[ClientUI] 🔵 ShowStarter:", dialogue.ShowStarter)
+		print("[ClientUI] 🟡 Setting dialogueFrame visible TRUE")
+		
+		dialogueTitle.Text = dialogue.Title or "Guide"
+		dialogueText.Text = table.concat(dialogue.Lines, "\n")
+		dialogueFrame.Visible = true
+		
+		print("[ClientUI] 🟢 Dialogue displayed!")
+		
+		-- Si le dialogue demande de montrer le starter
+		if dialogue.ShowStarter then
+			print("[ClientUI] 🟡 Showing starter selection")
+			starterFrame.Visible = true
+		end
+	end)
+	print("[ClientUI] 🟢 ShowDialogue connected!")
+else
+	print("[ClientUI] 🔴 ERROR: ShowDialogue remote not found!")
+	-- FALLBACK: Afficher une popup de secours
+	print("[ClientUI] 🟡 Showing fallback popup...")
+	task.wait(0.5)
+	
+	local fallbackGui = Instance.new("ScreenGui")
+	fallbackGui.Name = "FallbackDialogue"
+	fallbackGui.ResetOnSpawn = false
+	fallbackGui.Parent = playerGui
+	
+	local popup = Instance.new("Frame")
+	popup.Size = UDim2.new(0, 600, 0, 300)
+	popup.Position = UDim2.fromScale(0.5, 0.5):Offset(-300, -150)
+	popup.BackgroundColor3 = Color3.fromRGB(100, 50, 50)
+	popup.BorderSizePixel = 5
+	popup.BorderColor3 = Color3.fromRGB(255, 100, 0)
+	popup.Parent = fallbackGui
+	
+	local titleLabel = Instance.new("TextLabel")
+	titleLabel.Size = UDim2.new(1, 0, 0, 50)
+	titleLabel.BackgroundTransparency = 1
+	titleLabel.TextSize = 32
+	titleLabel.Font = Enum.Font.GothamBold
+	titleLabel.TextColor3 = Color3.fromRGB(255, 255, 100)
+	titleLabel.Text = "🔥 BIENVENUE DRESSEUR! 🔥"
+	titleLabel.Parent = popup
+	
+	local textLabel = Instance.new("TextLabel")
+	textLabel.Size = UDim2.new(1, -20, 1, -80)
+	textLabel.Position = UDim2.fromOffset(10, 60)
+	textLabel.BackgroundTransparency = 1
+	textLabel.TextSize = 16
+	textLabel.Font = Enum.Font.Gotham
+	textLabel.TextColor3 = Color3.new(1, 1, 1)
+	textLabel.TextWrapped = true
+	textLabel.Text = "Choisis ton monstre de départ!\n\n• 🔥 Charmander (Feu)\n• 💧 Squirtle (Eau)\n• ⚡ Pikachu (Électrique)\n\nAppuie sur le bouton pour commencer!"
+	textLabel.Parent = popup
+	
+	local button = Instance.new("TextButton")
+	button.Size = UDim2.new(0, 150, 0, 50)
+	button.Position = UDim2.new(0.5, -75, 1, -60)
+	button.BackgroundColor3 = Color3.fromRGB(100, 200, 100)
+	button.TextSize = 18
+	button.Font = Enum.Font.GothamBold
+	button.TextColor3 = Color3.new(0, 0, 0)
+	button.Text = "COMMENCER"
+	button.Parent = popup
+	
+	button.MouseButton1Click:Connect(function()
+		print("[ClientUI] 🔵 Fallback starter selected")
+		starterFrame.Visible = true
+		fallbackGui:Destroy()
+	end)
+end
+
+-- Fermer le dialogue
+if closeDialogue then
+	closeBtn.MouseButton1Click:Connect(function()
+		print("[ClientUI] Closing dialogue")
+		dialogueFrame.Visible = false
+		closeDialogue:FireServer()
+	end)
+	print("[ClientUI] CloseDialogue button connected")
+end
+
+
+print("[ClientUI] Loaded")
