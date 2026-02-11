@@ -1,7 +1,8 @@
 /****************************************************
  * SDIS 66 - SDS | WebApp Dashboard
  * CACHE SÉQUENTIEL + FIXES + LOCK SYSTEM + ANTI-DOUBLE-COUNT
- * Version: v1.50 | 2026-01-30
+ * Version: v1.72 | 2026-02-09
+ * Modifications: Popup PDF+données ISP, boutons chefferie, préchargement cache
  ****************************************************/
 
 const DASHBOARD_SHEET_NAME = "Dashboard";
@@ -115,14 +116,15 @@ function getStats2026() {
      }
   } catch(e){}
 
-  const counts = getChefferieCounts();
+  let counts = { isp: 0, med: 0 };
+  try { counts = getChefferieCounts(); } catch(e) { console.log('getChefferieCounts error: ' + e); }
 
   return {
     date: formatDateFR_(lastDate),
     psud: psud2026, total: total2026, sect: secteur2026, ast: astreintes2026,
     cis: cisNames.map((n, i) => ({ name:n, v26:Number(cisCounts2026[i])||0, v25:Number(cisCounts2025ytd[i])||0, v25tot:Number(cisTotals2025[i])||0 })),
     secteurs: sectNames.map((n, i) => ({ name:n, v26:Number(sectCounts2026[i])||0, v25:Number(sectCounts2025ytd[i])||0, v25tot:Number(sectTotals2025[i])||0 })),
-    cntApp: countApp, cntIspG: counts.isp, cntIspR: counts.valid, cntMed: counts.med
+    cntApp: countApp, cntIspG: counts.isp, cntIspR: counts.med
   };
 }
 
@@ -206,45 +208,67 @@ function preCacheAllData() {
     return `${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}:${String(d.getSeconds()).padStart(2,"0")}`;
   }
   
-  Logger.log("=== DÉBUT MISE EN CACHE SÉQUENTIEL ===");
+  console.log("=== DÉBUT MISE EN CACHE SÉQUENTIEL ===");
   
   try {
-    // 1. ISP Stats
+    // 1. ISP Stats globales
     cache.put("cache_status", `Synthèse: ${getTime()} | Données par ISP: EN COURS`, 21600);
     getAllIspErrorStats();
     const ispTime = getTime();
-    Logger.log("Cache ISP terminé: " + ispTime);
+    console.log("Cache ISP Stats terminé: " + ispTime);
     
-    // 2. Admin Data
-    cache.put("cache_status", `Synthèse: ${getTime()} | Données par ISP: ${ispTime} | Administration: EN COURS`, 21600);
+    // 2. Pré-charger les données ISP individuelles pour tous les agents
+    cache.put("cache_status", `Synthèse: ${ispTime} | Pré-chargement ISP agents: EN COURS`, 21600);
+    const ss = getSS_();
+    const dash = ss.getSheetByName(DASHBOARD_SHEET_NAME);
+    const rawAgents = dash.getRange("S3:AQ79").getValues();
+    let agentCount = 0;
+    
+    for (let i = 0; i < rawAgents.length; i++) {
+      const mat = normalizeMat(rawAgents[i][1]);
+      const dob = rawAgents[i][2]; // Colonne date de naissance
+      if (mat && dob) {
+        try {
+          getIspStats(mat, dob); // Force le calcul et mise en cache
+          agentCount++;
+        } catch(e) {
+          console.log(`Erreur pré-cache ISP pour ${mat}: ${e}`);
+        }
+      }
+    }
+    const ispAgentTime = getTime();
+    console.log(`Cache ISP agents terminé (${agentCount} agents): ${ispAgentTime}`);
+    
+    // 3. Admin Data
+    cache.put("cache_status", `Synthèse: ${ispTime} | ISP agents (${agentCount}): ${ispAgentTime} | Administration: EN COURS`, 21600);
     getAdminData("0007");
     const adminTime = getTime();
-    Logger.log("Cache Admin terminé: " + adminTime);
+    console.log("Cache Admin terminé: " + adminTime);
     
-    // 3. Chefferie Counts
-    cache.put("cache_status", `Synthèse: ${getTime()} | Données par ISP: ${ispTime} | Administration: ${adminTime} | Accès APP: EN COURS`, 21600);
+    // 4. Chefferie Counts
+    cache.put("cache_status", `Synthèse: ${ispTime} | ISP agents: ${ispAgentTime} | Administration: ${adminTime} | Accès APP: EN COURS`, 21600);
     getChefferieCounts();
     const appTime = getTime();
-    Logger.log("Cache APP terminé: " + appTime);
+    console.log("Cache APP terminé: " + appTime);
     
-    // 4. Chefferie ISP
-    cache.put("cache_status", `Synthèse: ${getTime()} | Données par ISP: ${ispTime} | Administration: ${adminTime} | Accès APP: ${appTime} | Accès chefferie ISP: EN COURS`, 21600);
+    // 5. Chefferie ISP
+    cache.put("cache_status", `Synthèse: ${ispTime} | ISP agents: ${ispAgentTime} | Administration: ${adminTime} | Accès APP: ${appTime} | Accès chefferie ISP: EN COURS`, 21600);
     getChefferieNextCase('app_isp');
     const chefTime = getTime();
-    Logger.log("Cache Chefferie ISP terminé: " + chefTime);
+    console.log("Cache Chefferie ISP terminé: " + chefTime);
     
-    // 5. Médecin Chef
-    cache.put("cache_status", `Synthèse: ${getTime()} | Données par ISP: ${ispTime} | Administration: ${adminTime} | Accès APP: ${appTime} | Accès chefferie ISP: ${chefTime} | Accès médecin chef: EN COURS`, 21600);
+    // 6. Médecin Chef
+    cache.put("cache_status", `Synthèse: ${ispTime} | ISP agents: ${ispAgentTime} | Administration: ${adminTime} | Accès APP: ${appTime} | Accès chefferie ISP: ${chefTime} | Accès médecin chef: EN COURS`, 21600);
     getChefferieNextCase('med_chef');
     const medTime = getTime();
-    Logger.log("Cache Médecin Chef terminé: " + medTime);
+    console.log("Cache Médecin Chef terminé: " + medTime);
     
     // Statut final
-    cache.put("cache_status", `Synthèse: ${getTime()} | Données par ISP: ${ispTime} | Administration: ${adminTime} | Accès APP: ${appTime} | Accès chefferie ISP: ${chefTime} | Accès médecin chef: ${medTime}`, 21600);
-    Logger.log("=== MISE EN CACHE TERMINÉE ===");
+    cache.put("cache_status", `✅ Terminé - Synthèse: ${ispTime} | ISP agents (${agentCount}): ${ispAgentTime} | Admin: ${adminTime} | APP: ${appTime} | Chef ISP: ${chefTime} | Med: ${medTime}`, 21600);
+    console.log("=== MISE EN CACHE TERMINÉE ===");
     
   } catch(e) {
-    Logger.log("Erreur dans preCacheAllData: " + e.toString());
+    console.log("Erreur dans preCacheAllData: " + e.toString());
     cache.put("cache_status", `Erreur: ${e.toString()}`, 21600);
   }
 }
@@ -257,7 +281,7 @@ function getCacheStatus() {
 function clearIspCache(mat) {
   const cache = CacheService.getScriptCache();
   const normalizedMat = normalizeMat(mat);
-  cache.remove("isp_" + normalizedMat); // Cache de getIspStats
+  cache.remove("isp_v2_" + normalizedMat); // Cache de getIspStats (v2)
   cache.remove("isp_detail_" + normalizedMat); // Cache de getIspDetailsAdmin
   return true;
 }
@@ -379,6 +403,17 @@ function getAdminData(password) {
 function getIspStats(matriculeInput, dobInput) {
   try {
     const mat = normalizeMat(matriculeInput);
+    
+    // === CHERCHER CACHE D'ABORD ===
+    const cache = CacheService.getScriptCache();
+    const cacheKey = "isp_v2_" + mat;
+    const cached = cache.get(cacheKey);
+    if(cached) {
+        const result = JSON.parse(cached);
+        result.fromCache = true;
+        return result;
+    }
+    
     const ss = getSS_();
     const dash = ss.getSheetByName(DASHBOARD_SHEET_NAME);
     const matVals = dash.getRange("T3:T79").getDisplayValues().flat(); 
@@ -388,16 +423,6 @@ function getIspStats(matriculeInput, dobInput) {
     
     const agentName = dash.getRange(3 + idx, 19).getValue(); 
     const myName = String(agentName).trim().toLowerCase();
-
-    // === CHERCHER CACHE D'ABORD ===
-    const cache = CacheService.getScriptCache();
-    const cacheKey = "isp_" + mat;
-    const cached = cache.get(cacheKey);
-    if(cached) {
-        const result = JSON.parse(cached);
-        result.fromCache = true;
-        return result;
-    }
 
     // 2026
     let hAst26=0, hGarde26=0, interHg26=0, inter26=0;
@@ -494,110 +519,165 @@ function getIspStats(matriculeInput, dobInput) {
     let bilanOkCount = 0, pisuOkCount = 0;
     const shAlex = ss.getSheetByName("APP Alex");
     
-    // 1. Construire un index complet APP avec matricule et tous les checkboxes pour recherche rapide
-    const idToMat = {}; // Mapping ID -> Matricule pour tous les IDs
-    const appRows = {}; // Stocker TOUTES les données APP par ID
+    // 1. Construire un index APP : seulement les IDs de ce matricule
+    const thisAgentIds = new Set(); // IDs appartenant à ce matricule
+    const appRows = {}; // Stocker données APP par ID
     if(shApp) {
         const data = shApp.getDataRange().getValues();
         for(let i=1; i<data.length; i++) {
             const id = String(data[i][C_APP_ID]).trim();
             const rowMat = normalizeMat(data[i][C_APP_MAT]);
-            idToMat[id] = rowMat;
+            
+            // Sauvegarder metadata pour tous (pour référence)
             appDataRef[id] = {
                 motif: String(data[i][C_APP_MOTIF]||"").trim(),
                 cis: String(data[i][C_APP_CIS]||"").trim(),
                 engin: String(data[i][C_APP_ENGIN]||"").trim(),
                 date: formatDateHeureFR_(data[i][C_APP_DATE]),
-                status: (String(data[i][C_APP_CIS]||"").trim() === "SD SSSM") ? "De Garde" : "Astreinte / Dispo"
+                status: (String(data[i][C_APP_CIS]||"").trim() === "SD SSSM") ? "De Garde" : "Astreinte / Dispo",
+                nom: String(data[i][C_APP_NOM]||"").trim().toLowerCase()  // Nom pour comparaison
             };
-            appRows[id] = {
-                bilanOk: data[i][C_BILAN_OK],
-                bilanKo: data[i][C_BILAN_KO],
-                pisuOk: data[i][C_PISU_OK],
-                pisuKo: data[i][C_PISU_KO]
-            };
+            
+            // Si c'est le bon matricule, le marquer et stocker les checkboxes
+            if(rowMat === mat) {
+                thisAgentIds.add(id);
+                appRows[id] = {
+                    bilanOk: data[i][C_BILAN_OK],
+                    bilanKo: data[i][C_BILAN_KO],
+                    pisuOk: data[i][C_PISU_OK],
+                    pisuKo: data[i][C_PISU_KO]
+                };
+            }
         }
     }
     
-    // 2. Charger les tags de APP Alex
+    console.log(`DEBUG ISP ${mat}: Trouvé ${thisAgentIds.size} interventions pour ce matricule`);
+    console.log(`DEBUG ISP ${mat}: IDs = ${Array.from(thisAgentIds).join(", ")}`);
+    
+    // 2. Charger SEULEMENT les tags APP Alex pour les IDs de ce matricule
     const alexTags = {};
+    let alexMatchCount = 0;
     if(shAlex) {
         const dAlex = shAlex.getDataRange().getValues();
         for(let i=1; i<dAlex.length; i++) {
-            const id = String(dAlex[i][0]).trim();
+            const id = String(dAlex[i][0]).trim(); // Colonne A = numéro intervention
+            
+            // FILTRER: seulement les IDs qui appartiennent à ce matricule
+            if(!thisAgentIds.has(id)) continue;
+            
+            alexMatchCount++;
+            
+            // PRENDRE LA PREMIÈRE OCCURRENCE SEULEMENT (la formule FILTER génère les premières lignes)
+            if(alexTags[id]) {
+                continue; // ID déjà traité, ignorer les doublons
+            }
+            
+            const rawH = dAlex[i][7];
+            const rawI = dAlex[i][8];
+            const rawJ = dAlex[i][9];
+            const rawK = dAlex[i][10];
+            const rawL = dAlex[i][11];
+            const alexNom = String(dAlex[i][4]||"").trim().toLowerCase();
+            
             alexTags[id] = { 
-                hasH: isCheckboxChecked(dAlex[i][7]),   // H = Passer bilan en ok
-                hasI: isCheckboxChecked(dAlex[i][8]),   // I = Passer pisu en ok
-                hasJ: isCheckboxChecked(dAlex[i][9]),   // J = Erreur bilan légère
-                hasK: isCheckboxChecked(dAlex[i][10]),  // K = Erreur pisu légère
-                hasL: isCheckboxChecked(dAlex[i][11])   // L = Erreur grave
+                hasH: isCheckboxChecked(rawH),
+                hasI: isCheckboxChecked(rawI),
+                hasJ: isCheckboxChecked(rawJ),
+                hasK: isCheckboxChecked(rawK),
+                hasL: isCheckboxChecked(rawL),
+                nom: alexNom
             };
         }
     }
     
-    // 3. Parcourir APP pour compter OK et tracer erreurs
-    if(shApp) {
-        const data = shApp.getDataRange().getValues();
-        for(let i=1; i<data.length; i++) {
-            const rowMat = normalizeMat(data[i][C_APP_MAT]);
-            if(rowMat !== mat) continue; // Seulement ce matricule
-            
-            const id = String(data[i][C_APP_ID]).trim();
-            const motif = appDataRef[id].motif;
-            const cis = appDataRef[id].cis;
-            const engin = appDataRef[id].engin;
-            const date = appDataRef[id].date;
-            const status = appDataRef[id].status;
-            
-            const bilanOk = data[i][C_BILAN_OK];
-            const bilanKo = data[i][C_BILAN_KO];
-            const pisuOk = data[i][C_PISU_OK];
-            const pisuKo = data[i][C_PISU_KO];
-            const tags = alexTags[id] || {};
-            
-            // === BILAN ===
-            // Si BI (Bilan OK) coché → OK
-            if(bilanOk) {
-                bilanOkCount++;
-                countedIds.add(id + "_bilan");
-                okBilanList.push({ id:id, motif:motif, centre:cis, engin:engin, date:date, status:status, types: ["Bilan OK"], errorType: "" });
-            }
-            // Si BJ (Bilan incomplet) coché ET H (correction) dans APP Alex → OK
-            else if(bilanKo && tags.hasH) {
-                bilanOkCount++;
-                countedIds.add(id + "_bilan");
-                okBilanList.push({ id:id, motif:motif, centre:cis, engin:engin, date:date, status:status, types: ["Bilan OK"], errorType: "" });
-            }
-            // Si BJ coché ET PAS H → Erreur Bilan SEULEMENT si confirmée en APP Alex (J ou L)
-            else if(bilanKo && !tags.hasH && (tags.hasJ || tags.hasL)) {
-                const errorType = tags.hasL ? "Erreur Grave" : "Erreur Bilan Légère";
-                const list = tags.hasL ? errLourdeList : errLegereBilanList;
-                const item = { id:id, motif:motif, centre:cis, engin:engin, date:date, status:status, types: [errorType], errorType: errorType };
-                list.push(item);
-            }
-            
-            // === PISU ===
-            // Si BK (Pisu OK) coché → OK
-            if(pisuOk) {
-                pisuOkCount++;
-                countedIds.add(id + "_pisu");
-                okPisuList.push({ id:id, motif:motif, centre:cis, engin:engin, date:date, status:status, types: ["Pisu OK"], errorType: "" });
-            }
-            // Si BL (Pisu pas ok) coché ET I (correction) dans APP Alex → OK
-            else if(pisuKo && tags.hasI) {
-                pisuOkCount++;
-                countedIds.add(id + "_pisu");
-                okPisuList.push({ id:id, motif:motif, centre:cis, engin:engin, date:date, status:status, types: ["Pisu OK"], errorType: "" });
-            }
-            // Si BL coché ET PAS I → Erreur Pisu SEULEMENT si confirmée en APP Alex (K ou L)
-            else if(pisuKo && !tags.hasI && (tags.hasK || tags.hasL)) {
-                const errorType = tags.hasL ? "Erreur Grave" : "Erreur Pisu Légère";
-                const list = tags.hasL ? errLourdeList : errLegerePisuList;
-                const item = { id:id, motif:motif, centre:cis, engin:engin, date:date, status:status, types: [errorType], errorType: errorType };
-                list.push(item);
-            }
+    console.log(`DEBUG ISP ${mat}: ========== DÉBUT ANALYSE ERREURS ==========`);
+    console.log(`DEBUG ISP ${mat}: thisAgentIds contient ${thisAgentIds.size} IDs`);
+    console.log(`DEBUG ISP ${mat}: alexTags contient ${Object.keys(alexTags).length} tags`);
+    
+    // 3. Parcourir les IDs de ce matricule et compter les erreurs depuis APP Alex
+    for(const id of thisAgentIds) {
+        console.log(`DEBUG ISP ${mat}: Traitement ID ${id}`);
+        
+        const motif = appDataRef[id]?.motif || "";
+        const cis = appDataRef[id]?.cis || "";
+        const engin = appDataRef[id]?.engin || "";
+        const date = appDataRef[id]?.date || "";
+        const status = appDataRef[id]?.status || "";
+        
+        const tags = alexTags[id];
+        
+        // Si pas de tags dans APP Alex, ignorer
+        if(!tags) continue;
+        
+        if(tags.hasJ) {
+            // Erreur Bilan Légère (J coché)
+            const item = { id:id, motif:motif, centre:cis, engin:engin, date:date, status:status, types: ["Erreur Bilan Légère"], errorType: "Erreur Bilan Légère" };
+            errLegereBilanList.push(item);
+            console.log(`DEBUG ISP ${mat}: ID ${id} → ✅ Ajouté à errLegereBilanList`);
+        }
+        
+        if(tags.hasK) {
+            // Erreur Pisu Légère (K coché)
+            const item = { id:id, motif:motif, centre:cis, engin:engin, date:date, status:status, types: ["Erreur Pisu Légère"], errorType: "Erreur Pisu Légère" };
+            errLegerePisuList.push(item);
+        }
+        
+        if(tags.hasL) {
+            // Erreur Grave (L coché)
+            const item = { id:id, motif:motif, centre:cis, engin:engin, date:date, status:status, types: ["Erreur Grave"], errorType: "Erreur Grave" };
+            errLourdeList.push(item);
         }
     }
+    
+    // COMPTER BILAN OK ET PISU OK DEPUIS APP
+    const data = shApp.getDataRange().getValues();
+    for(let i=1; i<data.length; i++) {
+        const rowMat = normalizeMat(data[i][C_APP_MAT]);
+        if(rowMat !== mat) continue; // Seulement ce matricule
+        
+        const id = String(data[i][C_APP_ID]).trim();
+        const motif = appDataRef[id].motif;
+        const cis = appDataRef[id].cis;
+        const engin = appDataRef[id].engin;
+        const date = appDataRef[id].date;
+        const status = appDataRef[id].status;
+        
+        const bilanOk = data[i][C_BILAN_OK];
+        const bilanKo = data[i][C_BILAN_KO];
+        const pisuOk = data[i][C_PISU_OK];
+        const pisuKo = data[i][C_PISU_KO];
+        const tags = alexTags[id] || {};
+        
+        // === BILAN ===
+        // Si BI (Bilan OK) coché → OK
+        if(bilanOk) {
+            bilanOkCount++;
+            countedIds.add(id + "_bilan");
+            okBilanList.push({ id:id, motif:motif, centre:cis, engin:engin, date:date, status:status, types: ["Bilan OK"], errorType: "" });
+        }
+        // Si BJ (Bilan incomplet) coché ET H (correction) dans APP Alex → OK
+        else if(bilanKo && tags.hasH) {
+            bilanOkCount++;
+            countedIds.add(id + "_bilan");
+            okBilanList.push({ id:id, motif:motif, centre:cis, engin:engin, date:date, status:status, types: ["Bilan OK"], errorType: "" });
+        }
+        
+        // === PISU ===
+        // Si BK (Pisu OK) coché → OK
+        if(pisuOk) {
+            pisuOkCount++;
+            countedIds.add(id + "_pisu");
+            okPisuList.push({ id:id, motif:motif, centre:cis, engin:engin, date:date, status:status, types: ["Pisu OK"], errorType: "" });
+        }
+        // Si BL (Pisu pas ok) coché ET I (correction) dans APP Alex → OK
+        else if(pisuKo && tags.hasI) {
+            pisuOkCount++;
+            countedIds.add(id + "_pisu");
+            okPisuList.push({ id:id, motif:motif, centre:cis, engin:engin, date:date, status:status, types: ["Pisu OK"], errorType: "" });
+        }
+    }
+
+    console.log(`DEBUG ISP ${mat}: RÉSULTATS - Bilan OK: ${bilanOkCount}, Pisu OK: ${pisuOkCount}, Erreur Bilan Légère: ${errLegereBilanList.length}, Erreur Pisu Légère: ${errLegerePisuList.length}, Erreur Grave: ${errLourdeList.length}`);
 
     const result = {
         nom: agentName,
@@ -611,11 +691,16 @@ function getIspStats(matriculeInput, dobInput) {
         okPisuList: okPisuList,
         errLegereBilan: errLegereBilanList,
         errLegerePisu: errLegerePisuList,
-        errLourde: errLourdeList
+        errLourde: errLourdeList,
+        debugInfo: {
+            totalIds: thisAgentIds.size,
+            idsWithTags: Object.keys(alexTags).length,
+            sampleIds: Array.from(thisAgentIds).slice(0, 5)
+        }
     };
     
-    // === METTRE EN CACHE ===
-    cache.put(cacheKey, JSON.stringify(result), 21600);
+    cache.put(cacheKey, JSON.stringify(result), 3600); // Cache 1h - données ISP individuelles
+    result.fromCache = false;
     
     return result;
   } catch(e) { return { error: e.message }; }
@@ -624,12 +709,12 @@ function getIspStats(matriculeInput, dobInput) {
 /* --- CHEFFERIE --- */
 function getChefferieCounts() {
     const cache = CacheService.getScriptCache();
-    const cacheKey = "chefferie_counts";
+    const cacheKey = "chefferie_counts_v2";
     const cached = cache.get(cacheKey);
     if(cached) return JSON.parse(cached);
     
     const ss = getSS_();
-    let isp = 0, med = 0, valid = 0;
+    let isp = 0, med = 0;
     try {
         const shApp = ss.getSheetByName(APP_SHEET_NAME);
         const shAlex = ss.getSheetByName("APP Alex");
@@ -637,51 +722,41 @@ function getChefferieCounts() {
         
         const dApp = shApp.getDataRange().getValues();
         const dAlex = shAlex.getDataRange().getValues();
-        const dEve = shEve.getDataRange().getValues();
+        const dEve = shEve ? shEve.getDataRange().getValues() : [];
         
-        // Comptages APP Alex
-        const alexNotClosed = new Set();  // Erreurs confirmées pas encore clôturées
-        const alexGraves = new Set();      // Erreurs graves (L coché)
-        
+        // Index des fiches clôturées dans APP Alex (colonne N)
+        const alexClosedIds = new Set();
+        const alexGraves = new Set();
         for(let i=1; i<dAlex.length; i++) {
             const id = String(dAlex[i][0]).trim();
-            const hasJ = isCheckboxChecked(dAlex[i][9]);   // J
-            const hasK = isCheckboxChecked(dAlex[i][10]);  // K
-            const hasL = isCheckboxChecked(dAlex[i][11]);  // L
-            const isClosed = isCheckboxChecked(dAlex[i][13]); // N
-            
-            if((hasJ || hasK || hasL) && !isClosed) {
-                alexNotClosed.add(id);
-            }
-            if(hasL) {
-                alexGraves.add(id);
+            if(isCheckboxChecked(dAlex[i][13])) alexClosedIds.add(id); // N = clôturé
+            if(isCheckboxChecked(dAlex[i][11])) alexGraves.add(id);    // L = Erreur Grave
+        }
+        
+        // GREEN (isp) = bilans dans APP (bilanKo ou pisuKo) PAS clôturés dans Alex N
+        for(let i=1; i<dApp.length; i++) {
+            const bilanKo = isCheckboxChecked(dApp[i][C_BILAN_KO]);
+            const pisuKo = isCheckboxChecked(dApp[i][C_PISU_KO]);
+            const isClosed = isCheckboxChecked(dApp[i][C_BP_CLOSE]);
+            if((bilanKo || pisuKo) && !isClosed) {
+                const id = String(dApp[i][C_APP_ID]).trim();
+                if(!alexClosedIds.has(id)) isp++;
             }
         }
         
-        // Comptages APP Eve
-        const eveDone = new Set(); // Fiches avec analyse/action
+        // ORANGE (med) = erreurs graves (L dans Alex) pas encore traitées dans APP Eve
+        const eveDone = new Set();
         for(let i=1; i<dEve.length; i++) {
             const id = String(dEve[i][0]).trim();
-            if(dEve[i][14] || dEve[i][16]) {
-                eveDone.add(id);
-            }
+            if(dEve[i][14] || dEve[i][16]) eveDone.add(id);
         }
-        
-        // isp = erreurs confirmées pas clôturées
-        isp = alexNotClosed.size;
-        
-        // med = erreurs graves pas traitées dans APP Eve
-        med = 0;
         for(let id of alexGraves) {
             if(!eveDone.has(id)) med++;
         }
-        
-        // valid = inutilisé pour l'instant
-        valid = 0;
     } catch(e) {}
     
-    const result = { isp, med, valid };
-    cache.put(cacheKey, JSON.stringify(result), 21600);
+    const result = { isp, med };
+    cache.put(cacheKey, JSON.stringify(result), 60);
     return result;
 }
 
@@ -1029,11 +1104,11 @@ function saveAppChefferie(form) {
         shAlex.getRange(row, 14).setValue(true);
         
         // Clear cache
-        CacheService.getScriptCache().remove("chefferie_counts");
+        CacheService.getScriptCache().remove("chefferie_counts_v2");
         
         return { success: true };
     } catch(e) {
-        Logger.log("saveAppChefferie error: " + e.toString());
+        console.log("saveAppChefferie error: " + e.toString());
         return { success: false, error: e.toString() };
     }
 }
@@ -1069,11 +1144,11 @@ function saveMedecinAnalyse(form) {
         shEve.getRange(row, 17).setValue(form.action || "");
         
         // Clear cache
-        CacheService.getScriptCache().remove("chefferie_counts");
+        CacheService.getScriptCache().remove("chefferie_counts_v2");
         
         return { success: true };
     } catch(e) {
-        Logger.log("saveMedecinAnalyse error: " + e.toString());
+        console.log("saveMedecinAnalyse error: " + e.toString());
         return { success: false, error: e.toString() };
     }
 }
@@ -1293,11 +1368,11 @@ function saveCase(form) {
         });
         
         // Clear cache
-        CacheService.getScriptCache().remove("chefferie_counts");
+        CacheService.getScriptCache().remove("chefferie_counts_v2");
         
         return { success: true };
     } catch(e) {
-        Logger.log("saveCase error: " + e.toString());
+        console.log("saveCase error: " + e.toString());
         return { success: false, error: e.toString() };
     }
 }
@@ -1332,18 +1407,33 @@ function getAllIspErrorStats() {
         const dApp = shApp.getDataRange().getValues();
         const shAlex = ss.getSheetByName("APP Alex");
         const dAlex = shAlex.getDataRange().getValues();
+        
+        // CHARGER APP ALEX EN MAP - PREMIÈRE OCCURRENCE SEULEMENT (lignes FILTER)
         const alexMap = {};
-        for(let i=1; i<dAlex.length; i++) {
+        const maxSearchRow = Math.min(100, dAlex.length); // Limiter aux 100 premières lignes (zone FILTER)
+        for(let i=1; i<maxSearchRow; i++) {
             const id = String(dAlex[i][0]).trim();
-            alexMap[id] = { reqBilOk: dAlex[i][7] === true, reqPisuOk: dAlex[i][8] === true, errBilL: dAlex[i][9] === true, errPisuL: dAlex[i][10] === true, errGrave: dAlex[i][11] === true };
+            if(!id) continue;
+            
+            // PRENDRE LA PREMIÈRE OCCURRENCE SEULEMENT
+            if(alexMap[id]) continue;
+            
+            alexMap[id] = { 
+                reqBilOk: isCheckboxChecked(dAlex[i][7]),    // H
+                reqPisuOk: isCheckboxChecked(dAlex[i][8]),   // I
+                errBilL: isCheckboxChecked(dAlex[i][9]),     // J
+                errPisuL: isCheckboxChecked(dAlex[i][10]),   // K
+                errGrave: isCheckboxChecked(dAlex[i][11])    // L
+            };
         }
+        
         for(let i=1; i<dApp.length; i++) {
             const m = normalizeMat(dApp[i][C_APP_MAT]);
             if(stats[m]) {
                 const id = String(dApp[i][C_APP_ID]).trim();
                 const alex = alexMap[id] || {};
-                if(dApp[i][C_BILAN_OK] === true || alex.reqBilOk) stats[m].bilanOk++;
-                if(dApp[i][C_PISU_OK] === true || alex.reqPisuOk) stats[m].pisuOk++;
+                if(isCheckboxChecked(dApp[i][C_BILAN_OK]) || alex.reqBilOk) stats[m].bilanOk++;
+                if(isCheckboxChecked(dApp[i][C_PISU_OK]) || alex.reqPisuOk) stats[m].pisuOk++;
                 if(alex.errBilL) stats[m].errBilL++;
                 if(alex.errPisuL) stats[m].errPisuL++;
                 if(alex.errGrave) stats[m].errGrave++;
@@ -1352,7 +1442,7 @@ function getAllIspErrorStats() {
     }
     
     const result = Object.values(stats);
-    cache.put(cacheKey, JSON.stringify(result), 21600);
+    cache.put(cacheKey, JSON.stringify(result), 60); // Cache 60s - données ISP changent souvent
     return result;
 }
 
@@ -1371,20 +1461,38 @@ function getIspDetailsAdmin(mat) {
     
     if(!shApp || !shAlex) return list;
     
-    // 1. Charger APP Alex en map
+    // 1. Charger APP Alex en map - PREMIÈRE OCCURRENCE pour checkboxes, COMBINER commentaires
     const alexData = {};
     const alexRows = shAlex.getDataRange().getValues();
-    for(let i=1; i<alexRows.length; i++) {
+    
+    // D'abord charger les 100 premières lignes (zone FILTER - valeurs à jour des checkboxes)
+    const maxSearchRow = Math.min(100, alexRows.length);
+    for(let i=1; i<maxSearchRow; i++) {
         const id = String(alexRows[i][0]).trim();
         if(!id) continue;
-        alexData[id] = {
-            H: isCheckboxChecked(alexRows[i][7]),   // Correction Bilan
-            I: isCheckboxChecked(alexRows[i][8]),   // Correction Pisu
-            J: isCheckboxChecked(alexRows[i][9]),   // Erreur Bilan légère
-            K: isCheckboxChecked(alexRows[i][10]),  // Erreur Pisu légère
-            L: isCheckboxChecked(alexRows[i][11]),  // Erreur Grave
-            commChef: String(alexRows[i][12]||"")
-        };
+        
+        // PRENDRE LA PREMIÈRE OCCURRENCE pour les checkboxes
+        if(!alexData[id]) {
+            alexData[id] = {
+                H: isCheckboxChecked(alexRows[i][7]),
+                I: isCheckboxChecked(alexRows[i][8]),
+                J: isCheckboxChecked(alexRows[i][9]),
+                K: isCheckboxChecked(alexRows[i][10]),
+                L: isCheckboxChecked(alexRows[i][11]),
+                commChef: String(alexRows[i][12]||"")
+            };
+        }
+    }
+    
+    // Ensuite chercher les commentaires dans TOUTES les lignes (au cas où M n'est pas dans FILTER)
+    for(let i=1; i<alexRows.length; i++) {
+        const id = String(alexRows[i][0]).trim();
+        if(!id || !alexData[id]) continue;
+        
+        const comm = String(alexRows[i][12]||"").trim();
+        if(comm && !alexData[id].commChef) {
+            alexData[id].commChef = comm;
+        }
     }
     
     // 2. Charger APP Eve en map
@@ -1423,7 +1531,7 @@ function getIspDetailsAdmin(mat) {
         if(biOk) types.push("Bilan OK");
         if(piOk) types.push("Pisu OK");
         
-        // Erreurs confirmées uniquement
+        // Erreurs confirmées uniquement (J/K/L cochés)
         if(biKo && !alex.H && (alex.J || alex.L)) {
             const err = alex.L ? "Erreur Grave" : "Erreur Bilan Légère";
             types.push(err);
@@ -1458,6 +1566,169 @@ function getIspDetailsAdmin(mat) {
     return list;
 }
 
+// === ACTIONS FINALES CHEFFERIE ===
+
+/**
+ * Récupérer la prochaine fiche à traiter dans "Actions finales"
+ * Critères: Dans APP Eve, O ou Q rempli, S (col 19) pas coché
+ */
+function getNextActionChefferie() {
+    const ss = getSS_();
+    const shEve = ss.getSheetByName("APP Eve");
+    const shAlex = ss.getSheetByName("APP Alex");
+    const shApp = ss.getSheetByName(APP_SHEET_NAME);
+    if(!shEve) return { found: false, message: "Onglet APP Eve introuvable" };
+    
+    const dataEve = shEve.getDataRange().getValues();
+    const dataAlex = shAlex ? shAlex.getDataRange().getValues() : [];
+    const dataApp = shApp ? shApp.getDataRange().getValues() : [];
+    
+    for(let i=1; i<dataEve.length; i++) {
+        const hasAnalyse = !!dataEve[i][14]; // O
+        const hasAction = !!dataEve[i][16];  // Q
+        const isClosed = isCheckboxChecked(dataEve[i][18]); // S
+        
+        if((hasAnalyse || hasAction) && !isClosed) {
+            const id = String(dataEve[i][0]).trim();
+            
+            // Chercher infos dans APP
+            let appInfo = null;
+            for(let j=1; j<dataApp.length; j++) {
+                if(String(dataApp[j][C_APP_ID]).trim() === id) {
+                    appInfo = dataApp[j];
+                    break;
+                }
+            }
+            
+            // Chercher commentaire chefferie dans APP Alex (colonne M = index 12)
+            let commChef = "";
+            for(let j=1; j<dataAlex.length; j++) {
+                if(String(dataAlex[j][0]).trim() === id) {
+                    commChef = dataAlex[j][12] || "";
+                    break;
+                }
+            }
+            
+            const cis = appInfo ? String(appInfo[C_APP_CIS]||"").trim() : "";
+            const status = (cis === "SD SSSM") ? "De Garde" : "Astreinte / Dispo";
+            
+            return {
+                found: true,
+                rowEve: i+1,
+                info: {
+                    interId: id,
+                    date: appInfo ? formatDateHeureFR_(appInfo[C_APP_DATE]) : "",
+                    infName: appInfo ? appInfo[C_APP_NOM] : "",
+                    motif: appInfo ? appInfo[C_APP_MOTIF] : "",
+                    engin: appInfo ? String(appInfo[C_APP_ENGIN]||"").trim() : "",
+                    pdf: appInfo ? appInfo[C_APP_PDF] : "",
+                    status: status,
+                    commChef: commChef,
+                    analyseMed: dataEve[i][14] || "",
+                    actionRequise: dataEve[i][16] || "",
+                    actionFaite: dataEve[i][17] || ""
+                }
+            };
+        }
+    }
+    
+    return { found: false, message: "Aucune action à traiter — tout est clôturé !" };
+}
+
+/**
+ * Sauvegarder l'action faite par chefferie dans APP Eve col R (18), et clôturer S (19)
+ */
+function saveActionChefferie(form) {
+    try {
+        const ss = getSS_();
+        const shEve = ss.getSheetByName("APP Eve");
+        
+        const row = form.rowEve;
+        if(!row || row < 2) return { success: false, error: "Ligne invalide" };
+        
+        // Action faite (colonne R = 18)
+        shEve.getRange(row, 18).setValue(form.actionFaite || "");
+        
+        // Clôturer (colonne S = 19)
+        shEve.getRange(row, 19).setValue(true);
+        
+        // Clear cache
+        CacheService.getScriptCache().remove("chefferie_counts_v2");
+        
+        return { success: true };
+    } catch(e) {
+        return { success: false, error: e.toString() };
+    }
+}
+
+/**
+ * Récupérer toutes les actions archivées (S=true), groupées par ISP
+ */
+function getArchivedActions() {
+    const ss = getSS_();
+    const shEve = ss.getSheetByName("APP Eve");
+    const shApp = ss.getSheetByName(APP_SHEET_NAME);
+    const shAlex = ss.getSheetByName("APP Alex");
+    if(!shEve) return [];
+    
+    const dataEve = shEve.getDataRange().getValues();
+    const dataApp = shApp ? shApp.getDataRange().getValues() : [];
+    const dataAlex = shAlex ? shAlex.getDataRange().getValues() : [];
+    
+    // Index APP par ID
+    const appIndex = {};
+    for(let i=1; i<dataApp.length; i++) {
+        const id = String(dataApp[i][C_APP_ID]).trim();
+        appIndex[id] = dataApp[i];
+    }
+    
+    // Index Alex par ID
+    const alexIndex = {};
+    for(let i=1; i<dataAlex.length; i++) {
+        const id = String(dataAlex[i][0]).trim();
+        alexIndex[id] = dataAlex[i];
+    }
+    
+    // Grouper par ISP
+    const ispMap = {}; // { ispName: [fiches] }
+    
+    for(let i=1; i<dataEve.length; i++) {
+        const isClosed = isCheckboxChecked(dataEve[i][18]); // S
+        if(!isClosed) continue;
+        
+        const id = String(dataEve[i][0]).trim();
+        const appRow = appIndex[id];
+        const alexRow = alexIndex[id];
+        
+        const ispName = appRow ? String(appRow[C_APP_NOM]||"").trim() : "";
+        if(!ispName) continue;
+        
+        const cis = appRow ? String(appRow[C_APP_CIS]||"").trim() : "";
+        const status = (cis === "SD SSSM") ? "De Garde" : "Astreinte / Dispo";
+        
+        if(!ispMap[ispName]) ispMap[ispName] = [];
+        ispMap[ispName].push({
+            id: id,
+            date: appRow ? formatDateHeureFR_(appRow[C_APP_DATE]) : "",
+            motif: appRow ? appRow[C_APP_MOTIF] : "",
+            engin: appRow ? String(appRow[C_APP_ENGIN]||"").trim() : "",
+            pdf: appRow ? appRow[C_APP_PDF] : "",
+            status: status,
+            commChef: alexRow ? (alexRow[12] || "") : "",
+            analyseMed: dataEve[i][14] || "",
+            actionRequise: dataEve[i][16] || "",
+            actionFaite: dataEve[i][17] || ""
+        });
+    }
+    
+    // Convertir en array trié par nom
+    return Object.keys(ispMap).sort().map(name => ({
+        ispName: name,
+        count: ispMap[name].length,
+        fiches: ispMap[name]
+    }));
+}
+
 // HELPERS
 function getInterventionDetails(interId) {
   const ss = getSS_();
@@ -1490,3 +1761,4 @@ function formatDateFR_(d){return d?`${String(d.getDate()).padStart(2,"0")}/${Str
 function formatDateHeureFR_(v){ const d = coerceToDateTime_(v); if(!d) return "—"; return `${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")}/${d.getFullYear()} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`; }
 function updateHistoryCache() {} 
 function getDashboardData(){ return getStats2026(); }
+// force push 20260209234130

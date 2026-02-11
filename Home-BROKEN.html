@@ -1,17 +1,9 @@
 <!doctype html>
-<!-- Version: v1.72 | 2026-02-09 | FIX: div+chk+onerror -->
+<!-- Version: v1.67 | 2026-02-03 -->
 <html>
 <head>
   <base target="_top">
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <script>
-  window.onerror = function(msg, src, line, col, err) {
-    var d = document.createElement('div');
-    d.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#d00;color:#fff;z-index:999999;padding:15px;font-size:14px;font-family:monospace;white-space:pre-wrap;';
-    d.textContent = 'JS ERROR: ' + msg + ' (ligne ' + line + ', col ' + col + ')';
-    document.body ? document.body.insertBefore(d, document.body.firstChild) : document.addEventListener('DOMContentLoaded', function(){ document.body.insertBefore(d, document.body.firstChild); });
-  };
-  </script>
   <script>const SCRIPT_URL = "<?= scriptUrl ?>";
   
   // Mapping des protocoles: colonne Excel (0-indexed) => label
@@ -68,13 +60,11 @@
     .badgeBtn { background:var(--ok); color:#000; padding:2px 6px; border-radius:6px; font-size:11px; font-weight:bold; }
     .badgeBtn.red { background:var(--red); color:#fff; }
 
-    .main{ padding:25px; overflow-y:auto; height:100vh; position:relative; }
+    .main{ padding:25px; overflow-y:auto; height:100vh; }
+    .main:has(#viewChefferie.active) { padding:0; overflow:hidden; }
     .view { display:none; animation:fadeIn 0.3s; }
     .view.active { display:block; }
-    #viewChefferie.active { display:flex; flex-direction:column; position:absolute; top:0; left:0; right:0; bottom:0; z-index:10; background:linear-gradient(180deg, var(--bg0), var(--bg1)); }
-    .chefHeader { flex-shrink:0; border-bottom:2px solid var(--border); padding:12px 20px; background:var(--bg0); }
-    .chefBtnRow { flex-shrink:0; background:rgba(11,15,31,0.98); border-bottom:1px solid var(--border); padding:15px 20px; display:flex; gap:12px; flex-wrap:wrap; }
-    .chefContent { flex:1; overflow-y:auto; padding:20px; min-height:0; }
+    #viewChefferie.active { display:flex !important; flex-direction:column; height:100vh; overflow:hidden; background:var(--bg); }
     @keyframes fadeIn { from{opacity:0;transform:translateY(5px);} to{opacity:1;transform:translateY(0);} }
 
     .topbar{ border-bottom:1px solid var(--border); padding-bottom:8px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center; }
@@ -109,7 +99,7 @@
     .adminRight { flex:1; }
     .admin-scroll { max-height:400px; overflow:auto; border:1px solid var(--border); border-radius:10px; }
 
-    .btn-row { display:flex; gap:15px; margin-bottom:20px; position:sticky; top:0; z-index:10; background:rgba(11,15,31,0.95); padding:15px 0; border-bottom:1px solid var(--border); }
+    .btn-row { display:flex; gap:15px; margin-bottom:20px; position:sticky; top:35px; z-index:10; background:rgba(11,15,31,0.95); padding:15px 0; border-bottom:1px solid var(--border); }
     .c-btn { flex:1; padding:15px; background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:12px; color:#fff; cursor:pointer; text-align:left; transition:0.2s; }
     .c-btn:hover { background:rgba(255,255,255,.08); border-color:var(--accent3); }
     .c-btn h3 { margin:0 0 5px 0; font-size:14px; display:flex; justify-content:space-between; }
@@ -249,7 +239,8 @@
       </div>
       <div class="sideBtns">
         <button class="sideBtn primary" id="btnAppAccess" onclick="openAppView()"><span>Accès APP</span><span class="badgeBtn" id="cntAppBadge">...</span></button>
-        <button class="sideBtn" onclick="askPass('chef')"><span>Accès Chefferie</span><span style="display:flex;align-items:center;gap:4px;"><span class="badgeBtn" id="cntIspGBadge">...</span><span style="color:var(--muted);">/</span><span class="badgeBtn" style="background:var(--orange);color:#000;" id="cntIspRBadge">...</span></span></button>
+        <button class="sideBtn" onclick="askPass('chef')"><span>Accès chefferie ISP</span><span style="display:flex;align-items:center;gap:4px;"><span class="badgeBtn" id="cntIspGBadge">...</span><span style="color:var(--muted);">/</span><span class="badgeBtn red" id="cntIspRBadge">...</span></span></button>
+        <button class="sideBtn" onclick="askPass('med')"><span>Analyse médecin cheffe</span><span class="badgeBtn" id="cntMedBadge">...</span></button>
       </div>
     </aside>
 
@@ -385,17 +376,21 @@
                         <div class="panel"><div class="panelHead">Interventions par Secteur (décroissant)</div><div class="panelScrollWrapper" style="max-height:250px;"><table id="tableAdminSect"><thead><tr><th>Secteur</th><th class="num">2026</th><th class="num">2025 (Date)</th><th class="num">2025 (Total)</th></tr></thead><tbody></tbody></table></div></div>
                     </div>
                 </div>
+                </div>
             </div>
         </div>
       </div>
 
       <!-- NOUVELLE INTERFACE CHEFFERIE -->
       <div id="viewChefferie" class="view">
-          <div class="chefHeader">
+          <!-- Header fixe -->
+          <div style="background:var(--bg); border-bottom:2px solid var(--border); padding:12px 20px;">
               <button class="btnGo" style="width:auto;padding:8px 16px;" onclick="goHome()">← Retour Dashboard</button>
-              <h1 style="display:inline;margin-left:20px;font-size:18px;font-weight:800;">Espace Chefferie</h1>
+              <h1 style="display:inline;margin-left:20px;font-size:18px;font-weight:800;">Espace Chefferie ISP</h1>
           </div>
-          <div class="chefBtnRow">
+          
+          <!-- 3 Boutons TOUJOURS EN HAUT -->
+          <div style="background:rgba(11,15,31,0.98); border-bottom:1px solid var(--border); padding:15px 20px; display:flex; gap:12px; position:sticky; top:0; z-index:100;">
               <button class="c-btn" style="flex:1;" onclick="showChefferieMode('app')">
                   <h3 style="margin:0 0 4px 0; font-size:14px;">📋 Faire APP Chefferie</h3>
                   <p style="margin:0; font-size:11px; opacity:0.8;">Fiches Bilan/Pisu incomplets</p>
@@ -404,55 +399,44 @@
                   <h3 style="margin:0 0 4px 0; font-size:14px;">⚠️ Analyse Médecin Cheffe</h3>
                   <p style="margin:0; font-size:11px; opacity:0.8;">Erreurs graves</p>
               </button>
-              <button class="c-btn" style="flex:1;" onclick="showChefferieMode('action')">
-                  <h3 style="margin:0 0 4px 0; font-size:14px;">🎯 Action à mener chefferie</h3>
-                  <p style="margin:0; font-size:11px; opacity:0.8;">Actions finales à traiter</p>
-              </button>
               <button class="c-btn" style="flex:1;" onclick="showChefferieMode('data')">
                   <h3 style="margin:0 0 4px 0; font-size:14px;">📊 Voir Données APP</h3>
                   <p style="margin:0; font-size:11px; opacity:0.8;">Tous les ISP</p>
               </button>
           </div>
-          <div class="chefContent">
-                  <!-- Mode APP Chefferie -->
-                  <div id="chefModeApp" style="display:none;">
-                      <div id="chefAppContent"></div>
-                  </div>
-                  
-                  <!-- Mode Médecin -->
-                  <div id="chefModeMed" style="display:none;">
-                      <div id="chefMedContent"></div>
-                  </div>
-                  
-                  <!-- Mode Action -->
-                  <div id="chefModeAction" style="display:none;">
-                      <div id="chefActionContent"></div>
-                  </div>
-                  
-                  <!-- Mode Data -->
-                  <div id="chefModeData" style="display:none;">
-                      <div style="display:flex; gap:12px; margin-bottom:15px;">
-                          <button class="btnGo" style="background:var(--red);border-color:rgba(255,77,77,0.5);box-shadow:0 0 12px rgba(255,77,77,0.3);" onclick="loadAllGraveErrors()">🚨 Voir toutes les erreurs graves</button>
-                          <button class="btnGo" style="background:var(--orange);border-color:rgba(255,165,0,0.5);box-shadow:0 0 12px rgba(255,165,0,0.3);" onclick="loadAllLegereErrors()">⚠️ Voir toutes les erreurs légères</button>
-                      </div>
-                      <div class="panel">
-                          <div class="panelHead">Récapitulatif par ISP</div>
-                          <div class="panelBody">
-                              <table id="globalTable" style="width:100%;">
-                                  <thead><tr>
-                                      <th onclick="sortGlobal(0)" style="cursor:pointer;">Nom ISP <span id="sortIcon0">↕</span></th>
-                                      <th onclick="sortGlobal(1)" style="cursor:pointer;">Bilan OK <span id="sortIcon1">↕</span></th>
-                                      <th onclick="sortGlobal(2)" style="cursor:pointer;">Pisu OK <span id="sortIcon2">↕</span></th>
-                                      <th onclick="sortGlobal(3)" style="cursor:pointer;">Err. Bilan Lég. <span id="sortIcon3">↕</span></th>
-                                      <th onclick="sortGlobal(4)" style="cursor:pointer;">Err. Pisu Lég. <span id="sortIcon4">↕</span></th>
-                                      <th onclick="sortGlobal(5)" style="cursor:pointer;">Err. Grave <span id="sortIcon5">↕</span></th>
-                                  </tr></thead>
-                                  <tbody id="globalTbody"></tbody>
-                              </table>
-                          </div>
+          
+          <!-- Zone de contenu -->
+          <div style="flex:1; overflow-y:auto; padding:20px;">
+              <!-- Mode APP Chefferie -->
+              <div id="chefModeApp" style="display:none;">
+                  <div id="chefAppContent"></div>
+              </div>
+              
+              <!-- Mode Médecin -->
+              <div id="chefModeMed" style="display:none;">
+                  <div id="chefMedContent"></div>
+              </div>
+              
+              <!-- Mode Data -->
+              <div id="chefModeData" style="display:none;">
+                  <div class="panel">
+                      <div class="panelHead">Récapitulatif par ISP</div>
+                      <div class="panelBody">
+                          <table id="globalTable" style="width:100%;">
+                              <thead><tr>
+                                  <th>Nom ISP</th>
+                                  <th>Bilan OK</th>
+                                  <th>Pisu OK</th>
+                                  <th>Err. Bilan Lég.</th>
+                                  <th>Err. Pisu Lég.</th>
+                                  <th>Err. Grave</th>
+                              </tr></thead>
+                              <tbody id="globalTbody"></tbody>
+                          </table>
                       </div>
                   </div>
               </div>
+          </div>
       </div>
 
       <div id="viewMedecin" class="view">
@@ -573,10 +557,28 @@
     <div class="modalCard" style="width:95%; max-width:1600px; height:98vh;">
       <div class="modalHead">
         <span>Détail de l'intervention</span>
-        <button class="closeBtn" onclick="closeModalDetail()">×</button>
+        <button class="closeBtn" onclick="closeModal('modalDetail')">×</button>
       </div>
-      <div id="modalDetailBody" class="modalBody" style="display:flex; gap:0;">
-        <!-- Contenu injecté dynamiquement par loadInterDetail -->
+      <div class="modalBody" style="display:flex; gap:0;">
+        <iframe id="modalPdf" style="flex:2.5; border:0; background:#000;"></iframe>
+        <div id="modalPdfInfo" style="flex:1; min-width:350px; background:#1a2245; padding:20px; border-left:1px solid var(--border); overflow-y:auto; display:flex; flex-direction:column; gap:15px;">
+          <h4 style="color:var(--accent3);margin:0 0 15px 0;">Informations</h4>
+          <div style="display:flex;flex-direction:column;gap:12px;font-size:13px;">
+            <div><span style="color:var(--muted);font-size:11px;">N° Intervention</span><br><b id="detailId" style="font-size:15px;color:#fff;"></b></div>
+            <div><span style="color:var(--muted);font-size:11px;">Date</span><br><b id="detailDate"></b></div>
+            <div><span style="color:var(--muted);font-size:11px;">Statut</span><br><b id="detailCentre"></b></div>
+            <div><span style="color:var(--muted);font-size:11px;">Motif d'intervention</span><br><b id="detailMotif"></b></div>
+            <div><span style="color:var(--muted);font-size:11px;">Engin</span><br><b id="detailEngin"></b></div>
+          </div>
+          <h4 style="color:var(--accent3);margin:15px 0 10px 0;">Commentaire Chefferie</h4>
+          <div id="commChef" class="static-box"></div>
+          <div id="blockMed" style="display:none;">
+            <h4 style="color:var(--red);margin:15px 0 10px 0;">Analyse Médecin</h4>
+            <div id="commMed" class="static-box" style="color:var(--red);"></div>
+          </div>
+          <button class="btnGo" style="width:100%;margin-bottom:8px;" onclick="document.getElementById('modalDetail').style.display='none'; document.getElementById('modalList').style.display='flex';">← Retour aux fiches</button>
+          <button class="btnGo" style="width:100%;" onclick="closeModal('modalDetail')">Fermer</button>
+        </div>
       </div>
     </div>
   </div>
@@ -606,7 +608,7 @@
     function startLoad(){ document.getElementById("loadingBox").style.display="flex"; let w=0; loadInt=setInterval(()=>{ if(w<90)w+=5; lFill.style.width=w+"%"; lPct.textContent=Math.floor(w)+"%"; },100); }
     function stopLoad(){ clearInterval(loadInt); lFill.style.width="100%"; lPct.textContent="100%"; setTimeout(()=>{ document.getElementById("loadingBox").style.display="none"; lFill.style.width="0"; },300); }
     function toast(m){ const t=document.getElementById("toast"); t.textContent=m; t.style.display="block"; setTimeout(()=>t.style.display="none",3000); }
-    function goHome(){ document.querySelectorAll('.view').forEach(v=>v.classList.remove('active')); document.getElementById('viewDashboard').classList.add('active'); const m=document.querySelector('.main'); if(m){m.style.padding='25px';m.style.overflow='auto';} }
+    function goHome(){ document.querySelectorAll('.view').forEach(v=>v.classList.remove('active')); document.getElementById('viewDashboard').classList.add('active'); }
     function setText(id,v){ const e=document.getElementById(id); if(e) e.textContent=(v==null?"-":v); }
     function getTrendHtml(a,b){ const v1=parseFloat(a)||0, v2=parseFloat(b)||0; if(v2===0 && v1>0) return '<span class="trendUp">▲</span>'; if(v1>v2) return '<span class="trendUp">▲</span>'; if(v1<v2) return '<span class="trendDown">▼</span>'; return '<span class="trendEq">=</span>'; }
 
@@ -620,12 +622,19 @@
 
     // --- INIT ---
     window.onload = () => {
+        // Auto-format date input
+        const dobInput = document.getElementById('dobInput');
+        if(dobInput) {
+            dobInput.addEventListener('input', function(e){ 
+                if(e.inputType!="deleteContentBackward"){ 
+                    let v=this.value; 
+                    if(v.length==2||v.length==5) this.value=v+'/'; 
+                } 
+            });
+        }
+        
         startLoad();
-        google.script.run.withFailureHandler(e => {
-            stopLoad();
-            toast("Erreur chargement: " + e.message);
-            console.error('getStats2026 failed:', e);
-        }).withSuccessHandler(d => {
+        google.script.run.withSuccessHandler(d => {
             stopLoad();
             if(d.error){ toast("Erreur: "+d.error); return; }
             setText("cutoffDateBig", d.date);
@@ -639,7 +648,8 @@
             document.querySelector("#tableCis tbody").innerHTML = (d.cis||[]).map(x=>`<tr id="cis_${x.name}"><td>${x.name}</td><td class="num">${x.v26}</td><td class="num v25">...</td><td class="num" style="color:gray">${x.v25tot}</td></tr>`).join('');
             document.querySelector("#tableSect tbody").innerHTML = (d.secteurs||[]).map(x=>`<tr id="sect_${x.name}"><td>${x.name}</td><td class="num">${x.v26}</td><td class="num v25">...</td><td class="num" style="color:gray">${x.v25tot}</td></tr>`).join('');
             
-            setText("cntAppBadge", d.cntApp||0); setText("cntIspGBadge", d.cntIspG||0); setText("cntIspRBadge", d.cntIspR||0);
+            setText("cntAppBadge", d.cntApp||0); setText("cntIspGBadge", d.cntIspG||0); setText("cntIspRBadge", d.cntIspR||0); setText("cntMedBadge", d.cntMed||0);
+            setText("btnBadgeIspG", d.cntIspG||0); setText("btnBadgeIspR", d.cntIspR||0);
 
             // 2025 (Deferred)
             const l25 = document.getElementById("loadingBox25"), f25=document.getElementById("loadFill25"), p25=document.getElementById("loadPct25");
@@ -656,7 +666,6 @@
                 for(let k in d25.cisMap) { const row = document.getElementById("cis_"+k); if(row) row.querySelector(".v25").textContent = d25.cisMap[k]; }
                 for(let k in d25.sectMap) { const row = document.getElementById("sect_"+k); if(row) row.querySelector(".v25").textContent = d25.sectMap[k]; }
 
-                // Précharger toutes les données automatiquement
                 google.script.run.preCacheAllData();
                 let cacheInt = setInterval(() => {
                     updateCacheDisplay();
@@ -693,28 +702,14 @@
                 setInterval(checkScroll, 2000);
             }, 2000);
         }
-        
-        // Auto-format date input
-        const dobInput = document.getElementById('dobInput');
-        if(dobInput) {
-            dobInput.addEventListener('input', function(e){ 
-                if(e.inputType!="deleteContentBackward"){ 
-                    let v=this.value; 
-                    if(v.length==2||v.length==5) this.value=v+'/'; 
-                } 
-            });
-        }
     };
 
     function askPass(target) {
         const p=prompt("Mot de passe :");
         if(p==="0007"){
             document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
-            const mainEl = document.querySelector('.main');
-            if(target==='chef') {
-                document.getElementById('viewChefferie').classList.add('active');
-                if(mainEl) { mainEl.style.padding='0'; mainEl.style.overflow='hidden'; mainEl.scrollTop=0; }
-            }
+            if(target==='chef') document.getElementById('viewChefferie').classList.add('active');
+            if(target==='med') { document.getElementById('viewMedecin').classList.add('active'); loadChefCase('med_chef'); }
         } else toast("Erreur");
     }
 
@@ -734,26 +729,8 @@
     }
 
     function setStatus(t){ document.getElementById("statusPill").textContent=t; }
-        function extractDriveFileId(u){
-            if(!u) return "";
-            const s = String(u);
-            let m = s.match(/\/file\/d\/([^\/\?]+)/i);
-            if(m && m[1]) return m[1];
-            m = s.match(/[?&]id=([^&]+)/i);
-            if(m && m[1]) return m[1];
-            return "";
-        }
-        function buildPdfEmbed(u){
-            const id = extractDriveFileId(u);
-            if(!id) return "";
-            // Utiliser l'URL de preview directe sans viewer externe
-            return "https://drive.google.com/file/d/" + id + "/preview";
-        }
-        function buildPdfEmbedModal(u){
-            const id = extractDriveFileId(u);
-            if(!id) return "";
-            return "https://drive.google.com/file/d/" + id + "/preview";
-        }
+    function extractDriveFileId(u){ if(!u)return ""; const m=String(u).match(/\/file\/d\/([^\/\?]+)/i); return (m&&m[1])?m[1]:""; }
+    function buildPdfEmbed(u){ const id=extractDriveFileId(u); return id ? "https://drive.google.com/file/d/"+id+"/preview" : ""; }
     function setButtons(d){ ["sendBtn","skipBtn"].forEach(i=>document.getElementById(i).disabled=d); }
 
     document.getElementById("pbCheck").addEventListener("change", (e)=>{
@@ -1012,11 +989,11 @@
          resultats: {
             bg: document.getElementById("selBg").value,
             bh: document.getElementById("chkBh").checked,
-            bi: (document.querySelector('input[name="chk_bi"]') || {}).checked || false,
-            bj: (document.querySelector('input[name="chk_bj"]') || {}).checked || false,
-            bk: (document.querySelector('input[name="chk_bk"]') || {}).checked || false,
-            bl: (document.querySelector('input[name="chk_bl"]') || {}).checked || false,
-            bm: (document.querySelector('input[name="chk_bm"]') || {}).checked || false
+            bi: document.getElementById("chkBi").checked,
+            bj: document.getElementById("chkBj").checked,
+            bk: document.getElementById("chkBk").checked,
+            bl: document.getElementById("chkBl").checked,
+            bm: document.getElementById("chkBm").checked
          },
          txtBn: document.getElementById("txtBn").value,
          txtBo: document.getElementById("txtBo").value,
@@ -1227,10 +1204,7 @@
         // Masquer tous les modes
         document.getElementById('chefModeApp').style.display = 'none';
         document.getElementById('chefModeMed').style.display = 'none';
-        document.getElementById('chefModeAction').style.display = 'none';
         document.getElementById('chefModeData').style.display = 'none';
-        const mainEl = document.querySelector('.main');
-        if(mainEl) mainEl.scrollTop = 0;
         
         if(mode === 'app') {
             document.getElementById('chefModeApp').style.display = 'block';
@@ -1238,9 +1212,6 @@
         } else if(mode === 'med') {
             document.getElementById('chefModeMed').style.display = 'block';
             loadMedecinChef();
-        } else if(mode === 'action') {
-            document.getElementById('chefModeAction').style.display = 'block';
-            loadActionChefferie();
         } else if(mode === 'data') {
             document.getElementById('chefModeData').style.display = 'block';
             loadGlobalList();
@@ -1249,9 +1220,10 @@
     
     function loadChefferieCounts() {
         google.script.run.withSuccessHandler(res => {
-            if(res) {
+            if(res && res.valid) {
                 setText("cntIspGBadge", res.isp||0);
                 setText("cntIspRBadge", res.med||0);
+                setText("cntMedBadge", res.med||0);
             }
         }).getChefferieCounts();
     }
@@ -1277,8 +1249,8 @@
         div.innerHTML = `
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; height:calc(100vh - 200px);">
                 <!-- PDF à gauche -->
-                <div style="border:1px solid var(--border); border-radius:12px; overflow:hidden; position:relative;">
-                    <iframe src="${(info.pdf||'').replace('/view','/preview')}" style="width:100%; height:100%; border:none; position:absolute; top:0; left:0;"></iframe>
+                <div style="border:1px solid var(--border); border-radius:12px; overflow:hidden;">
+                    <iframe src="${info.pdf}" style="width:100%; height:100%; border:none;"></iframe>
                 </div>
                 
                 <!-- Formulaire à droite -->
@@ -1340,7 +1312,6 @@
                             
                             <div style="margin-top:20px; display:flex; gap:10px;">
                                 <button class="btn ok" style="flex:1;" onclick="saveAndNextAppChef()">💾 Clôturer et Suivant</button>
-                                <button class="btn" style="flex:1;" onclick="skipToNextAppChef()">⏭ Suivant sans valider</button>
                             </div>
                         </div>
                     </div>
@@ -1396,8 +1367,8 @@
         div.innerHTML = `
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; height:calc(100vh - 200px);">
                 <!-- PDF à gauche -->
-                <div style="border:1px solid var(--border); border-radius:12px; overflow:hidden; position:relative;">
-                    <iframe src="${(info.pdf||'').replace('/view','/preview')}" style="width:100%; height:100%; border:none; position:absolute; top:0; left:0;"></iframe>
+                <div style="border:1px solid var(--border); border-radius:12px; overflow:hidden;">
+                    <iframe src="${info.pdf}" style="width:100%; height:100%; border:none;"></iframe>
                 </div>
                 
                 <!-- Formulaire à droite -->
@@ -1461,198 +1432,6 @@
             toast("Erreur: " + e.message, "err");
             loadMedecinChef();
         }).saveMedecinAnalyse(form);
-    }
-
-    // === ACTION À MENER CHEFFERIE ===
-    let currentActionData = null;
-    
-    function loadActionChefferie() {
-        const div = document.getElementById('chefActionContent');
-        div.innerHTML = '<div style="text-align:center;padding:40px;color:gray;">Chargement...</div>';
-        
-        google.script.run.withSuccessHandler(res => {
-            if(!res.found) {
-                div.innerHTML = `<div style="text-align:center;padding:40px;color:var(--accent3);">${res.message}</div>
-                    <div style="text-align:center;margin-top:20px;">
-                        <button class="btnGo" onclick="openArchivedActions()">📁 Voir toutes les actions menées</button>
-                    </div>`;
-                return;
-            }
-            currentActionData = res;
-            renderActionChefferie(res);
-        }).getNextActionChefferie();
-    }
-    
-    function renderActionChefferie(data) {
-        const div = document.getElementById('chefActionContent');
-        const info = data.info;
-        
-        div.innerHTML = `
-            <div style="margin-bottom:15px; text-align:right;">
-                <button class="btnGo" style="background:#444;border-color:#666;" onclick="openArchivedActions()">📁 Voir toutes les actions menées</button>
-            </div>
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; height:calc(100vh - 280px);">
-                <!-- PDF à gauche -->
-                <div style="border:1px solid var(--border); border-radius:12px; overflow:hidden; position:relative;">
-                    <iframe src="${(info.pdf||'').replace('/view','/preview')}" style="width:100%; height:100%; border:none; position:absolute; top:0; left:0;"></iframe>
-                </div>
-                
-                <!-- Infos + Action à droite -->
-                <div style="overflow-y:auto; padding:15px;">
-                    <div class="panel">
-                        <div class="panelHead">Informations Intervention</div>
-                        <div class="panelBody">
-                            <div style="margin-bottom:10px;"><strong>N° Intervention:</strong> ${info.interId}</div>
-                            <div style="margin-bottom:10px;"><strong>Date:</strong> ${info.date}</div>
-                            <div style="margin-bottom:10px;"><strong>ISP:</strong> ${info.infName}</div>
-                            <div style="margin-bottom:10px;"><strong>Astreinte/Garde:</strong> ${info.status}</div>
-                            <div style="margin-bottom:10px;"><strong>Motif de départ:</strong> ${info.motif}</div>
-                            <div style="margin-bottom:10px;"><strong>Engin:</strong> ${info.engin || '-'}</div>
-                        </div>
-                    </div>
-                    
-                    ${info.commChef ? `<div class="panel" style="margin-top:15px;">
-                        <div class="panelHead" style="background:rgba(79,195,247,.1);">💬 Commentaire Chefferie (APP Alex)</div>
-                        <div class="panelBody">
-                            <div class="static-box">${info.commChef}</div>
-                        </div>
-                    </div>` : ''}
-                    
-                    ${info.analyseMed ? `<div class="panel" style="margin-top:15px;">
-                        <div class="panelHead" style="background:rgba(255,107,107,.15);">🩺 Analyse Médecin (APP Eve)</div>
-                        <div class="panelBody">
-                            <div class="static-box" style="color:var(--red);">${info.analyseMed}</div>
-                        </div>
-                    </div>` : ''}
-                    
-                    ${info.actionRequise ? `<div class="panel" style="margin-top:15px;">
-                        <div class="panelHead" style="background:rgba(255,165,0,.15);">⚠️ Action Requise (APP Eve)</div>
-                        <div class="panelBody">
-                            <div class="static-box" style="color:var(--orange);">${info.actionRequise}</div>
-                        </div>
-                    </div>` : ''}
-                    
-                    <div class="panel" style="margin-top:15px;">
-                        <div class="panelHead" style="background:rgba(71,209,140,.15);">✅ Action faite par Chefferie</div>
-                        <div class="panelBody">
-                            <textarea id="txtActionFaite" style="width:100%; min-height:100px;" placeholder="Décrivez l'action menée...">${info.actionFaite || ''}</textarea>
-                            
-                            <div style="margin-top:15px; display:flex; gap:10px;">
-                                <button class="btn ok" style="flex:1;" onclick="saveAndNextAction()">💾 Clôturer et Suivant</button>
-                                <button class="btn" style="flex:1;" onclick="skipToNextAction()">⏭ Suivant sans valider</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-    }
-    
-    function saveAndNextAction() {
-        if(!currentActionData) return;
-        const actionText = document.getElementById('txtActionFaite').value;
-        if(!actionText.trim()) { toast("Décrivez l'action menée"); return; }
-        
-        const form = {
-            rowEve: currentActionData.rowEve,
-            actionFaite: actionText
-        };
-        
-        document.getElementById('chefActionContent').innerHTML = '<div style="text-align:center;padding:40px;">Enregistrement...</div>';
-        
-        google.script.run.withSuccessHandler(() => {
-            toast("Action clôturée ✅");
-            loadChefferieCounts();
-            loadActionChefferie();
-        }).withFailureHandler(e => {
-            toast("Erreur: " + e.message);
-            loadActionChefferie();
-        }).saveActionChefferie(form);
-    }
-    
-    function skipToNextAction() {
-        loadActionChefferie();
-    }
-    
-    // === ACTIONS ARCHIVÉES ===
-    function openArchivedActions() {
-        startLoad();
-        google.script.run.withSuccessHandler(data => {
-            stopLoad();
-            if(!data || data.length === 0) {
-                toast("Aucune action archivée");
-                return;
-            }
-            renderArchivedIspList(data);
-            document.getElementById("modalList").style.display = "flex";
-        }).withFailureHandler(e => {
-            stopLoad();
-            toast("Erreur: " + e.message);
-        }).getArchivedActions();
-    }
-    
-    let archivedData = [];
-    
-    function renderArchivedIspList(data) {
-        archivedData = data;
-        document.getElementById("modalListTitle").textContent = "Actions menées — Par agent";
-        const c = document.getElementById("modalListContent");
-        // Masquer les filtres checkbox
-        document.getElementById("filterBox").style.display = "none";
-        c.innerHTML = data.map((isp, idx) => `
-            <div class="detail-row" onclick="showArchivedFichesForIsp(${idx})" style="padding:15px; cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
-                <div>
-                    <div style="font-weight:bold; color:#fff; font-size:14px;">${isp.ispName}</div>
-                </div>
-                <div style="background:var(--accent3); color:#000; padding:4px 12px; border-radius:8px; font-weight:bold; font-size:13px;">${isp.count} fiche${isp.count>1?'s':''}</div>
-            </div>
-        `).join('');
-    }
-    
-    function showArchivedFichesForIsp(idx) {
-        const isp = archivedData[idx];
-        if(!isp) return;
-        document.getElementById("modalListTitle").textContent = `Actions menées — ${isp.ispName}`;
-        const c = document.getElementById("modalListContent");
-        c.innerHTML = `<div style="padding:10px; border-bottom:1px solid var(--border);">
-            <button class="btnGo" style="width:auto;background:#444;border-color:#666;" onclick="renderArchivedIspList(archivedData)">← Retour liste agents</button>
-        </div>` + isp.fiches.map((f, fi) => `
-            <div class="detail-row" onclick="showArchivedDetail(${idx}, ${fi})" style="padding:12px; cursor:pointer;">
-                <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
-                    <span style="font-weight:bold; color:#39ff14; font-size:13px;">${f.id}</span>
-                    <span style="font-size:11px; color:var(--muted);">${f.date || '-'}</span>
-                </div>
-                <div style="font-size:12px; color:#ccc; margin-bottom:4px;"><b>Motif:</b> ${f.motif || '-'}</div>
-                <div style="font-size:10px; color:var(--muted);">${f.status} | Engin: ${f.engin || '-'}</div>
-                ${f.actionFaite ? `<div style="font-size:10px; color:var(--ok); margin-top:4px; background:#1a1a1a; padding:4px; border-radius:3px;">✅ ${f.actionFaite}</div>` : ''}
-            </div>
-        `).join('');
-    }
-    
-    function showArchivedDetail(ispIdx, ficheIdx) {
-        const f = archivedData[ispIdx].fiches[ficheIdx];
-        const fileId = extractDriveFileId(f.pdf || '');
-        const pdfSrc = fileId ? "https://drive.google.com/file/d/" + fileId + "/preview" : "";
-        
-        document.getElementById("modalDetailBody").innerHTML = `
-            ${pdfSrc ? `<iframe src="${pdfSrc}" style="flex:2.5; border:0; background:#000; position:static;"></iframe>` : '<div style="flex:2.5;background:#000;display:flex;align-items:center;justify-content:center;color:gray;">PDF indisponible</div>'}
-            <div style="flex:1; min-width:350px; background:#1a2245; padding:20px; border-left:1px solid var(--border); overflow-y:auto; display:flex; flex-direction:column; gap:15px;">
-                <h4 style="color:var(--accent3);margin:0 0 15px 0;">Informations</h4>
-                <div style="display:flex;flex-direction:column;gap:12px;font-size:13px;">
-                    <div><span style="color:var(--muted);font-size:11px;">N° Intervention</span><br><b style="font-size:15px;color:#fff;">${f.id}</b></div>
-                    <div><span style="color:var(--muted);font-size:11px;">Date</span><br><b>${f.date || '-'}</b></div>
-                    <div><span style="color:var(--muted);font-size:11px;">Astreinte / Garde</span><br><b>${f.status || '-'}</b></div>
-                    <div><span style="color:var(--muted);font-size:11px;">Motif</span><br><b>${f.motif || '-'}</b></div>
-                    <div><span style="color:var(--muted);font-size:11px;">Engin</span><br><b>${f.engin || '-'}</b></div>
-                </div>
-                ${f.commChef ? `<h4 style="color:var(--accent3);margin:15px 0 5px 0;">💬 Commentaire Chefferie</h4><div class="static-box">${f.commChef}</div>` : ''}
-                ${f.analyseMed ? `<h4 style="color:var(--red);margin:15px 0 5px 0;">🩺 Analyse Médecin</h4><div class="static-box" style="color:var(--red);">${f.analyseMed}</div>` : ''}
-                ${f.actionRequise ? `<h4 style="color:var(--orange);margin:15px 0 5px 0;">⚠️ Action Requise</h4><div class="static-box" style="color:var(--orange);">${f.actionRequise}</div>` : ''}
-                ${f.actionFaite ? `<h4 style="color:var(--ok);margin:15px 0 5px 0;">✅ Action Menée</h4><div class="static-box" style="color:var(--ok);">${f.actionFaite}</div>` : ''}
-                <button class="btnGo" style="width:100%;margin-top:auto;" onclick="closeModalDetail(); document.getElementById('modalList').style.display='flex';">← Retour</button>
-            </div>
-        `;
-        document.getElementById("modalDetail").style.display = "flex";
     }
 
     // CHEFFERIE (ANCIENNE - à garder pour compatibilité)
@@ -1759,7 +1538,6 @@
         google.script.run.withSuccessHandler(list => {
             stopLoad();
             currentDetailList = list;
-            document.getElementById("filterBox").style.display = "flex";
             document.querySelectorAll('#filterBox input[type="checkbox"]').forEach(cb => cb.checked = true);
             document.getElementById("modalListTitle").textContent = `Dossiers de ${ispName || mat}`;
             filterDetails();
@@ -1787,7 +1565,6 @@
                 if(loaded === totalIsps) {
                     stopLoad();
                     currentDetailList = allGraveList;
-                    document.getElementById("filterBox").style.display = "flex";
                     document.querySelectorAll('#filterBox input[type="checkbox"]').forEach(cb => {
                         cb.checked = cb.value === "Erreur Grave";
                     });
@@ -1799,40 +1576,6 @@
         });
     }
     
-    function loadAllLegereErrors() {
-        startLoad();
-        let allLegereList = [];
-        let loaded = 0;
-        let totalIsps = globalList.length;
-
-        if(totalIsps === 0) { toast("Chargez d'abord les données (Voir Données APP)"); stopLoad(); return; }
-
-        globalList.forEach(isp => {
-            google.script.run.withSuccessHandler(list => {
-                loaded++;
-                const legereErrors = list.filter(x => x.errorType === "Erreur Bilan Légère" || x.errorType === "Erreur Pisu Légère" || (x.types && (x.types.includes("Erreur Bilan Légère") || x.types.includes("Erreur Pisu Légère"))));
-                legereErrors.forEach(e => { e.ispName = isp.nom; });
-                allLegereList = allLegereList.concat(legereErrors);
-
-                if(loaded === totalIsps) {
-                    stopLoad();
-                    currentDetailList = allLegereList;
-                    document.getElementById("filterBox").style.display = "flex";
-                    document.querySelectorAll('#filterBox input[type="checkbox"]').forEach(cb => {
-                        cb.checked = cb.value === "Erreur Bilan Légère" || cb.value === "Erreur Pisu Légère";
-                    });
-                    document.getElementById("modalListTitle").textContent = "Toutes les fiches en erreur légère";
-                    filterDetails();
-                    document.getElementById("modalList").style.display="flex";
-                }
-            }).getIspDetailsAdmin(isp.mat);
-        });
-    }
-
-    function skipToNextAppChef() {
-        loadAppChefferie();
-    }
-
     function filterDetails() {
         const filters = Array.from(document.querySelectorAll('input[type=checkbox]:checked')).map(c=>c.value);
         const c = document.getElementById("modalListContent"); 
@@ -1853,19 +1596,8 @@
                 return `<span style="display:inline-block;padding:3px 8px;border-radius:3px;font-size:10px;font-weight:bold;background:${tagBg};color:${tagColor};margin-left:4px;">${t}</span>`;
             }).join('');
             const ispLabel = x.ispName ? `<div style="font-size:10px;color:var(--accent3);margin-top:4px;">ISP: <b>${x.ispName}</b></div>` : '';
-            
-            const div = document.createElement('div');
-            div.className = 'detail-row';
-            div.style.cssText = 'padding:12px;border-bottom:1px solid #333;cursor:pointer;';
-            div.addEventListener('click', (e) => { 
-                e.preventDefault(); 
-                e.stopPropagation(); 
-                e.stopImmediatePropagation();
-                console.log("Click intercepté, ouverture popup pour:", x.id);
-                loadInterDetail(e, x.id, x.date, x.motif, x.status, x.centre, x.engin);
-                return false;
-            });
-            div.innerHTML = `
+            c.innerHTML += `
+                <div class="detail-row" onclick="loadInterDetail('${x.id}', '${x.date || ''}', '${(x.motif || '').replace(/'/g, "\\'")}', '${x.status || ''}', '${x.centre || ''}', '${x.engin || ''}')" style="padding:12px;border-bottom:1px solid #333;cursor:pointer;">
                     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
                         <div style="flex:1;">
                             <div style="font-weight:bold;color:#39ff14;font-size:13px;">Numéro d'intervention: ${x.id}</div>
@@ -1879,56 +1611,46 @@
                     ${ispLabel}
                     ${(x.errorType && x.commChef) ? `<div style="font-size:10px;color:var(--accent3);margin-top:4px;background:#1a1a1a;padding:4px;border-radius:3px;">💬 Chef: ${x.commChef}</div>` : ''}
                     ${x.commMed ? `<div style="font-size:10px;color:var(--red);margin-top:4px;background:#1a1a1a;padding:4px;border-radius:3px;">🩺 Med: ${x.commMed}</div>` : ''}
+                </div>
             `;
-            c.appendChild(div);
         });
     }
     
-    function loadInterDetail(evt, id, date, motif, status, centre, engin) {
-        if(evt) { evt.preventDefault(); evt.stopPropagation(); evt.stopImmediatePropagation(); }
-        
+    function loadInterDetail(id, date, motif, status, centre, engin) {
+        // Trouver les données dans currentDetailList
         const item = currentDetailList.find(x => x.id === id);
-        if(!item) return false;
+        if(!item) return;
         
-        const fileId = extractDriveFileId(item.pdf || '');
-        if(!fileId) { toast("PDF indisponible"); return false; }
+        // Construire l'URL PDF pour embed (forcer preview dans iframe)
+        let pdfUrl = item.pdf || '';
+        if(pdfUrl.includes('drive.google.com')) {
+            // Extraire l'ID du fichier et construire URL embed
+            const fileIdMatch = pdfUrl.match(/\/d\/([^\/]+)/);
+            if(fileIdMatch) {
+                pdfUrl = `https://drive.google.com/file/d/${fileIdMatch[1]}/preview`;
+            }
+        }
         
-        // Extraire date/heure
-        let dateOnly = date || "-", heureOnly = "—";
-        if(date && date.includes(' ')) { const p = date.split(' '); dateOnly = p[0]; heureOnly = p[1] || "—"; }
+        // Remplir les données du modal
+        document.getElementById("modalPdf").src = pdfUrl;
+        setText("detailId", id);
+        setText("detailDate", date || "-");
+        setText("detailCentre", status || "-");
+        setText("detailMotif", motif || "-");
+        setText("detailEngin", engin || "-");
         
-        const pdfSrc = "https://drive.google.com/file/d/" + fileId + "/preview";
-        const commChefHtml = item.commChef ? item.commChef : "Aucun commentaire.";
-        const commMedHtml = item.commMed ? `<h4 style="color:var(--red);margin:15px 0 10px 0;">Analyse Médecin</h4><div class="static-box" style="color:var(--red);">${item.commMed}</div>` : '';
+        // Afficher commentaires
+        document.getElementById("commChef").textContent = item.commChef || "Aucun commentaire.";
+        const m = document.getElementById("blockMed");
+        if(item.commMed) { 
+            m.style.display="block"; 
+            document.getElementById("commMed").textContent = item.commMed; 
+        } else { 
+            m.style.display="none"; 
+        }
         
-        // Injecter tout le HTML dynamiquement (même méthode que renderChefForm qui marche)
-        document.getElementById("modalDetailBody").innerHTML = `
-            <iframe src="${pdfSrc}" style="flex:2.5; border:0; background:#000; position:static;"></iframe>
-            <div style="flex:1; min-width:350px; background:#1a2245; padding:20px; border-left:1px solid var(--border); overflow-y:auto; display:flex; flex-direction:column; gap:15px;">
-                <h4 style="color:var(--accent3);margin:0 0 15px 0;">Informations</h4>
-                <div style="display:flex;flex-direction:column;gap:12px;font-size:13px;">
-                    <div><span style="color:var(--muted);font-size:11px;">N° Intervention</span><br><b style="font-size:15px;color:#fff;">${id}</b></div>
-                    <div><span style="color:var(--muted);font-size:11px;">Date</span><br><b>${dateOnly}</b></div>
-                    <div><span style="color:var(--muted);font-size:11px;">Heure</span><br><b>${heureOnly}</b></div>
-                    <div><span style="color:var(--muted);font-size:11px;">Véhicule / Engin</span><br><b>${engin || '-'}</b></div>
-                    <div><span style="color:var(--muted);font-size:11px;">Type d'intervention</span><br><b>${status || '-'}</b></div>
-                    <div><span style="color:var(--muted);font-size:11px;">Motif d'intervention</span><br><b>${motif || '-'}</b></div>
-                </div>
-                <h4 style="color:var(--accent3);margin:15px 0 10px 0;">Commentaire Chefferie</h4>
-                <div class="static-box">${commChefHtml}</div>
-                ${commMedHtml}
-                <button class="btnGo" style="width:100%;margin-bottom:8px;" onclick="closeModalDetail(); document.getElementById('modalList').style.display='flex';">← Retour aux fiches</button>
-                <button class="btnGo" style="width:100%;" onclick="closeModalDetail()">Fermer</button>
-            </div>
-        `;
-        
-        document.getElementById("modalDetail").style.display = "flex";
-        return false;
-    }
-    
-    function closeModalDetail() {
-        document.getElementById("modalDetailBody").innerHTML = "";
-        document.getElementById("modalDetail").style.display = "none";
+        // AFFICHER LE MODAL EN SPLIT SCREEN
+        document.getElementById("modalDetail").style.display="flex";
     }
     
     function closeModal(id){ document.getElementById(id).style.display="none"; }

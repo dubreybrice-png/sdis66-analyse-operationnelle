@@ -16,7 +16,7 @@ function onEdit(e) {
     if (sheetName === "APP") {
       handleAppCheckToBI(e);   // BD/BF → BI
       handleAppHideOnBP(e);    // BP coche → cacher ligne
-      handleAppAutoCheckAlexHI(e); // Auto-coche H/I dans APP Alex
+      // handleAppAutoCheckAlexHI(e); // DÉSACTIVÉ - H/I doivent être cochés manuellement
       return;
     }
 
@@ -216,20 +216,24 @@ function handleAppAutoCheckAlexHI(e) {
   
   Logger.log("Auto H/I: ID=" + id + " Row=" + row + " BI(61)=" + bilanOk + " BJ(62)=" + bilanKo + " BK(63)=" + pisuOk + " BL(64)=" + pisuKo);
   
-  // Trouver la ligne dans APP Alex
+  // Trouver la ligne dans APP Alex (SEULEMENT dans les lignes FILTER, pas les résidus)
   const alexData = alexSheet.getDataRange().getValues();
   let alexRow = -1;
-  for (let i = 1; i < alexData.length; i++) {
+  
+  // Chercher UNIQUEMENT dans les 100 premières lignes (zone FILTER)
+  const maxSearchRow = Math.min(100, alexData.length);
+  for (let i = 1; i < maxSearchRow; i++) {
     if (String(alexData[i][0]).trim() === id) {
       alexRow = i + 1;
       break;
     }
   }
   
-  // Si pas trouvé dans APP Alex, créer une nouvelle ligne
+  // Si pas trouvé dans APP Alex → NE RIEN FAIRE (ne pas créer de ligne)
+  // Le FILTER de APP Alex doit d'abord créer la ligne automatiquement
   if (alexRow === -1) {
-    alexRow = alexSheet.getLastRow() + 1;
-    alexSheet.getRange(alexRow, 1).setValue(id);
+    Logger.log("Auto H/I: ID " + id + " non trouvé dans APP Alex (lignes FILTER). Ignore.");
+    return;
   }
   
   // Logique de cochage automatique:

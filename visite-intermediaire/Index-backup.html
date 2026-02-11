@@ -1,0 +1,1392 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visite Intermédiaire</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            width: 100%;
+            max-width: 1200px;
+            min-height: 600px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            text-align: center;
+            border-bottom: 4px solid #764ba2;
+            position: relative;
+        }
+
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 5px;
+        }
+
+        header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .admin-btn-header {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid white;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: all 0.3s ease;
+        }
+
+        .admin-btn-header:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .content {
+            flex: 1;
+            padding: 40px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .home-screen {
+            text-align: center;
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        .home-screen h2 {
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 1.5em;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 30px;
+        }
+
+        .btn-large {
+            padding: 20px 40px;
+            font-size: 1.2em;
+            font-weight: bold;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            color: white;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .btn-secondary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(245, 87, 108, 0.4);
+        }
+
+        .questionnaire-screen {
+            display: none;
+            flex-direction: column;
+            width: 100%;
+            height: 100%;
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        .questionnaire-header {
+            background: #f8f9fa;
+            padding: 20px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .matricule-input {
+            margin-bottom: 15px;
+        }
+
+        .matricule-input label {
+            font-weight: bold;
+            color: #333;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .matricule-input input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #667eea;
+            border-radius: 5px;
+            font-size: 1em;
+        }
+
+        .matricule-input input[type="datetime-local"] {
+            width: 100%;
+        }
+
+        .questionnaire-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .partie {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 20px;
+            margin: 20px 0 10px 0;
+            border-radius: 8px;
+            font-size: 1.3em;
+            font-weight: bold;
+        }
+
+        .sous-partie {
+            background: #e3f2fd;
+            color: #1565c0;
+            padding: 12px 15px;
+            margin: 15px 0 10px 0;
+            border-left: 4px solid #1565c0;
+            font-size: 1.1em;
+            font-weight: bold;
+        }
+
+        .question {
+            background: #f8f9fa;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        .question-label {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 1.05em;
+        }
+
+        .question input[type="text"],
+        .question input[type="number"],
+        .question textarea,
+        .question select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-family: inherit;
+            font-size: 1em;
+        }
+
+        .question textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .question input[type="radio"],
+        .question input[type="checkbox"] {
+            margin-right: 8px;
+        }
+
+        .question-options {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .option-label {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        .questionnaire-footer {
+            padding: 20px;
+            border-top: 1px solid #ddd;
+            background: #f8f9fa;
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .btn-small {
+            padding: 12px 25px;
+            font-size: 1em;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: bold;
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+        }
+
+        .btn-secondary-small {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary-small:hover {
+            background: #5a6268;
+        }
+
+        .visites-screen {
+            display: none;
+            flex-direction: column;
+            width: 100%;
+            height: 100%;
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        .visites-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .visite-card {
+            background: #f8f9fa;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .visite-card:hover {
+            border-color: #667eea;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .visite-card h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+
+        .visite-card p {
+            color: #666;
+            font-size: 0.95em;
+            margin-bottom: 8px;
+        }
+
+        .visite-card .date {
+            color: #999;
+            font-size: 0.85em;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            animation: fadeIn 0.3s ease;
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 30px;
+            border-radius: 15px;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .modal-header h2 {
+            color: #333;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 28px;
+            cursor: pointer;
+            color: #666;
+            transition: color 0.3s ease;
+        }
+
+        .close-btn:hover {
+            color: #333;
+        }
+
+        .modal-question {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        .modal-question-text {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .modal-answer {
+            color: #666;
+            padding: 10px;
+            background: white;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+
+        .modal-footer {
+            margin-top: 25px;
+            padding-top: 20px;
+            border-top: 2px solid #f0f0f0;
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .btn-copy {
+            background: #17a2b8;
+            color: white;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .btn-copy:hover {
+            background: #138496;
+        }
+
+        .nav-bar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .btn-nav {
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .btn-nav:hover {
+            background: #5568d3;
+        }
+
+        /* Admin Screen */
+        .admin-screen {
+            display: none;
+            flex-direction: column;
+            width: 100%;
+            height: 100%;
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        .admin-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .structure-tree {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .structure-tree li {
+            margin: 5px 0;
+        }
+
+        .structure-item {
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            margin-bottom: 5px;
+            cursor: move;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-left: 4px solid #667eea;
+        }
+
+        .structure-item.partie {
+            background: #e3f2fd;
+            border-left-color: #1976d2;
+            font-weight: bold;
+        }
+
+        .structure-item.souspartie {
+            background: #fff3e0;
+            border-left-color: #f57c00;
+            margin-left: 20px;
+        }
+
+        .structure-item.question {
+            background: #f1f8e9;
+            border-left-color: #689f38;
+            margin-left: 40px;
+        }
+
+        .structure-item.dragging {
+            opacity: 0.5;
+        }
+
+        .item-actions {
+            display: flex;
+            gap: 5px;
+        }
+
+        .btn-icon {
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            padding: 5px 10px;
+            border-radius: 4px;
+            transition: background 0.3s ease;
+        }
+
+        .btn-icon:hover {
+            background: rgba(0, 0, 0, 0.1);
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 1em;
+        }
+
+        .password-modal input {
+            width: 100%;
+            padding: 15px;
+            font-size: 1.2em;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .success-message {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #c3e6cb;
+            display: none;
+        }
+
+        .success-message.show {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @media (max-width: 768px) {
+            .button-group {
+                flex-direction: column;
+            }
+
+            .btn-large {
+                width: 100%;
+            }
+
+            header h1 {
+                font-size: 1.8em;
+            }
+
+            .modal-content {
+                margin: 20% auto;
+                width: 90%;
+            }
+
+            .visites-content {
+                grid-template-columns: 1fr;
+            }
+
+            .admin-btn-header {
+                position: static;
+                display: block;
+                margin: 10px auto 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- HEADER -->
+        <header>
+            <h1>🔍 Visite Intermédiaire</h1>
+            <p>Gestion des visites de prévention</p>
+            <button class="admin-btn-header" onclick="showAdminPassword()">⚙️ Admin</button>
+        </header>
+
+        <!-- CONTENT -->
+        <div class="content">
+            <!-- HOME SCREEN -->
+            <div id="homeScreen" class="home-screen">
+                <h2>Bienvenue</h2>
+                <div class="button-group">
+                    <button class="btn-large btn-primary" onclick="goToQuestionnaire()">
+                        📋 Faire une visite prévention
+                    </button>
+                    <button class="btn-large btn-secondary" onclick="goToVisites()">
+                        📊 Consulter mes visites
+                    </button>
+                </div>
+            </div>
+
+            <!-- QUESTIONNAIRE SCREEN -->
+            <div id="questionnaireScreen" class="questionnaire-screen">
+                <div class="questionnaire-header">
+                    <div class="nav-bar">
+                        <button class="btn-nav" onclick="goHome()">← Retour</button>
+                    </div>
+                    <div class="matricule-input">
+                        <label for="dateDebut">Début de la visite :</label>
+                        <input type="datetime-local" id="dateDebut" required>
+                    </div>
+                    <div class="matricule-input" style="margin-top: 15px;">
+                        <label for="matricule">Matricule de l'agent :</label>
+                        <input type="text" id="matricule" placeholder="Matricule de l'agent" required>
+                    </div>
+                </div>
+
+                <div class="questionnaire-content" id="questionsContainer">
+                    <!-- Les questions seront chargées ici -->
+                </div>
+
+                <div class="questionnaire-footer">
+                    <button class="btn-small btn-secondary-small" onclick="goHome()">Annuler</button>
+                    <button class="btn-small btn-success" onclick="submitQuestionnaire()">Envoyer la visite</button>
+                </div>
+            </div>
+
+            <!-- VISITES SCREEN -->
+            <div id="visitesScreen" class="visites-screen">
+                <div style="padding: 20px; border-bottom: 1px solid #ddd;">
+                    <div class="nav-bar">
+                        <button class="btn-nav" onclick="goHome()">← Retour</button>
+                    </div>
+                    <h2 style="color: #333; margin-top: 10px;">Mes visites enregistrées</h2>
+                </div>
+
+                <div class="visites-content" id="visitesContainer">
+                    <!-- Les visites seront chargées ici -->
+                </div>
+            </div>
+
+            <!-- ADMIN SCREEN -->
+            <div id="adminScreen" class="admin-screen">
+                <div style="padding: 20px; border-bottom: 1px solid #ddd;">
+                    <div class="nav-bar">
+                        <button class="btn-nav" onclick="goHome()">← Retour</button>
+                    </div>
+                    <h2 style="color: #333; margin-top: 10px;">Administration des questions</h2>
+                    <div style="margin-top: 15px; display: flex; gap: 10px;">
+                        <button class="btn-small btn-success" onclick="addPartie()">+ Ajouter Partie</button>
+                        <button class="btn-small btn-success" onclick="saveAllStructure()">💾 Enregistrer tout</button>
+                    </div>
+                </div>
+
+                <div class="admin-content" id="adminContainer">
+                    <!-- La structure sera chargée ici -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL POUR DÉTAILS DE VISITE -->
+    <div id="detailsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Détails de la visite</h2>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
+            </div>
+            <div id="modalBody">
+                <!-- Contenu chargé dynamiquement -->
+            </div>
+            <div class="modal-footer">
+                <button class="btn-copy" onclick="copyConclusionToClipboard()">📋 Copier conclusion</button>
+                <button class="btn-small btn-secondary-small" onclick="closeModal()">Fermer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL PASSWORD ADMIN -->
+    <div id="passwordModal" class="modal">
+        <div class="modal-content password-modal">
+            <div class="modal-header">
+                <h2>Accès Administrateur</h2>
+                <button class="close-btn" onclick="closePasswordModal()">&times;</button>
+            </div>
+            <div style="padding: 20px;">
+                <input type="password" id="adminPassword" placeholder="Code d'accès" onkeypress="if(event.key==='Enter') checkAdminPassword()">
+            </div>
+            <div class="modal-footer">
+                <button class="btn-small btn-success" onclick="checkAdminPassword()">Valider</button>
+                <button class="btn-small btn-secondary-small" onclick="closePasswordModal()">Annuler</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL EDIT ITEM -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="editModalTitle">Modifier</h2>
+                <button class="close-btn" onclick="closeEditModal()">&times;</button>
+            </div>
+            <div id="editModalBody">
+                <!-- Formulaire d'édition -->
+            </div>
+            <div class="modal-footer">
+                <button class="btn-small btn-success" onclick="saveEdit()">Enregistrer</button>
+                <button class="btn-small btn-secondary-small" onclick="closeEditModal()">Annuler</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentVisite = null;
+        let structureData = [];
+        let questionsData = [];
+        let editingItem = null;
+        let draggedElement = null;
+
+        // Initialiser la page
+        function init() {
+            initializeDateInput();
+            loadStructureAndQuestions();
+        }
+
+        // Initialiser le champ datetime-local avec la date/heure actuelle
+        function initializeDateInput() {
+            const now = new Date();
+            now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+            document.getElementById('dateDebut').value = now.toISOString().slice(0, 16);
+        }
+
+        // Charger structure et questions
+        function loadStructureAndQuestions() {
+            google.script.run.withSuccessHandler(function(structure) {
+                structureData = structure;
+                google.script.run.withSuccessHandler(function(questions) {
+                    questionsData = questions;
+                    displayQuestionnaire();
+                }).getQuestions();
+            }).getStructure();
+        }
+
+        // Afficher le questionnaire
+        function displayQuestionnaire() {
+            const container = document.getElementById('questionsContainer');
+            container.innerHTML = '';
+
+            // Construire l'arbre hiérarchique
+            const parties = structureData.filter(item => item.type === 'partie').sort((a, b) => a.ordre - b.ordre);
+            
+            parties.forEach(partie => {
+                // Afficher la partie
+                const partieDiv = document.createElement('div');
+                partieDiv.className = 'partie';
+                partieDiv.textContent = partie.titre;
+                container.appendChild(partieDiv);
+
+                // Trouver les sous-parties
+                const sousParties = structureData.filter(item => item.type === 'souspartie' && item.parentId === partie.id).sort((a, b) => a.ordre - b.ordre);
+                
+                sousParties.forEach(sousPart => {
+                    // Afficher la sous-partie
+                    const sousPartDiv = document.createElement('div');
+                    sousPartDiv.className = 'sous-partie';
+                    sousPartDiv.textContent = sousPart.titre;
+                    container.appendChild(sousPartDiv);
+
+                    // Trouver les questions
+                    const questions = structureData.filter(item => item.type === 'question' && item.parentId === sousPart.id).sort((a, b) => a.ordre - b.ordre);
+                    
+                    questions.forEach(qStruct => {
+                        const qData = questionsData.find(q => q.id === qStruct.id);
+                        if (qData) {
+                            const qDiv = document.createElement('div');
+                            qDiv.className = 'question';
+
+                            let inputHTML = '';
+                            const inputId = qData.id;
+
+                            if (qData.type === 'text') {
+                                inputHTML = `<input type="text" id="${inputId}" placeholder="Votre réponse" data-question="${qData.id}">`;
+                            } else if (qData.type === 'textarea') {
+                                inputHTML = `<textarea id="${inputId}" placeholder="Vos commentaires..." data-question="${qData.id}"></textarea>`;
+                            } else if (qData.type === 'radio') {
+                                const options = qData.options ? qData.options.split('|') : ['Oui', 'Non'];
+                                inputHTML = '<div class="question-options">';
+                                options.forEach(opt => {
+                                    inputHTML += `
+                                        <label class="option-label">
+                                            <input type="radio" name="radio_${qData.id}" value="${opt}" data-question="${qData.id}"> ${opt}
+                                        </label>
+                                    `;
+                                });
+                                inputHTML += '</div>';
+                            }
+
+                            qDiv.innerHTML = `
+                                <div class="question-label">${qData.question}</div>
+                                ${inputHTML}
+                            `;
+
+                            container.appendChild(qDiv);
+                        }
+                    });
+                });
+            });
+        }
+
+        // Soumettre le questionnaire
+        function submitQuestionnaire() {
+            const matricule = document.getElementById('matricule').value.trim();
+            const dateDebutInput = document.getElementById('dateDebut').value;
+            
+            if (!matricule) {
+                alert('Veuillez entrer le matricule de l\'agent');
+                return;
+            }
+            
+            if (!dateDebutInput) {
+                alert('Veuillez entrer la date/heure de début');
+                return;
+            }
+
+            // Convertir le format datetime-local en format lisible FR
+            const dateObj = new Date(dateDebutInput + ':00');
+            const dateDebut = dateObj.toLocaleString('fr-FR', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+
+            const reponses = collectAnswers();
+            const conclusion = reponses.conclusion || '';
+
+            google.script.run.withSuccessHandler(function(result) {
+                if (result.success) {
+                    showSuccessMessage('Visite enregistrée avec succès !');
+                    setTimeout(() => {
+                        goHome();
+                    }, 1500);
+                } else {
+                    alert('Erreur: ' + result.message);
+                }
+            }).saveVisite(matricule, dateDebut, reponses, conclusion);
+        }
+
+        // Collecter les réponses
+        function collectAnswers() {
+            const reponses = {};
+            const inputs = document.querySelectorAll('[data-question]');
+
+            inputs.forEach(input => {
+                const qId = input.getAttribute('data-question');
+                if (input.type === 'radio' && input.checked) {
+                    reponses[qId] = input.value;
+                } else if (input.type === 'text' || input.tagName === 'TEXTAREA') {
+                    if (input.value) {
+                        reponses[qId] = input.value;
+                    }
+                }
+            });
+
+            return reponses;
+        }
+
+        // Charger les visites
+        function loadVisites() {
+            console.log('Chargement des visites...');
+            google.script.run.withSuccessHandler(function(visites) {
+                console.log('Visites reçues:', visites);
+                displayVisites(visites);
+            }).withFailureHandler(function(error) {
+                console.error('Erreur lors du chargement des visites:', error);
+                alert('Erreur lors du chargement des visites: ' + error.message);
+            }).getVisites();
+        }
+
+        // Afficher les visites
+        function displayVisites(visites) {
+            const container = document.getElementById('visitesContainer');
+            container.innerHTML = '';
+
+            if (!visites || visites.length === 0) {
+                container.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: #999; padding: 40px;">Aucune visite enregistrée</p>';
+                return;
+            }
+
+            visites.forEach(visite => {
+                const card = document.createElement('div');
+                card.className = 'visite-card';
+                card.onclick = () => showVisiteDetails(visite);
+
+                card.innerHTML = `
+                    <h3>Matricule: ${visite.matricule}</h3>
+                    <p>🕐 ${visite.dateDebut}</p>
+                    ${visite.conclusion ? `<p><strong>Conclusion:</strong> ${visite.conclusion.substring(0, 50)}...</p>` : ''}
+                `;
+
+                container.appendChild(card);
+            });
+        }
+
+        // Afficher les détails d'une visite
+        function showVisiteDetails(visite) {
+            currentVisite = visite;
+            const modalBody = document.getElementById('modalBody');
+            let html = `
+                <p><strong>Matricule:</strong> ${visite.matricule}</p>
+                <p><strong>Date:</strong> ${visite.dateDebut}</p>
+                <hr style="margin: 20px 0; border: none; border-top: 1px solid #ddd;">
+            `;
+
+            if (visite.reponses && typeof visite.reponses === 'object') {
+                Object.entries(visite.reponses).forEach(([key, value]) => {
+                    const qData = questionsData.find(q => q.id === key);
+                    const questionText = qData ? qData.question : key;
+                    html += `
+                        <div class="modal-question">
+                            <div class="modal-question-text">${questionText}</div>
+                            <div class="modal-answer">${value}</div>
+                        </div>
+                    `;
+                });
+            }
+
+            if (visite.conclusion) {
+                html += `
+                    <div style="background: #fff3cd; padding: 15px; border-radius: 8px; margin-top: 20px; border-left: 4px solid #ffc107;">
+                        <strong style="color: #856404;">Conclusion:</strong>
+                        <div style="color: #856404; margin-top: 8px;">${visite.conclusion}</div>
+                    </div>
+                `;
+            }
+
+            modalBody.innerHTML = html;
+            document.getElementById('detailsModal').style.display = 'block';
+        }
+
+        // Copier la conclusion
+        function copyConclusionToClipboard() {
+            if (!currentVisite || !currentVisite.conclusion) {
+                alert('Aucune conclusion à copier');
+                return;
+            }
+
+            navigator.clipboard.writeText(currentVisite.conclusion).then(function() {
+                const btn = event.target;
+                const originalText = btn.textContent;
+                btn.textContent = '✓ Copié !';
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                }, 2000);
+            }).catch(function(err) {
+                alert('Erreur lors de la copie');
+            });
+        }
+
+        // Fermer les modals
+        function closeModal() {
+            document.getElementById('detailsModal').style.display = 'none';
+        }
+
+        function closePasswordModal() {
+            document.getElementById('passwordModal').style.display = 'none';
+            document.getElementById('adminPassword').value = '';
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModal').style.display = 'none';
+            editingItem = null;
+        }
+
+        // Admin - Afficher le modal de mot de passe
+        function showAdminPassword() {
+            document.getElementById('passwordModal').style.display = 'block';
+            document.getElementById('adminPassword').focus();
+        }
+
+        // Vérifier le mot de passe admin
+        function checkAdminPassword() {
+            const password = document.getElementById('adminPassword').value;
+            if (password === '66000') {
+                closePasswordModal();
+                goToAdmin();
+            } else {
+                alert('Code d\'accès incorrect');
+                document.getElementById('adminPassword').value = '';
+            }
+        }
+
+        // Aller à l'admin
+        function goToAdmin() {
+            showScreen('adminScreen');
+            loadAdminStructure();
+        }
+
+        // Charger la structure pour l'admin
+        function loadAdminStructure() {
+            google.script.run.withSuccessHandler(function(structure) {
+                structureData = structure;
+                google.script.run.withSuccessHandler(function(questions) {
+                    questionsData = questions;
+                    displayAdminStructure();
+                }).getQuestions();
+            }).getStructure();
+        }
+
+        // Afficher la structure admin
+        function displayAdminStructure() {
+            const container = document.getElementById('adminContainer');
+            container.innerHTML = '<ul class="structure-tree" id="structureTree"></ul>';
+            
+            const tree = document.getElementById('structureTree');
+            
+            const parties = structureData.filter(item => item.type === 'partie').sort((a, b) => a.ordre - b.ordre);
+            
+            parties.forEach((partie, pIndex) => {
+                const li = createStructureElement(partie, pIndex);
+                tree.appendChild(li);
+                
+                const sousParties = structureData.filter(item => item.type === 'souspartie' && item.parentId === partie.id).sort((a, b) => a.ordre - b.ordre);
+                
+                if (sousParties.length > 0) {
+                    const spUl = document.createElement('ul');
+                    spUl.style.paddingLeft = '20px';
+                    
+                    sousParties.forEach((sp, spIndex) => {
+                        const spLi = createStructureElement(sp, spIndex);
+                        spUl.appendChild(spLi);
+                        
+                        const questions = structureData.filter(item => item.type === 'question' && item.parentId === sp.id).sort((a, b) => a.ordre - b.ordre);
+                        
+                        if (questions.length > 0) {
+                            const qUl = document.createElement('ul');
+                            qUl.style.paddingLeft = '20px';
+                            
+                            questions.forEach((q, qIndex) => {
+                                const qLi = createStructureElement(q, qIndex);
+                                qUl.appendChild(qLi);
+                            });
+                            
+                            spLi.appendChild(qUl);
+                        }
+                    });
+                    
+                    li.appendChild(spUl);
+                }
+            });
+        }
+
+        // Créer un élément de structure
+        function createStructureElement(item, index) {
+            const li = document.createElement('li');
+            li.draggable = true;
+            li.dataset.itemId = item.id;
+            li.dataset.itemType = item.type;
+            
+            const div = document.createElement('div');
+            div.className = `structure-item ${item.type}`;
+            
+            const span = document.createElement('span');
+            span.textContent = item.titre;
+            div.appendChild(span);
+            
+            const actions = document.createElement('div');
+            actions.className = 'item-actions';
+            
+            const editBtn = document.createElement('button');
+            editBtn.className = 'btn-icon';
+            editBtn.innerHTML = '✏️';
+            editBtn.onclick = () => editItem(item);
+            actions.appendChild(editBtn);
+            
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'btn-icon';
+            deleteBtn.innerHTML = '🗑️';
+            deleteBtn.onclick = () => deleteItem(item);
+            actions.appendChild(deleteBtn);
+            
+            if (item.type === 'partie') {
+                const addSpBtn = document.createElement('button');
+                addSpBtn.className = 'btn-icon';
+                addSpBtn.innerHTML = '+ SP';
+                addSpBtn.onclick = () => addSousPartie(item.id);
+                actions.appendChild(addSpBtn);
+            } else if (item.type === 'souspartie') {
+                const addQBtn = document.createElement('button');
+                addQBtn.className = 'btn-icon';
+                addQBtn.innerHTML = '+ Q';
+                addQBtn.onclick = () => addQuestion(item.id);
+                actions.appendChild(addQBtn);
+            }
+            
+            div.appendChild(actions);
+            li.appendChild(div);
+            
+            // Drag and drop
+            li.addEventListener('dragstart', handleDragStart);
+            li.addEventListener('dragover', handleDragOver);
+            li.addEventListener('drop', handleDrop);
+            li.addEventListener('dragend', handleDragEnd);
+            
+            return li;
+        }
+
+        // Drag and drop handlers
+        function handleDragStart(e) {
+            draggedElement = this;
+            this.style.opacity = '0.5';
+            e.dataTransfer.effectAllowed = 'move';
+        }
+
+        function handleDragOver(e) {
+            if (e.preventDefault) {
+                e.preventDefault();
+            }
+            e.dataTransfer.dropEffect = 'move';
+            return false;
+        }
+
+        function handleDrop(e) {
+            if (e.stopPropagation) {
+                e.stopPropagation();
+            }
+            
+            if (draggedElement !== this) {
+                const draggedId = draggedElement.dataset.itemId;
+                const droppedId = this.dataset.itemId;
+                
+                const draggedItem = structureData.find(item => item.id === draggedId);
+                const droppedItem = structureData.find(item => item.id === droppedId);
+                
+                if (draggedItem && droppedItem && draggedItem.type === droppedItem.type && draggedItem.parentId === droppedItem.parentId) {
+                    const tempOrdre = draggedItem.ordre;
+                    draggedItem.ordre = droppedItem.ordre;
+                    droppedItem.ordre = tempOrdre;
+                    
+                    displayAdminStructure();
+                }
+            }
+            
+            return false;
+        }
+
+        function handleDragEnd(e) {
+            this.style.opacity = '1';
+        }
+
+        // Ajouter une partie
+        function addPartie() {
+            const parties = structureData.filter(i => i.type === 'partie');
+            const newOrdre = parties.length > 0 ? Math.max(...parties.map(p => p.ordre)) + 1 : 1;
+            const newId = 'P' + Date.now();
+            
+            structureData.push({
+                id: newId,
+                type: 'partie',
+                ordre: newOrdre,
+                titre: 'Nouvelle Partie',
+                parentId: ''
+            });
+            
+            displayAdminStructure();
+        }
+
+        // Ajouter une sous-partie
+        function addSousPartie(partieId) {
+            const sousParties = structureData.filter(i => i.type === 'souspartie' && i.parentId === partieId);
+            const newOrdre = sousParties.length > 0 ? Math.max(...sousParties.map(sp => sp.ordre)) + 1 : 1;
+            const newId = 'SP' + Date.now();
+            
+            structureData.push({
+                id: newId,
+                type: 'souspartie',
+                ordre: newOrdre,
+                titre: 'Nouvelle Sous-Partie',
+                parentId: partieId
+            });
+            
+            displayAdminStructure();
+        }
+
+        // Ajouter une question
+        function addQuestion(sousPartieId) {
+            const questions = structureData.filter(i => i.type === 'question' && i.parentId === sousPartieId);
+            const newOrdre = questions.length > 0 ? Math.max(...questions.map(q => q.ordre)) + 1 : 1;
+            const newId = 'Q' + Date.now();
+            
+            structureData.push({
+                id: newId,
+                type: 'question',
+                ordre: newOrdre,
+                titre: 'Nouvelle Question',
+                parentId: sousPartieId
+            });
+            
+            questionsData.push({
+                id: newId,
+                question: 'Nouvelle Question',
+                type: 'text',
+                options: ''
+            });
+            
+            displayAdminStructure();
+        }
+
+        // Editer un item
+        function editItem(item) {
+            editingItem = item;
+            const modalTitle = document.getElementById('editModalTitle');
+            const modalBody = document.getElementById('editModalBody');
+            
+            modalTitle.textContent = `Modifier ${item.type === 'partie' ? 'la partie' : item.type === 'souspartie' ? 'la sous-partie' : 'la question'}`;
+            
+            let html = `
+                <div class="form-group">
+                    <label>Titre:</label>
+                    <input type="text" id="editTitre" value="${item.titre}">
+                </div>
+            `;
+            
+            if (item.type === 'question') {
+                const qData = questionsData.find(q => q.id === item.id);
+                if (qData) {
+                    html += `
+                        <div class="form-group">
+                            <label>Question:</label>
+                            <textarea id="editQuestion">${qData.question}</textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Type:</label>
+                            <select id="editType">
+                                <option value="text" ${qData.type === 'text' ? 'selected' : ''}>Texte</option>
+                                <option value="textarea" ${qData.type === 'textarea' ? 'selected' : ''}>Texte long</option>
+                                <option value="radio" ${qData.type === 'radio' ? 'selected' : ''}>Choix unique</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Options (séparées par |, pour type radio):</label>
+                            <input type="text" id="editOptions" value="${qData.options || ''}">
+                        </div>
+                    `;
+                }
+            }
+            
+            modalBody.innerHTML = html;
+            document.getElementById('editModal').style.display = 'block';
+        }
+
+        // Sauvegarder l'édition
+        function saveEdit() {
+            if (!editingItem) return;
+            
+            const newTitre = document.getElementById('editTitre').value;
+            editingItem.titre = newTitre;
+            
+            if (editingItem.type === 'question') {
+                const qData = questionsData.find(q => q.id === editingItem.id);
+                if (qData) {
+                    qData.question = document.getElementById('editQuestion').value;
+                    qData.type = document.getElementById('editType').value;
+                    qData.options = document.getElementById('editOptions').value;
+                    
+                    google.script.run.withSuccessHandler(function(result) {
+                        if (result.success) {
+                            showSuccessMessage('Question sauvegardée');
+                        }
+                    }).saveQuestion(qData);
+                }
+            }
+            
+            closeEditModal();
+            displayAdminStructure();
+        }
+
+        // Supprimer un item
+        function deleteItem(item) {
+            if (!confirm(`Supprimer "${item.titre}" ?`)) return;
+            
+            // Supprimer de la structure
+            structureData = structureData.filter(i => i.id !== item.id && i.parentId !== item.id);
+            
+            // Si c'est une question, la supprimer aussi de questionsData
+            if (item.type === 'question') {
+                questionsData = questionsData.filter(q => q.id !== item.id);
+                google.script.run.deleteQuestion(item.id);
+            }
+            
+            displayAdminStructure();
+        }
+
+        // Sauvegarder toute la structure
+        function saveAllStructure() {
+            google.script.run.withSuccessHandler(function(result) {
+                if (result.success) {
+                    showSuccessMessage('Structure sauvegardée avec succès !');
+                } else {
+                    alert('Erreur: ' + result.message);
+                }
+            }).saveStructure(structureData);
+        }
+
+        // Navigation
+        function goHome() {
+            showScreen('homeScreen');
+        }
+
+        function goToQuestionnaire() {
+            showScreen('questionnaireScreen');
+            document.getElementById('matricule').value = '';
+            initializeDateInput();
+            document.getElementById('matricule').focus();
+        }
+
+        function goToVisites() {
+            showScreen('visitesScreen');
+            loadVisites();
+        }
+
+        function showScreen(screenId) {
+            document.getElementById('homeScreen').style.display = 'none';
+            document.getElementById('questionnaireScreen').style.display = 'none';
+            document.getElementById('visitesScreen').style.display = 'none';
+            document.getElementById('adminScreen').style.display = 'none';
+            document.getElementById(screenId).style.display = screenId === 'homeScreen' ? 'block' : 'flex';
+        }
+
+        function showSuccessMessage(message) {
+            const msg = document.createElement('div');
+            msg.className = 'success-message show';
+            msg.textContent = message;
+            msg.style.position = 'fixed';
+            msg.style.top = '20px';
+            msg.style.right = '20px';
+            msg.style.zIndex = '2000';
+            document.body.appendChild(msg);
+            setTimeout(() => msg.remove(), 3000);
+        }
+
+        // Fermer le modal si on clique dehors
+        window.onclick = function(event) {
+            if (event.target.classList.contains('modal')) {
+                event.target.style.display = 'none';
+            }
+        }
+
+        // Initialiser au chargement
+        window.onload = init;
+    </script>
+</body>
+</html>
