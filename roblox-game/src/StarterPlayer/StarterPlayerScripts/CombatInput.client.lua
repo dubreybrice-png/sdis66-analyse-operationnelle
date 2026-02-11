@@ -27,6 +27,56 @@ end
 local requestCaptureLaser = remotes:WaitForChild("RequestCaptureLaser", 10)
 print("[CombatInput] RequestCaptureLaser:", requestCaptureLaser and "FOUND" or "MISSING")
 
+-- === HINT "APPUIE SUR E POUR CAPTURER" ===
+local playerGui = player:WaitForChild("PlayerGui", 10)
+local hintGui = Instance.new("ScreenGui")
+hintGui.Name = "CaptureHint"
+hintGui.ResetOnSpawn = false
+hintGui.Parent = playerGui
+
+local captureHint = Instance.new("TextLabel")
+captureHint.Name = "HintLabel"
+captureHint.Size = UDim2.new(0, 320, 0, 40)
+captureHint.Position = UDim2.new(0.5, -160, 0.65, 0)
+captureHint.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+captureHint.BackgroundTransparency = 0.3
+captureHint.TextColor3 = Color3.fromRGB(255, 255, 100)
+captureHint.TextSize = 16
+captureHint.Font = Enum.Font.GothamBold
+captureHint.Text = "⚡ Appuie sur E pour capturer! ⚡"
+captureHint.Visible = false
+captureHint.Parent = hintGui
+Instance.new("UICorner", captureHint).CornerRadius = UDim.new(0, 8)
+local hintStroke = Instance.new("UIStroke")
+hintStroke.Color = Color3.fromRGB(255, 200, 50)
+hintStroke.Thickness = 2
+hintStroke.Parent = captureHint
+
+-- Update loop: montrer le hint quand un monstre KO est proche
+task.spawn(function()
+	while true do
+		task.wait(0.3)
+		local hasLaser = player:GetAttribute("HasCaptureLaser")
+		local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+		
+		if hasLaser and hrp then
+			local foundKO = false
+			for _, obj in ipairs(Workspace:GetChildren()) do
+				if obj:IsA("Model") and obj:GetAttribute("IsKnockedOut") and obj.PrimaryPart then
+					local dist = (hrp.Position - obj.PrimaryPart.Position).Magnitude
+					if dist < 30 then
+						foundKO = true
+						break
+					end
+				end
+			end
+			captureHint.Visible = foundKO
+		else
+			captureHint.Visible = false
+		end
+	end
+end)
+
 -- === CAPTURE LASER AU E ===
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if gameProcessed then return end

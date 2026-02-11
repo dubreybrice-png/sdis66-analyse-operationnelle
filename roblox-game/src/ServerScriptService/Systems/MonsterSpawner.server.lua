@@ -111,6 +111,28 @@ local function updateWaveForAll()
 	end
 end
 
+-- === TEXTURES MONSTRES (faces PNG) ===
+local MONSTER_FACE_TEXTURES = {
+	"rbxassetid://125985888729814",
+	"rbxassetid://130172870219546",
+	"rbxassetid://88842105258488",
+	"rbxassetid://135286085838302",
+}
+
+local function addMonsterFace(body)
+	local textureId = MONSTER_FACE_TEXTURES[math.random(1, #MONSTER_FACE_TEXTURES)]
+	-- Face avant
+	local decalFront = Instance.new("Decal")
+	decalFront.Texture = textureId
+	decalFront.Face = Enum.NormalId.Front
+	decalFront.Parent = body
+	-- Face arriere
+	local decalBack = Instance.new("Decal")
+	decalBack.Texture = textureId
+	decalBack.Face = Enum.NormalId.Back
+	decalBack.Parent = body
+end
+
 -- === CREER UN MONSTRE SAUVAGE ===
 local function createWildMonster(spawnPos, wildLevel, isBoss, speciesId, rarity)
 	MONSTER_COUNT = MONSTER_COUNT + 1
@@ -154,6 +176,9 @@ local function createWildMonster(spawnPos, wildLevel, isBoss, speciesId, rarity)
 	body.CFrame = CFrame.new(spawnPos + Vector3.new(0, bodySize, 0))
 	body.Parent = monster
 	monster.PrimaryPart = body
+	
+	-- Ajouter les textures de face
+	addMonsterFace(body)
 	
 	-- Humanoid
 	local humanoid = Instance.new("Humanoid")
@@ -264,8 +289,21 @@ local function createWildMonster(spawnPos, wildLevel, isBoss, speciesId, rarity)
 			body.Material = Enum.Material.SmoothPlastic
 			body.Transparency = 0.4
 			body.Color = Color3.fromRGB(100, 100, 100)
-			nameLabel.Text = "ASSOMME! (5s pour capturer)"
 			nameLabel.TextColor3 = Color3.fromRGB(255, 255, 100)
+			
+			-- Countdown live au-dessus de la tete
+			local knockoutDuration = GameConfig.SPAWN.KNOCKOUT_DURATION
+			task.spawn(function()
+				for countdown = knockoutDuration, 1, -1 do
+					if not monster.Parent or not monster:GetAttribute("IsKnockedOut") then break end
+					nameLabel.Text = "ASSOMME! (" .. countdown .. "s pour capturer)"
+					task.wait(1)
+				end
+				if monster.Parent and monster:GetAttribute("IsKnockedOut") then
+					nameLabel.Text = "Trop tard..."
+					nameLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+				end
+			end)
 			
 			-- Distribuer XP et or selon les degats
 			local totalDmg = 0
@@ -467,6 +505,9 @@ local function spawnDefenderModel(player, monsterData)
 	body.Parent = defender
 	defender.PrimaryPart = body
 	
+	-- Ajouter les textures de face au defenseur
+	addMonsterFace(body)
+	
 	local hum = Instance.new("Humanoid")
 	hum.MaxHealth = monsterData.MaxHP or 200
 	hum.Health = monsterData.CurrentHP or 200
@@ -474,13 +515,13 @@ local function spawnDefenderModel(player, monsterData)
 	
 	-- Billboard
 	local bb = Instance.new("BillboardGui")
-	bb.Size = UDim2.new(0, 150, 0, 35)
+	bb.Size = UDim2.new(0, 150, 0, 50)
 	bb.StudsOffset = Vector3.new(0, 3, 0)
 	bb.AlwaysOnTop = true
 	bb.Parent = body
 	
 	local nameLabel = Instance.new("TextLabel")
-	nameLabel.Size = UDim2.new(1, 0, 0, 16)
+	nameLabel.Size = UDim2.new(1, 0, 0, 14)
 	nameLabel.BackgroundTransparency = 1
 	nameLabel.TextColor3 = ElementSystem:GetColor(species.element)
 	nameLabel.TextSize = 12
@@ -490,13 +531,40 @@ local function spawnDefenderModel(player, monsterData)
 	
 	local rarityLabel = Instance.new("TextLabel")
 	rarityLabel.Size = UDim2.new(1, 0, 0, 12)
-	rarityLabel.Position = UDim2.new(0, 0, 0, 16)
+	rarityLabel.Position = UDim2.new(0, 0, 0, 14)
 	rarityLabel.BackgroundTransparency = 1
 	rarityLabel.TextColor3 = MonsterDB.RARITY_COLORS[monsterData.Rarity] or Color3.new(1,1,1)
 	rarityLabel.TextSize = 9
 	rarityLabel.Font = Enum.Font.Gotham
 	rarityLabel.Text = monsterData.Rarity .. " | " .. species.element
 	rarityLabel.Parent = bb
+	
+	-- XP Bar du defenseur
+	local xpBarBg = Instance.new("Frame")
+	xpBarBg.Size = UDim2.new(0.9, 0, 0, 6)
+	xpBarBg.Position = UDim2.new(0.05, 0, 0, 28)
+	xpBarBg.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
+	xpBarBg.BorderSizePixel = 0
+	xpBarBg.Parent = bb
+	Instance.new("UICorner", xpBarBg).CornerRadius = UDim.new(0, 3)
+	
+	local xpBarFill = Instance.new("Frame")
+	xpBarFill.Name = "XPFill"
+	xpBarFill.Size = UDim2.new(0, 0, 1, 0)
+	xpBarFill.BackgroundColor3 = Color3.fromRGB(80, 200, 255)
+	xpBarFill.BorderSizePixel = 0
+	xpBarFill.Parent = xpBarBg
+	Instance.new("UICorner", xpBarFill).CornerRadius = UDim.new(0, 3)
+	
+	local xpTextDef = Instance.new("TextLabel")
+	xpTextDef.Size = UDim2.new(1, 0, 0, 10)
+	xpTextDef.Position = UDim2.new(0, 0, 0, 35)
+	xpTextDef.BackgroundTransparency = 1
+	xpTextDef.TextColor3 = Color3.fromRGB(120, 180, 255)
+	xpTextDef.TextSize = 7
+	xpTextDef.Font = Enum.Font.Gotham
+	xpTextDef.Text = "XP: 0/80"
+	xpTextDef.Parent = bb
 	
 	defender:SetAttribute("OwnerUserId", player.UserId)
 	defender:SetAttribute("MonsterUID", monsterData.UID)
@@ -505,6 +573,17 @@ local function spawnDefenderModel(player, monsterData)
 	-- IA defenseur: attaquer monstres sauvages
 	task.spawn(function()
 		while defender.Parent and hum.Health > 0 do
+			-- Update XP bar du defenseur
+			local currentMonster = PlayerDataService:GetMonsterByUID(player, monsterData.UID)
+			if currentMonster then
+				local mLevel = currentMonster.Level or 1
+				local mXP = currentMonster.XP or 0
+				local mReq = GameConfig.MONSTER_XP.LEVELUP_BASE * mLevel
+				local xpRatio = math.clamp(mXP / math.max(mReq, 1), 0, 1)
+				xpBarFill.Size = UDim2.new(xpRatio, 0, 1, 0)
+				xpTextDef.Text = "XP: " .. mXP .. "/" .. mReq
+				nameLabel.Text = currentMonster.Name .. " Nv." .. mLevel .. " (DEF)"
+			end
 			local nearestEnemy = nil
 			local nearestDist = 25
 			
@@ -782,3 +861,24 @@ if remotes then
 end
 
 print("[MonsterSpawner V20] Ready! Wave system loaded.")
+
+-- === REGEN PASSIVE JOUEUR ===
+task.spawn(function()
+	while true do
+		task.wait(3)
+		for _, p in ipairs(Players:GetPlayers()) do
+			local character = p.Character
+			local hum = character and character:FindFirstChildOfClass("Humanoid")
+			if hum and hum.Health > 0 and hum.Health < hum.MaxHealth then
+				local vitPts = 0
+				local data = PlayerDataService:GetData(p)
+				if data and data.SkillPoints then
+					vitPts = data.SkillPoints.Vitality or 0
+				end
+				-- Regen: 2 HP/3s base + 0.5 per Vitality point
+				local regenAmount = 2 + vitPts * 0.5
+				hum.Health = math.min(hum.MaxHealth, hum.Health + regenAmount)
+			end
+		end
+	end
+end)

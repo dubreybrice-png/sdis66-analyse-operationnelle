@@ -116,7 +116,7 @@ function WorldBuilder.CreateTown()
 		local tile = Instance.new("Part")
 		tile.Name = "PlazaSacred" .. i
 		tile.Size = Vector3.new(10, 0.4, 10)
-		tile.Position = Vector3.new(math.cos(angle) * 18, 0.2, math.sin(angle) * 18)
+		tile.Position = Vector3.new(math.cos(angle) * 18, 0.7, math.sin(angle) * 18)
 		tile.Anchored = true
 		tile.BrickColor = BrickColor.new("Institutional white")
 		tile.Material = Enum.Material.Marble
@@ -129,7 +129,7 @@ function WorldBuilder.CreateTown()
 		local tile = Instance.new("Part")
 		tile.Name = "PlazaInner" .. i
 		tile.Size = Vector3.new(9, 0.3, 9)
-		tile.Position = Vector3.new(math.cos(angle) * 32, 0.15, math.sin(angle) * 32)
+		tile.Position = Vector3.new(math.cos(angle) * 32, 0.65, math.sin(angle) * 32)
 		tile.Anchored = true
 		tile.BrickColor = BrickColor.new("White")
 		tile.Material = Enum.Material.Marble
@@ -142,7 +142,7 @@ function WorldBuilder.CreateTown()
 		local tile = Instance.new("Part")
 		tile.Name = "PlazaMid" .. i
 		tile.Size = Vector3.new(8, 0.25, 8)
-		tile.Position = Vector3.new(math.cos(angle) * 48, 0.12, math.sin(angle) * 48)
+		tile.Position = Vector3.new(math.cos(angle) * 48, 0.62, math.sin(angle) * 48)
 		tile.Anchored = true
 		tile.BrickColor = BrickColor.new("Light stone grey")
 		tile.Material = Enum.Material.Concrete
@@ -155,7 +155,7 @@ function WorldBuilder.CreateTown()
 		local tile = Instance.new("Part")
 		tile.Name = "PlazaOuter" .. i
 		tile.Size = Vector3.new(7, 0.2, 7)
-		tile.Position = Vector3.new(math.cos(angle) * 65, 0.1, math.sin(angle) * 65)
+		tile.Position = Vector3.new(math.cos(angle) * 65, 0.6, math.sin(angle) * 65)
 		tile.Anchored = true
 		tile.BrickColor = BrickColor.new("Medium stone grey")
 		tile.Material = Enum.Material.Brick
@@ -168,7 +168,7 @@ function WorldBuilder.CreateTown()
 	for i = 1, 15 do
 		local path = Instance.new("Part")
 		path.Size = Vector3.new(12, 0.3, 8)
-		path.Position = Vector3.new(0, 0.15, -70 - i * 8)
+		path.Position = Vector3.new(0, 0.65, -70 - i * 8)
 		path.Anchored = true
 		path.BrickColor = BrickColor.new("Dark green")
 		path.Material = Enum.Material.Grass
@@ -201,7 +201,7 @@ function WorldBuilder.CreateTown()
 	for i = 1, 15 do
 		local path = Instance.new("Part")
 		path.Size = Vector3.new(8, 0.3, 12)
-		path.Position = Vector3.new(70 + i * 8, 0.15, 0)
+		path.Position = Vector3.new(70 + i * 8, 0.65, 0)
 		path.Anchored = true
 		path.BrickColor = BrickColor.new("Medium stone grey")
 		path.Material = Enum.Material.Slate
@@ -225,7 +225,7 @@ function WorldBuilder.CreateTown()
 	for i = 1, 15 do
 		local path = Instance.new("Part")
 		path.Size = Vector3.new(12, 0.3, 8)
-		path.Position = Vector3.new(0, 0.15, 70 + i * 8)
+		path.Position = Vector3.new(0, 0.65, 70 + i * 8)
 		path.Anchored = true
 		path.BrickColor = BrickColor.new("Sand blue")
 		path.Material = Enum.Material.Sand
@@ -250,7 +250,7 @@ function WorldBuilder.CreateTown()
 	for i = 1, 15 do
 		local path = Instance.new("Part")
 		path.Size = Vector3.new(8, 0.3, 12)
-		path.Position = Vector3.new(-70 - i * 8, 0.15, 0)
+		path.Position = Vector3.new(-70 - i * 8, 0.65, 0)
 		path.Anchored = true
 		path.BrickColor = BrickColor.new("Black")
 		path.Material = Enum.Material.Cobblestone
@@ -760,6 +760,70 @@ function WorldBuilder.CreateClassHall()
 	hall.Parent = workspace
 	print("[WorldBuilder] Class Hall created at", hallPos, "with 4 class podiums")
 	return hall
+end
+
+-- === AMELIORATION GRAPHIQUE: ECLAIRAGE ===
+function WorldBuilder.SetupLighting()
+	local Lighting = game:GetService("Lighting")
+	
+	-- Atmosphere (brume, couleurs)
+	local atmo = Lighting:FindFirstChildOfClass("Atmosphere")
+	if not atmo then
+		atmo = Instance.new("Atmosphere")
+		atmo.Parent = Lighting
+	end
+	atmo.Density = 0.25
+	atmo.Offset = 0.1
+	atmo.Color = Color3.fromRGB(180, 200, 230)
+	atmo.Decay = Color3.fromRGB(130, 150, 180)
+	atmo.Glare = 0
+	atmo.Haze = 1.5
+	
+	-- Bloom
+	local bloom = Lighting:FindFirstChild("Bloom")
+	if not bloom then
+		bloom = Instance.new("BloomEffect")
+		bloom.Name = "Bloom"
+		bloom.Parent = Lighting
+	end
+	bloom.Intensity = 0.15
+	bloom.Size = 20
+	bloom.Threshold = 1.2
+	
+	-- ColorCorrection
+	local cc = Lighting:FindFirstChild("ColorCorrection")
+	if not cc then
+		cc = Instance.new("ColorCorrectionEffect")
+		cc.Name = "ColorCorrection"
+		cc.Parent = Lighting
+	end
+	cc.Brightness = 0.02
+	cc.Contrast = 0.08
+	cc.Saturation = 0.15
+	cc.TintColor = Color3.fromRGB(255, 250, 245)
+	
+	-- SunRays
+	local rays = Lighting:FindFirstChild("SunRays")
+	if not rays then
+		rays = Instance.new("SunRaysEffect")
+		rays.Name = "SunRays"
+		rays.Parent = Lighting
+	end
+	rays.Intensity = 0.04
+	rays.Spread = 0.6
+	
+	-- Lighting properties
+	Lighting.Ambient = Color3.fromRGB(50, 55, 70)
+	Lighting.OutdoorAmbient = Color3.fromRGB(80, 90, 110)
+	Lighting.Brightness = 2.5
+	Lighting.ClockTime = 11
+	Lighting.GeographicLatitude = 35
+	Lighting.EnvironmentDiffuseScale = 0.5
+	Lighting.EnvironmentSpecularScale = 0.3
+	Lighting.GlobalShadows = true
+	Lighting.ShadowSoftness = 0.3
+	
+	print("[WorldBuilder] Lighting setup complete! (Atmosphere + Bloom + SunRays + ColorCorrection)")
 end
 
 return WorldBuilder

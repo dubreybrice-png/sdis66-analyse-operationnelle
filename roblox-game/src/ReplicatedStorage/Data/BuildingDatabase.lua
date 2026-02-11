@@ -32,6 +32,7 @@ BuildingDatabase.BUILDINGS = {
 			slotsPerLevel = 3,
 		},
 		position = Vector3.new(20, 0, -15),
+		unlockOrder = 1,
 	},
 
 	-- ====== MINE D'OR ======
@@ -51,6 +52,24 @@ BuildingDatabase.BUILDINGS = {
 			goldPerMinPerLevel = 3,
 		},
 		position = Vector3.new(-30, 0, -20),
+		unlockOrder = 2,
+	},
+
+	-- ====== HALL DES CLASSES ======
+	class_hall = {
+		name = "Hall des Classes",
+		desc = "Choisis ta classe au niveau 10. Guerrier, Archer, Mage, Acolyte.",
+		icon = "🏛️",
+		era = 1,
+		repairCost = nil,
+		baseCost = 100,
+		upgradeCostBase = 500,
+		maxLevelPerEra = {1, 2, 3, 4, 5, 6},
+		effects = {
+			advancedClassLevel = 2,
+		},
+		position = Vector3.new(40, 0, -30),
+		unlockOrder = 3,
 	},
 
 	-- ====== BUREAU DES DEFENSES ======
@@ -66,10 +85,29 @@ BuildingDatabase.BUILDINGS = {
 		effects = {
 			defenseSlotsBase = 2,
 			defenseSlotsPerLevel = 1,
-			crystalHPBonus = 200,      -- par level
-			crystalRegenBonus = 0.002, -- par level
+			crystalHPBonus = 200,
+			crystalRegenBonus = 0.002,
 		},
 		position = Vector3.new(30, 0, 15),
+		unlockOrder = 4,
+	},
+
+	-- ====== BANQUE ======
+	bank = {
+		name = "Banque",
+		desc = "Protege ton or dans un coffre. Or de banque jamais perdu.",
+		icon = "🏦",
+		era = 1,
+		repairCost = nil,
+		baseCost = 200,
+		upgradeCostBase = 180,
+		maxLevelPerEra = {5, 10, 15, 20, 25, 30},
+		effects = {
+			maxProtectedBase = 500,
+			maxProtectedPerLevel = 500,
+		},
+		position = Vector3.new(-20, 0, 30),
+		unlockOrder = 5,
 	},
 
 	-- ====== ARMURERIE ======
@@ -83,33 +121,15 @@ BuildingDatabase.BUILDINGS = {
 		upgradeCostBase = 200,
 		maxLevelPerEra = {3, 7, 12, 17, 22, 28},
 		effects = {
-			-- Sous-batiments debloques par level
-			forgeUnlock = 1,          -- level 1 = forge dispo
-			laserAltarUnlock = 2,     -- level 2 = autel des lasers
-			forgeTierPerLevel = 1,    -- tier d'armes disponibles
-			laserSpeedBonus = 0.10,   -- -10% temps capture par level
-			laserChanceBonus = 0.02,  -- +2% capture par level
-			laserRetryChance = 0.03,  -- +3% chance retry par level
+			forgeUnlock = 1,
+			laserAltarUnlock = 2,
+			forgeTierPerLevel = 1,
+			laserSpeedBonus = 0.10,
+			laserChanceBonus = 0.02,
+			laserRetryChance = 0.03,
 		},
 		position = Vector3.new(-35, 0, 15),
-	},
-
-	-- ====== HALL DES CLASSES ======
-	class_hall = {
-		name = "Hall des Classes",
-		desc = "Choisis ta classe au niveau 10. Guerrier, Archer, Mage, Acolyte.",
-		icon = "🏛️",
-		era = 1,
-		repairCost = nil,
-		baseCost = 0,
-		upgradeCostBase = 500,
-		maxLevelPerEra = {1, 2, 3, 4, 5, 6},
-		effects = {
-			-- Level 1 = classes de base
-			-- Level 2+ = classes avancees
-			advancedClassLevel = 2,
-		},
-		position = Vector3.new(40, 0, -30),
+		unlockOrder = 6,
 	},
 
 	-- ====== ECOLE DES MONSTRES ======
@@ -123,10 +143,11 @@ BuildingDatabase.BUILDINGS = {
 		upgradeCostBase = 250,
 		maxLevelPerEra = {3, 6, 10, 15, 20, 25},
 		effects = {
-			maxSkillTier = 1,         -- tier de skills disponibles par level
-			skillCostReduction = 0.05, -- -5% cout par level
+			maxSkillTier = 1,
+			skillCostReduction = 0.05,
 		},
 		position = Vector3.new(45, 0, 10),
+		unlockOrder = 7,
 	},
 
 	-- ====== CENTRE D'ENTRAINEMENT ======
@@ -142,10 +163,11 @@ BuildingDatabase.BUILDINGS = {
 		effects = {
 			trainingSlotsBase = 1,
 			trainingSlotsPerLevel = 1,
-			trainingXPBonus = 0.10,    -- +10% XP training par level
-			evolutionUnlock = 3,       -- level 3 = Ecole Quantique
+			trainingXPBonus = 0.10,
+			evolutionUnlock = 3,
 		},
 		position = Vector3.new(-45, 0, 0),
+		unlockOrder = 8,
 	},
 
 	-- ====== INFIRMERIE ======
@@ -164,23 +186,6 @@ BuildingDatabase.BUILDINGS = {
 			healPercent = 0.10,        -- +10% heal par level
 		},
 		position = Vector3.new(50, 0, -15),
-	},
-
-	-- ====== BANQUE ======
-	bank = {
-		name = "Banque",
-		desc = "Protege ton or dans un coffre. Or de banque jamais perdu.",
-		icon = "🏦",
-		era = 1,
-		repairCost = nil,
-		baseCost = 200,
-		upgradeCostBase = 180,
-		maxLevelPerEra = {5, 10, 15, 20, 25, 30},
-		effects = {
-			maxProtectedBase = 500,
-			maxProtectedPerLevel = 500,
-		},
-		position = Vector3.new(-20, 0, 30),
 	},
 
 	-- ====== TOUR DE GUET ======
@@ -408,6 +413,45 @@ BuildingDatabase.BUILDINGS = {
 
 function BuildingDatabase:Get(buildingId)
 	return self.BUILDINGS[buildingId]
+end
+
+-- Ordre de construction sequentiel
+function BuildingDatabase:GetUnlockOrder()
+	local ordered = {}
+	for id, building in pairs(self.BUILDINGS) do
+		if building.unlockOrder then
+			table.insert(ordered, {id = id, order = building.unlockOrder, data = building})
+		end
+	end
+	table.sort(ordered, function(a, b) return a.order < b.order end)
+	return ordered
+end
+
+-- Prochain batiment a construire pour un joueur
+function BuildingDatabase:GetNextToBuild(playerBuildings)
+	local ordered = self:GetUnlockOrder()
+	for _, entry in ipairs(ordered) do
+		if not playerBuildings[entry.id] then
+			return entry.id, entry.data
+		end
+	end
+	return nil, nil  -- tous construits
+end
+
+-- Verifier si un batiment est deverrouille (tous les precedents sont construits)
+function BuildingDatabase:IsBuildingUnlocked(buildingId, playerBuildings)
+	local bData = self.BUILDINGS[buildingId]
+	if not bData or not bData.unlockOrder then return true end
+	
+	-- Verifier que tous les batiments avec un unlockOrder inferieur sont construits
+	for id, building in pairs(self.BUILDINGS) do
+		if building.unlockOrder and building.unlockOrder < bData.unlockOrder then
+			if not playerBuildings[id] then
+				return false
+			end
+		end
+	end
+	return true
 end
 
 -- Cout d'upgrade pour un batiment a un certain level

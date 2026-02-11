@@ -187,8 +187,59 @@ orbsLabel.BackgroundTransparency = 1
 orbsLabel.TextColor3 = Color3.fromRGB(100, 255, 200)
 orbsLabel.TextSize = 10
 orbsLabel.Font = Enum.Font.Gotham
-orbsLabel.Text = "Orbes: 5"
+orbsLabel.Text = "Laser: ∞"
 orbsLabel.Parent = playerPanel
+
+-- =========================================
+-- PLAYER HP BAR (below player panel)
+-- =========================================
+local hpPanel = Instance.new("Frame")
+hpPanel.Name = "HPPanel"
+hpPanel.Size = UDim2.new(0, 280, 0, 36)
+hpPanel.Position = UDim2.new(0, 10, 0, 215)
+hpPanel.BackgroundColor3 = Color3.fromRGB(30, 15, 15)
+hpPanel.BackgroundTransparency = 0.2
+hpPanel.BorderSizePixel = 0
+hpPanel.Parent = screenGui
+Instance.new("UICorner", hpPanel).CornerRadius = UDim.new(0, 8)
+Instance.new("UIStroke", hpPanel).Color = Color3.fromRGB(200, 60, 60)
+
+local hpIcon = Instance.new("TextLabel")
+hpIcon.Size = UDim2.new(0, 30, 1, 0)
+hpIcon.BackgroundTransparency = 1
+hpIcon.TextColor3 = Color3.fromRGB(255, 80, 80)
+hpIcon.TextSize = 16
+hpIcon.Font = Enum.Font.GothamBold
+hpIcon.Text = "❤"
+hpIcon.Parent = hpPanel
+
+local hpBarBg = Instance.new("Frame")
+hpBarBg.Name = "HPBarBg"
+hpBarBg.Size = UDim2.new(1, -40, 0, 14)
+hpBarBg.Position = UDim2.new(0, 32, 0, 4)
+hpBarBg.BackgroundColor3 = Color3.fromRGB(50, 20, 20)
+hpBarBg.BorderSizePixel = 0
+hpBarBg.Parent = hpPanel
+Instance.new("UICorner", hpBarBg).CornerRadius = UDim.new(0, 4)
+
+local hpBarFill = Instance.new("Frame")
+hpBarFill.Name = "Fill"
+hpBarFill.Size = UDim2.new(1, 0, 1, 0)
+hpBarFill.BackgroundColor3 = Color3.fromRGB(220, 50, 50)
+hpBarFill.BorderSizePixel = 0
+hpBarFill.Parent = hpBarBg
+Instance.new("UICorner", hpBarFill).CornerRadius = UDim.new(0, 4)
+
+local hpTextLabel = Instance.new("TextLabel")
+hpTextLabel.Name = "HPText"
+hpTextLabel.Size = UDim2.new(1, -40, 0, 14)
+hpTextLabel.Position = UDim2.new(0, 32, 0, 19)
+hpTextLabel.BackgroundTransparency = 1
+hpTextLabel.TextColor3 = Color3.fromRGB(200, 150, 150)
+hpTextLabel.TextSize = 9
+hpTextLabel.Font = Enum.Font.Gotham
+hpTextLabel.Text = "HP: 100/100"
+hpTextLabel.Parent = hpPanel
 
 -- =========================================
 -- TOP CENTER: WAVE INFO
@@ -313,7 +364,7 @@ hotbarSlots[1].BackgroundColor3 = Color3.fromRGB(80, 120, 200)
 local skillPanel = Instance.new("Frame")
 skillPanel.Name = "SkillPanel"
 skillPanel.Size = UDim2.new(0, 240, 0, 150)
-skillPanel.Position = UDim2.new(0, 10, 0, 220)
+skillPanel.Position = UDim2.new(0, 10, 0, 260)
 skillPanel.BackgroundColor3 = Color3.fromRGB(20, 25, 40)
 skillPanel.BackgroundTransparency = 0.1
 skillPanel.BorderSizePixel = 0
@@ -476,7 +527,7 @@ controls.Font = Enum.Font.Gotham
 controls.TextWrapped = true
 controls.TextXAlignment = Enum.TextXAlignment.Left
 controls.TextYAlignment = Enum.TextYAlignment.Top
-controls.Text = "Click: Attaquer monstre\nE: Parler au PNJ\n1-5: Hotbar\nP: Skills\nI: Inventaire"
+controls.Text = "Click: Attaquer monstre\nE: Capturer monstre assomme\nF: Parler au PNJ\n1-5: Hotbar | P: Skills"
 controls.Parent = screenGui
 Instance.new("UICorner", controls).CornerRadius = UDim.new(0, 6)
 
@@ -564,7 +615,8 @@ task.spawn(function()
 		villeLabel.Text = "🏘 Ville Nv." .. villeLevel .. " | Ere " .. eraName
 		monsterLabel.Text = "🐾 Monstres: " .. monsterCount .. "/" .. storageCapacity
 		killsLabel.Text = "Kills: " .. totalKills .. " | Captures: " .. totalCaptures .. " | Boss: " .. bossKills
-		orbsLabel.Text = "Orbes: " .. orbs
+		local hasLaser = player:GetAttribute("HasCaptureLaser")
+		orbsLabel.Text = hasLaser and "Laser: ∞" or "Pas de laser"
 		
 		-- Skill points button
 		skillBtn.Text = "SKILLS (" .. skillPts .. " pts)"
@@ -587,6 +639,24 @@ task.spawn(function()
 			starterPanel.Visible = true
 			starterName.Text = "⭐ " .. sName
 			starterInfo.Text = "Nv." .. (player:GetAttribute("StarterLevel") or 1) .. " XP:" .. (player:GetAttribute("StarterXP") or 0)
+		end
+		
+		-- Player HP bar
+		local character = player.Character
+		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+		if humanoid then
+			local hp = math.ceil(humanoid.Health)
+			local maxHP = math.ceil(humanoid.MaxHealth)
+			local ratio = math.clamp(humanoid.Health / math.max(humanoid.MaxHealth, 1), 0, 1)
+			hpBarFill.Size = UDim2.new(ratio, 0, 1, 0)
+			hpTextLabel.Text = "HP: " .. hp .. "/" .. maxHP
+			if ratio > 0.5 then
+				hpBarFill.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+			elseif ratio > 0.25 then
+				hpBarFill.BackgroundColor3 = Color3.fromRGB(220, 180, 50)
+			else
+				hpBarFill.BackgroundColor3 = Color3.fromRGB(220, 50, 50)
+			end
 		end
 	end
 end)
@@ -665,4 +735,4 @@ UIS.InputBegan:Connect(function(input, gameProcessed)
 	end
 end)
 
-print("[PlayerHUD V20] Ready!")
+print("[PlayerHUD V21] Ready!")

@@ -50,11 +50,7 @@ if requestCapture then
 			return
 		end
 		
-		-- Verifier les orbes
-		if (data.CaptureOrbs or 0) <= 0 then
-			notify(player, "Plus d'orbes de capture! Achete-en a l'Armurerie.")
-			return
-		end
+		-- Laser illimite (plus besoin d'orbes)
 		
 		-- Trouver le monstre assomme
 		local monsterModel = nil
@@ -91,8 +87,7 @@ if requestCapture then
 		-- DEBUT CAPTURE
 		capturingPlayers[player.UserId] = true
 		
-		-- Consommer un orbe
-		data.CaptureOrbs = (data.CaptureOrbs or 1) - 1
+		-- Laser illimite, pas de consommation d'orbes
 		
 		-- Channel time (modifie par laser speed)
 		local channelTime = math.max(1, GameConfig.CAPTURE.CHANNEL_TIME - (data.LaserSpeed or 0) * 0.3)
