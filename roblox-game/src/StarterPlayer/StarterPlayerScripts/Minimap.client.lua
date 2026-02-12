@@ -1,11 +1,11 @@
 --[[
-	Minimap V23 - Mini carte en haut a droite
+	Minimap V24 - Mini carte en haut a droite
+	- Tourne avec la camera du joueur
 	- Montre le joueur, les monstres, le cristal, les batiments
-	- Zoom automatique
 	- Dots colores par type
 ]]
 
-print("[Minimap V23] Loading...")
+print("[Minimap V24] Loading...")
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -14,33 +14,48 @@ local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui", 10)
 if not playerGui then return end
 
+local camera = game.Workspace.CurrentCamera
+
 -- === GUI ===
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "Minimap_V23"
+screenGui.Name = "Minimap_V24"
 screenGui.ResetOnSpawn = false
 screenGui.DisplayOrder = 5
 screenGui.Parent = playerGui
 
--- Minimap container
+-- Minimap container - positionne sous le starter panel (top-right)
 local mapFrame = Instance.new("Frame")
 mapFrame.Name = "MinimapFrame"
-mapFrame.Size = UDim2.new(0, 160, 0, 160)
-mapFrame.Position = UDim2.new(1, -170, 0, 10)
+mapFrame.Size = UDim2.new(0, 140, 0, 140)
+mapFrame.Position = UDim2.new(1, -150, 0, 80)
 mapFrame.BackgroundColor3 = Color3.fromRGB(10, 15, 25)
 mapFrame.BackgroundTransparency = 0.15
 mapFrame.BorderSizePixel = 0
 mapFrame.ClipsDescendants = true
 mapFrame.Parent = screenGui
-Instance.new("UICorner", mapFrame).CornerRadius = UDim.new(0, 80) -- cercle
+Instance.new("UICorner", mapFrame).CornerRadius = UDim.new(0, 70) -- cercle
 local mapStroke = Instance.new("UIStroke")
 mapStroke.Color = Color3.fromRGB(80, 150, 255)
 mapStroke.Thickness = 2
 mapStroke.Parent = mapFrame
 
+-- Nord indicator
+local nordLabel = Instance.new("TextLabel")
+nordLabel.Name = "Nord"
+nordLabel.Size = UDim2.new(0, 16, 0, 12)
+nordLabel.Position = UDim2.new(0.5, -8, 0, 2)
+nordLabel.BackgroundTransparency = 1
+nordLabel.TextColor3 = Color3.fromRGB(255, 80, 80)
+nordLabel.TextSize = 9
+nordLabel.Font = Enum.Font.GothamBold
+nordLabel.Text = "N"
+nordLabel.ZIndex = 5
+nordLabel.Parent = mapFrame
+
 -- Label "CARTE"
 local mapLabel = Instance.new("TextLabel")
-mapLabel.Size = UDim2.new(1, 0, 0, 14)
-mapLabel.Position = UDim2.new(0, 0, 1, 2)
+mapLabel.Size = UDim2.new(0, 140, 0, 14)
+mapLabel.Position = UDim2.new(1, -150, 0, 222)
 mapLabel.BackgroundTransparency = 1
 mapLabel.TextColor3 = Color3.fromRGB(120, 160, 200)
 mapLabel.TextSize = 9
@@ -49,8 +64,7 @@ mapLabel.Text = "CARTE"
 mapLabel.Parent = screenGui
 
 -- Dot pool
-local dots = {}
-local MAP_SCALE = 1.0  -- 1 pixel = MAP_SCALE studs
+local MAP_HALF = 70  -- half of 140px
 local MAP_RANGE = 120   -- studs visibles depuis le centre
 
 local function createDot(name, color, size)
@@ -60,6 +74,7 @@ local function createDot(name, color, size)
 	dot.BackgroundColor3 = color
 	dot.BorderSizePixel = 0
 	dot.Visible = false
+	dot.ZIndex = 3
 	dot.Parent = mapFrame
 	Instance.new("UICorner", dot).CornerRadius = UDim.new(1, 0) -- circle
 	return dot
@@ -68,10 +83,12 @@ end
 -- Player dot (always centered, bright)
 local playerDot = createDot("Player", Color3.fromRGB(100, 255, 100), 8)
 playerDot.Visible = true
+playerDot.ZIndex = 4
 
--- Direction indicator
-local dirIndicator = createDot("Direction", Color3.fromRGB(100, 255, 100), 4)
+-- Player direction triangle
+local dirIndicator = createDot("Direction", Color3.fromRGB(150, 255, 150), 5)
 dirIndicator.Visible = true
+dirIndicator.ZIndex = 4
 
 -- Crystal dot
 local crystalDot = createDot("Crystal", Color3.fromRGB(0, 200, 255), 10)
@@ -85,21 +102,26 @@ for i = 1, 40 do
 	table.insert(monsterDotPool, {dot = d, active = false})
 end
 
--- Helper: world pos -> minimap pos
-local function worldToMinimap(worldPos, playerPos)
+-- Helper: world pos -> minimap pos (with camera rotation!)
+local function worldToMinimap(worldPos, playerPos, camAngle)
 	local dx = worldPos.X - playerPos.X
 	local dz = worldPos.Z - playerPos.Z
 	
-	local pixelX = (dx / MAP_RANGE) * 80 + 80  -- center = 80,80
-	local pixelY = (dz / MAP_RANGE) * 80 + 80
+	-- Rotate by camera angle so map rotates with player view
+	local cosA = math.cos(camAngle)
+	local sinA = math.sin(camAngle)
+	local rx = dx * cosA - dz * sinA
+	local ry = dx * sinA + dz * cosA
+	
+	local pixelX = (rx / MAP_RANGE) * MAP_HALF + MAP_HALF
+	local pixelY = (ry / MAP_RANGE) * MAP_HALF + MAP_HALF
 	
 	return pixelX, pixelY
 end
 
 local function isInRange(px, py)
-	local cx, cy = 80, 80
-	local dist = math.sqrt((px - cx)^2 + (py - cy)^2)
-	return dist < 76  -- slightly less than radius
+	local dist = math.sqrt((px - MAP_HALF)^2 + (py - MAP_HALF)^2)
+	return dist < (MAP_HALF - 4)
 end
 
 -- === UPDATE LOOP ===
@@ -114,20 +136,29 @@ RunService.Heartbeat:Connect(function()
 	
 	local playerPos = hrp.Position
 	
-	-- Player dot always centered
-	playerDot.Position = UDim2.new(0, 76, 0, 76)
+	-- Camera Y-angle (rotation horizontale)
+	local camCF = camera.CFrame
+	local camLook = camCF.LookVector
+	local camAngle = math.atan2(-camLook.X, -camLook.Z)
 	
-	-- Direction indicator (shows where player faces)
-	local lookDir = hrp.CFrame.LookVector
-	local dirX = 80 + lookDir.X * 12
-	local dirY = 80 + lookDir.Z * 12
-	dirIndicator.Position = UDim2.new(0, dirX - 2, 0, dirY - 2)
+	-- Player dot always centered
+	playerDot.Position = UDim2.new(0, MAP_HALF - 4, 0, MAP_HALF - 4)
+	
+	-- Direction indicator (always points "up" = forward in rotated map)
+	dirIndicator.Position = UDim2.new(0, MAP_HALF - 2.5, 0, MAP_HALF - 14)
+	
+	-- Nord indicator rotates with map
+	local nordAngle = camAngle
+	local nordDist = MAP_HALF - 10
+	local nordX = MAP_HALF + math.sin(nordAngle) * nordDist
+	local nordY = MAP_HALF - math.cos(nordAngle) * nordDist
+	nordLabel.Position = UDim2.new(0, nordX - 8, 0, nordY - 6)
 	
 	-- Crystal
 	local crystal = game.Workspace:FindFirstChild("Crystal")
 	if crystal then
 		local cPos = crystal.PrimaryPart and crystal.PrimaryPart.Position or crystal:GetPivot().Position
-		local cx, cy = worldToMinimap(cPos, playerPos)
+		local cx, cy = worldToMinimap(cPos, playerPos, camAngle)
 		if isInRange(cx, cy) then
 			crystalDot.Visible = true
 			crystalDot.Position = UDim2.new(0, cx - 5, 0, cy - 5)
@@ -142,7 +173,7 @@ RunService.Heartbeat:Connect(function()
 		if obj:IsA("Model") and (obj:GetAttribute("SpeciesID") or obj.Name:match("^Defender_")) and obj.PrimaryPart then
 			if poolIdx <= #monsterDotPool then
 				local mPos = obj.PrimaryPart.Position
-				local mx, my = worldToMinimap(mPos, playerPos)
+				local mx, my = worldToMinimap(mPos, playerPos, camAngle)
 				local pool = monsterDotPool[poolIdx]
 				
 				if isInRange(mx, my) then
@@ -182,11 +213,19 @@ RunService.Heartbeat:Connect(function()
 		for _, bd in ipairs(buildingDots) do bd:Destroy() end
 		buildingDots = {}
 		
+		local bFolder = game.Workspace:FindFirstChild("Buildings")
+		local bChildren = bFolder and bFolder:GetChildren() or {}
+		-- Also check workspace root for placeholders
 		for _, obj in ipairs(game.Workspace:GetChildren()) do
-			if obj:IsA("Model") and obj.Name:match("^Building_") then
+			if obj:IsA("Model") and (obj.Name:match("^Building_") or obj.Name:match("^Placeholder_")) then
+				table.insert(bChildren, obj)
+			end
+		end
+		for _, obj in ipairs(bChildren) do
+			if obj:IsA("Model") then
 				local pp = obj.PrimaryPart
 				if pp then
-					local bx, by = worldToMinimap(pp.Position, playerPos)
+					local bx, by = worldToMinimap(pp.Position, playerPos, camAngle)
 					if isInRange(bx, by) then
 						local bd = createDot("BDot", Color3.fromRGB(200, 170, 50), 6)
 						bd.Visible = true
@@ -203,4 +242,4 @@ RunService.Heartbeat:Connect(function()
 	end
 end)
 
-print("[Minimap V23] Ready!")
+print("[Minimap V24] Ready!")

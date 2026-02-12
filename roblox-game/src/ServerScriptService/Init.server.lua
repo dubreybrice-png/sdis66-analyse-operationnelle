@@ -4,8 +4,8 @@
 ]]
 
 print("===================================================")
-print("  VERSION TEST 23 - VISUAL OVERHAUL + BUILDING UIs")
-print("  Monstres reels, Batiments, Capture anim, Minimap")
+print("  VERSION TEST 24 - INVENTORY + COOL FEATURES")
+print("  Bug fixes, Equipment UI, Bestiary, Sprint, DPS")
 print("===================================================")
 
 local ServerScriptService = game:GetService("ServerScriptService")
@@ -210,4 +210,4 @@ Players.PlayerAdded:Connect(function(player)
 	end)
 end)
 
-print("[Server] V23 Init complete! All systems go.")
+print("[Server] V24 Init complete! All systems go.")

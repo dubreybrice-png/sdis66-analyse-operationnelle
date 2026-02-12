@@ -531,9 +531,23 @@ invHint.Parent = inventoryPanel
 
 local inventoryPanelOpen = false
 invBtn.MouseButton1Click:Connect(function()
+	-- V24: Toggle new InventoryUI instead of old panel
+	local invUI = playerGui:FindFirstChild("InventoryUI_V24")
+	if invUI then
+		local panel = invUI:FindFirstChild("InventoryPanel")
+		if panel then
+			panel.Visible = not panel.Visible
+			-- Close skill panel if open
+			if panel.Visible and skillPanelOpen then
+				skillPanelOpen = false
+				skillPanel.Visible = false
+			end
+			return
+		end
+	end
+	-- Fallback: old panel
 	inventoryPanelOpen = not inventoryPanelOpen
 	inventoryPanel.Visible = inventoryPanelOpen
-	-- Close skill panel if open
 	if inventoryPanelOpen and skillPanelOpen then
 		skillPanelOpen = false
 		skillPanel.Visible = false
@@ -642,8 +656,8 @@ Instance.new("UICorner", controls).CornerRadius = UDim.new(0, 6)
 -- =========================================
 local starterPanel = Instance.new("Frame")
 starterPanel.Name = "StarterPanel"
-starterPanel.Size = UDim2.new(0, 200, 0, 60)
-starterPanel.Position = UDim2.new(1, -210, 0, 10)
+starterPanel.Size = UDim2.new(0, 150, 0, 55)
+starterPanel.Position = UDim2.new(1, -155, 0, 10)
 starterPanel.BackgroundColor3 = Color3.fromRGB(25, 20, 35)
 starterPanel.BackgroundTransparency = 0.2
 starterPanel.BorderSizePixel = 0

@@ -224,7 +224,7 @@ local function createBuildingModel(player, buildingId, level)
 		roofPanel.CanCollide = true
 		local yRoof = h + 0.6 + math.sin(roofAngle) * (w / 4 + 0.75)
 		local xRoof = side * math.cos(roofAngle) * (w / 4 + 0.75)
-		roofPanel.CFrame = CFrame.new(pos + Vector3.new(xRoof, yRoof, 0)) * CFrame.Angles(0, 0, side * roofAngle)
+		roofPanel.CFrame = CFrame.new(pos + Vector3.new(xRoof, yRoof, 0)) * CFrame.Angles(0, 0, -side * roofAngle)
 		roofPanel.Parent = model
 	end
 	

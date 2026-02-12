@@ -402,7 +402,7 @@ local function createWildMonster(spawnPos, wildLevel, isBoss, speciesId, rarity)
 	-- Billboard
 	local billboard = Instance.new("BillboardGui")
 	billboard.Size = UDim2.new(0, 160, 0, 45)
-	billboard.StudsOffset = Vector3.new(0, bodySize + 1, 0)
+	billboard.StudsOffset = Vector3.new(0, baseSize + 1, 0)
 	billboard.AlwaysOnTop = true
 	billboard.Parent = body
 	
@@ -936,45 +936,109 @@ local function spawnDefenderModel(player, monsterData)
 	return defender
 end
 
--- === BILLBOARD CRYSTAL HP ===
+-- === BILLBOARD CRYSTAL HP (barre de vie stable) ===
 local crystalCore = crystal:FindFirstChild("Core")
 if crystalCore then
 	local bb = Instance.new("BillboardGui")
-	bb.Size = UDim2.new(0, 160, 0, 50)
-	bb.StudsOffset = Vector3.new(0, 5, 0)
-	bb.MaxDistance = 200
+	bb.Name = "CrystalHPBar"
+	bb.Size = UDim2.new(0, 200, 0, 60)
+	bb.StudsOffset = Vector3.new(0, 12, 0)
+	bb.MaxDistance = 250
+	bb.AlwaysOnTop = true
 	bb.Parent = crystalCore
 	
-	local label = Instance.new("TextLabel")
-	label.Size = UDim2.new(1, 0, 1, 0)
-	label.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-	label.BackgroundTransparency = 0.3
-	label.TextColor3 = Color3.fromRGB(100, 255, 100)
-	label.TextSize = 16
-	label.Font = Enum.Font.GothamBold
-	label.Text = "CRISTAL " .. CRYSTAL_HP .. "/" .. CRYSTAL_MAX_HP
-	label.Parent = bb
+	-- Title
+	local titleLabel = Instance.new("TextLabel")
+	titleLabel.Name = "Title"
+	titleLabel.Size = UDim2.new(1, 0, 0, 18)
+	titleLabel.BackgroundTransparency = 1
+	titleLabel.TextColor3 = Color3.fromRGB(100, 255, 255)
+	titleLabel.TextSize = 14
+	titleLabel.Font = Enum.Font.GothamBold
+	titleLabel.Text = "💎 CRISTAL"
+	titleLabel.Parent = bb
 	
-	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 6)
-	corner.Parent = label
+	-- HP Bar background
+	local hpBarBg = Instance.new("Frame")
+	hpBarBg.Name = "HPBarBg"
+	hpBarBg.Size = UDim2.new(0.95, 0, 0, 14)
+	hpBarBg.Position = UDim2.new(0.025, 0, 0, 20)
+	hpBarBg.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+	hpBarBg.BorderSizePixel = 0
+	hpBarBg.Parent = bb
+	Instance.new("UICorner", hpBarBg).CornerRadius = UDim.new(0, 4)
+	local barStroke = Instance.new("UIStroke")
+	barStroke.Color = Color3.fromRGB(60, 60, 80)
+	barStroke.Thickness = 1
+	barStroke.Parent = hpBarBg
 	
+	-- HP Bar fill
+	local hpBarFill = Instance.new("Frame")
+	hpBarFill.Name = "Fill"
+	hpBarFill.Size = UDim2.new(1, 0, 1, 0)
+	hpBarFill.BackgroundColor3 = Color3.fromRGB(50, 220, 220)
+	hpBarFill.BorderSizePixel = 0
+	hpBarFill.Parent = hpBarBg
+	Instance.new("UICorner", hpBarFill).CornerRadius = UDim.new(0, 4)
+	
+	-- HP text (inside bar)
+	local hpText = Instance.new("TextLabel")
+	hpText.Name = "HPText"
+	hpText.Size = UDim2.new(1, 0, 1, 0)
+	hpText.BackgroundTransparency = 1
+	hpText.TextColor3 = Color3.new(1, 1, 1)
+	hpText.TextSize = 10
+	hpText.Font = Enum.Font.GothamBold
+	hpText.Text = CRYSTAL_HP .. "/" .. CRYSTAL_MAX_HP
+	hpText.ZIndex = 2
+	hpText.Parent = hpBarBg
+	
+	-- Status text below bar
+	local statusLabel = Instance.new("TextLabel")
+	statusLabel.Name = "Status"
+	statusLabel.Size = UDim2.new(1, 0, 0, 14)
+	statusLabel.Position = UDim2.new(0, 0, 0, 36)
+	statusLabel.BackgroundTransparency = 1
+	statusLabel.TextColor3 = Color3.fromRGB(150, 200, 200)
+	statusLabel.TextSize = 9
+	statusLabel.Font = Enum.Font.Gotham
+	statusLabel.Text = ""
+	statusLabel.Parent = bb
+	
+	-- Update loop
 	task.spawn(function()
 		while true do
-			task.wait(0.5)
+			task.wait(0.3)
 			if CRYSTAL_DOWN then
 				local remaining = math.max(0, math.floor(CRYSTAL_DOWN_UNTIL - tick()))
-				label.Text = "DETRUIT! Reparation: " .. remaining .. "s"
-				label.TextColor3 = Color3.fromRGB(255, 50, 50)
+				titleLabel.Text = "💔 CRISTAL DETRUIT"
+				titleLabel.TextColor3 = Color3.fromRGB(255, 80, 80)
+				hpBarFill.Size = UDim2.new(0, 0, 1, 0)
+				hpBarFill.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+				hpText.Text = "0/" .. CRYSTAL_MAX_HP
+				statusLabel.Text = "Reparation: " .. remaining .. "s"
+				statusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
 			else
-				label.Text = "CRISTAL " .. CRYSTAL_HP .. "/" .. CRYSTAL_MAX_HP
-				local ratio = CRYSTAL_HP / math.max(CRYSTAL_MAX_HP, 1)
-				if ratio > 0.5 then
-					label.TextColor3 = Color3.fromRGB(100, 255, 100)
-				elseif ratio > 0.25 then
-					label.TextColor3 = Color3.fromRGB(255, 200, 50)
+				local ratio = math.clamp(CRYSTAL_HP / math.max(CRYSTAL_MAX_HP, 1), 0, 1)
+				titleLabel.Text = "💎 CRISTAL"
+				hpBarFill.Size = UDim2.new(ratio, 0, 1, 0)
+				hpText.Text = CRYSTAL_HP .. "/" .. CRYSTAL_MAX_HP
+				
+				-- Color gradient
+				if ratio > 0.6 then
+					titleLabel.TextColor3 = Color3.fromRGB(100, 255, 255)
+					hpBarFill.BackgroundColor3 = Color3.fromRGB(50, 220, 220)
+					statusLabel.Text = ""
+				elseif ratio > 0.3 then
+					titleLabel.TextColor3 = Color3.fromRGB(255, 200, 50)
+					hpBarFill.BackgroundColor3 = Color3.fromRGB(255, 200, 50)
+					statusLabel.Text = "⚠ Cristal en danger!"
+					statusLabel.TextColor3 = Color3.fromRGB(255, 200, 100)
 				else
-					label.TextColor3 = Color3.fromRGB(255, 50, 50)
+					titleLabel.TextColor3 = Color3.fromRGB(255, 80, 80)
+					hpBarFill.BackgroundColor3 = Color3.fromRGB(255, 60, 60)
+					statusLabel.Text = "🔥 CRISTAL CRITIQUE!"
+					statusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
 				end
 			end
 		end

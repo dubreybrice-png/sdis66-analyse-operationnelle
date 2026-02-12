@@ -325,6 +325,27 @@ if assignRemote then
 			return
 		end
 		
+		-- Verifier que le batiment correspondant est construit
+		if assignment == "defense" then
+			local defBuilding = data.Buildings and data.Buildings["defense_bureau"]
+			if not defBuilding or not defBuilding.built then
+				notify(player, "Construis le Bureau des Defenses d'abord!")
+				return
+			end
+		elseif assignment == "mine" then
+			local mineBuilding = data.Buildings and data.Buildings["gold_mine"]
+			if not mineBuilding or not mineBuilding.built then
+				notify(player, "Construis la Mine d'Or d'abord!")
+				return
+			end
+		elseif assignment == "training" then
+			local trainBuilding = data.Buildings and data.Buildings["training_center"]
+			if not trainBuilding or not trainBuilding.built then
+				notify(player, "Construis le Centre d'Entrainement d'abord!")
+				return
+			end
+		end
+		
 		-- Retirer de l'ancien slot
 		local oldAssignment = monster.Assignment or "none"
 		if oldAssignment == "defense" then
