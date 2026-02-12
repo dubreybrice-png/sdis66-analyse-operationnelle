@@ -1,13 +1,12 @@
 --[[
-	Init V20 - MEGA UPDATE
-	Monstres, vagues, capture, batiments, crystal softfail, skills
+	Init V25 - MEGA UPDATE
+	Bigger text, fixed I key, monster movement, achievements panel
 ]]
 
 print("===================================================")
-print("  VERSION TEST 24 - INVENTORY + COOL FEATURES")
-print("  Bug fixes, Equipment UI, Bestiary, Sprint, DPS")
+print("  VERSION TEST 25 - BIGGER TEXT + MOVEMENT FIX")
+print("  I key fix, BodyVelocity, Achievements panel, Combos")
 print("===================================================")
-
 local ServerScriptService = game:GetService("ServerScriptService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -17,7 +16,7 @@ local WeaponSystem = require(ServerScriptService.Services.WeaponSystem)
 local WorldBuilder = require(ServerScriptService.Services.WorldBuilder)
 local DojoBuilder = require(ServerScriptService.Services.DojoBuilder)
 
-print("[Server] Initializing Monster Defense V20...")
+print("[Server] Initializing Monster Defense V25...")
 
 -- CREER LE DOSSIER REMOTES
 local remotes = ReplicatedStorage:FindFirstChild("Remotes")

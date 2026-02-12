@@ -610,6 +610,14 @@ local function createWildMonster(spawnPos, wildLevel, isBoss, speciesId, rarity)
 		end
 	end)
 	
+	-- BodyVelocity pour mouvement fiable (body.Velocity ne marche pas sur les modeles welds)
+	local bodyMover = Instance.new("BodyVelocity")
+	bodyMover.Name = "Mover"
+	bodyMover.MaxForce = Vector3.new(50000, 0, 50000) -- pas de force verticale (gravite)
+	bodyMover.Velocity = Vector3.new(0, 0, 0)
+	bodyMover.P = 1250
+	bodyMover.Parent = body
+	
 	monster.Parent = Workspace
 	
 	-- === IA: marcher vers cristal et attaquer ===
@@ -642,6 +650,7 @@ local function createWildMonster(spawnPos, wildLevel, isBoss, speciesId, rarity)
 			
 			-- Attaquer joueur si tres proche
 			if nearPlayer and nearDist < 6 then
+				bodyMover.Velocity = Vector3.new(0, 0, 0) -- stop pour attaquer
 				local pHum = nearPlayer.Character and nearPlayer.Character:FindFirstChild("Humanoid")
 				if pHum and tick() - lastPlayerAttack > 2 then
 					pHum:TakeDamage(math.floor(atk * 0.3))
@@ -649,6 +658,7 @@ local function createWildMonster(spawnPos, wildLevel, isBoss, speciesId, rarity)
 				end
 			-- Attaquer cristal si proche
 			elseif distCrystal < 10 then
+				bodyMover.Velocity = Vector3.new(0, 0, 0) -- stop pour attaquer
 				if tick() - lastCrystalAttack > 1.5 then
 					local dmg = math.floor(atk * 0.5)
 					CRYSTAL_HP = math.max(0, CRYSTAL_HP - dmg)
@@ -695,9 +705,12 @@ local function createWildMonster(spawnPos, wildLevel, isBoss, speciesId, rarity)
 					end
 				end
 			else
-				-- Marcher vers cristal
+				-- Marcher vers cristal (BodyVelocity)
 				local direction = (crystalPos - bodyPos).Unit
-				body.Velocity = direction * speed
+				bodyMover.Velocity = direction * speed
+				-- Orienter le monstre vers la cible
+				local lookCF = CFrame.lookAt(body.Position, body.Position + direction)
+				body.CFrame = CFrame.new(body.Position) * CFrame.Angles(0, select(2, lookCF:ToEulerAnglesYXZ()), 0)
 			end
 			
 			task.wait(0.15)
@@ -849,6 +862,15 @@ local function spawnDefenderModel(player, monsterData)
 	
 	defender:SetAttribute("OwnerUserId", player.UserId)
 	defender:SetAttribute("MonsterUID", monsterData.UID)
+	
+	-- BodyVelocity pour mouvement fiable des defenseurs
+	local defMover = Instance.new("BodyVelocity")
+	defMover.Name = "Mover"
+	defMover.MaxForce = Vector3.new(50000, 0, 50000)
+	defMover.Velocity = Vector3.new(0, 0, 0)
+	defMover.P = 1250
+	defMover.Parent = body
+	
 	defender.Parent = Workspace
 	
 	-- IA defenseur: attaquer monstres sauvages
@@ -882,6 +904,7 @@ local function spawnDefenderModel(player, monsterData)
 			
 			if nearestEnemy and nearestEnemy.PrimaryPart then
 				if nearestDist < 5 then
+					defMover.Velocity = Vector3.new(0, 0, 0) -- stop pour attaquer
 					local enemyHum = nearestEnemy:FindFirstChildOfClass("Humanoid")
 					if enemyHum and enemyHum.Health > 0 then
 						local dmg = math.random(
@@ -917,16 +940,20 @@ local function spawnDefenderModel(player, monsterData)
 					task.wait(1.2)
 				else
 					local dir = (nearestEnemy.PrimaryPart.Position - body.Position).Unit
-					body.Velocity = dir * 18
+					defMover.Velocity = dir * 18
+					-- Face direction
+					local lookCF = CFrame.lookAt(body.Position, body.Position + dir)
+					body.CFrame = CFrame.new(body.Position) * CFrame.Angles(0, select(2, lookCF:ToEulerAnglesYXZ()), 0)
 					task.wait(0.15)
 				end
 			else
 				-- Retourner pres du cristal
 				local distCrystal = (body.Position - getCrystalPos()).Magnitude
 				if distCrystal > 15 then
-					body.Velocity = (getCrystalPos() - body.Position).Unit * 12
+					local retDir = (getCrystalPos() - body.Position).Unit
+					defMover.Velocity = retDir * 12
 				else
-					body.Velocity = Vector3.new(0, 0, 0)
+					defMover.Velocity = Vector3.new(0, 0, 0)
 				end
 				task.wait(0.5)
 			end
