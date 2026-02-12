@@ -165,20 +165,233 @@ local function createWildMonster(spawnPos, wildLevel, isBoss, speciesId, rarity)
 	local monster = Instance.new("Model")
 	monster.Name = prefix .. species.name .. "_" .. MONSTER_COUNT
 	
-	local bodySize = species.size * (isBoss and 2 or 1)
+	local baseSize = species.size * (isBoss and 1.8 or 1)
+	local bodyColor = ElementSystem:GetColor(species.element)
+	local bodyMat = isBoss and Enum.Material.ForceField or Enum.Material.SmoothPlastic
+	
+	-- === CORPS (torse ovale) ===
 	local body = Instance.new("Part")
 	body.Name = "Body"
-	body.Shape = Enum.PartType.Ball
-	body.Size = Vector3.new(bodySize, bodySize, bodySize)
-	body.Color = ElementSystem:GetColor(species.element)
-	body.Material = isBoss and Enum.Material.ForceField or Enum.Material.SmoothPlastic
+	body.Size = Vector3.new(baseSize * 1.4, baseSize * 1.0, baseSize * 1.8)
+	body.Color = bodyColor
+	body.Material = bodyMat
 	body.CanCollide = true
-	body.CFrame = CFrame.new(spawnPos + Vector3.new(0, bodySize, 0))
+	body.CFrame = CFrame.new(spawnPos + Vector3.new(0, baseSize * 0.8, 0))
 	body.Parent = monster
 	monster.PrimaryPart = body
 	
-	-- Ajouter les textures de face
-	addMonsterFace(body)
+	-- === TETE (sphere un peu aplatie devant) ===
+	local head = Instance.new("Part")
+	head.Name = "Head"
+	head.Shape = Enum.PartType.Ball
+	head.Size = Vector3.new(baseSize * 1.0, baseSize * 0.9, baseSize * 0.9)
+	head.Color = bodyColor
+	head.Material = bodyMat
+	head.CanCollide = false
+	local headOffset = Vector3.new(0, baseSize * 0.3, -baseSize * 1.1)
+	head.CFrame = body.CFrame * CFrame.new(headOffset)
+	head.Parent = monster
+	
+	local headWeld = Instance.new("WeldConstraint")
+	headWeld.Part0 = body
+	headWeld.Part1 = head
+	headWeld.Parent = head
+	
+	-- Ajouter les textures de face sur la tete
+	addMonsterFace(head)
+	
+	-- === YEUX ===
+	for side = -1, 1, 2 do
+		local eye = Instance.new("Part")
+		eye.Name = "Eye"
+		eye.Shape = Enum.PartType.Ball
+		eye.Size = Vector3.new(baseSize * 0.22, baseSize * 0.25, baseSize * 0.15)
+		eye.Color = Color3.new(1, 1, 1)
+		eye.Material = Enum.Material.SmoothPlastic
+		eye.CanCollide = false
+		eye.CFrame = head.CFrame * CFrame.new(side * baseSize * 0.25, baseSize * 0.15, -baseSize * 0.35)
+		eye.Parent = monster
+		local eyeWeld = Instance.new("WeldConstraint")
+		eyeWeld.Part0 = head
+		eyeWeld.Part1 = eye
+		eyeWeld.Parent = eye
+		
+		-- Pupille
+		local pupil = Instance.new("Part")
+		pupil.Name = "Pupil"
+		pupil.Shape = Enum.PartType.Ball
+		pupil.Size = Vector3.new(baseSize * 0.12, baseSize * 0.14, baseSize * 0.1)
+		pupil.Color = Color3.fromRGB(20, 20, 20)
+		pupil.Material = Enum.Material.SmoothPlastic
+		pupil.CanCollide = false
+		pupil.CFrame = eye.CFrame * CFrame.new(0, 0, -baseSize * 0.05)
+		pupil.Parent = monster
+		local pupilWeld = Instance.new("WeldConstraint")
+		pupilWeld.Part0 = eye
+		pupilWeld.Part1 = pupil
+		pupilWeld.Parent = pupil
+	end
+	
+	-- === PATTES (4 petites pattes) ===
+	local legOffsets = {
+		Vector3.new(-baseSize * 0.45, -baseSize * 0.4, -baseSize * 0.5),
+		Vector3.new(baseSize * 0.45, -baseSize * 0.4, -baseSize * 0.5),
+		Vector3.new(-baseSize * 0.45, -baseSize * 0.4, baseSize * 0.5),
+		Vector3.new(baseSize * 0.45, -baseSize * 0.4, baseSize * 0.5),
+	}
+	for _, offset in ipairs(legOffsets) do
+		local leg = Instance.new("Part")
+		leg.Name = "Leg"
+		leg.Size = Vector3.new(baseSize * 0.3, baseSize * 0.5, baseSize * 0.3)
+		leg.Color = Color3.new(bodyColor.R * 0.7, bodyColor.G * 0.7, bodyColor.B * 0.7)
+		leg.Material = bodyMat
+		leg.CanCollide = false
+		leg.CFrame = body.CFrame * CFrame.new(offset)
+		leg.Parent = monster
+		local legWeld = Instance.new("WeldConstraint")
+		legWeld.Part0 = body
+		legWeld.Part1 = leg
+		legWeld.Parent = leg
+	end
+	
+	-- === QUEUE ===
+	local tail = Instance.new("Part")
+	tail.Name = "Tail"
+	tail.Size = Vector3.new(baseSize * 0.2, baseSize * 0.2, baseSize * 0.7)
+	tail.Color = Color3.new(bodyColor.R * 0.8, bodyColor.G * 0.8, bodyColor.B * 0.8)
+	tail.Material = bodyMat
+	tail.CanCollide = false
+	tail.CFrame = body.CFrame * CFrame.new(0, baseSize * 0.1, baseSize * 1.0) * CFrame.Angles(0, 0, math.rad(15))
+	tail.Parent = monster
+	local tailWeld = Instance.new("WeldConstraint")
+	tailWeld.Part0 = body
+	tailWeld.Part1 = tail
+	tailWeld.Parent = tail
+	
+	-- === ORNEMENTS (element-specifiques) ===
+	local elem = species.element
+	if elem == "Feu" or elem == "Demon" then
+		-- Cornes
+		for side = -1, 1, 2 do
+			local horn = Instance.new("Part")
+			horn.Name = "Horn"
+			horn.Size = Vector3.new(baseSize * 0.12, baseSize * 0.5, baseSize * 0.12)
+			horn.Color = isBoss and Color3.fromRGB(255, 50, 0) or Color3.fromRGB(200, 80, 30)
+			horn.Material = Enum.Material.Neon
+			horn.CanCollide = false
+			horn.CFrame = head.CFrame * CFrame.new(side * baseSize * 0.25, baseSize * 0.45, 0) * CFrame.Angles(0, 0, side * math.rad(20))
+			horn.Parent = monster
+			local hornWeld = Instance.new("WeldConstraint")
+			hornWeld.Part0 = head
+			hornWeld.Part1 = horn
+			hornWeld.Parent = horn
+		end
+	elseif elem == "Eau" or elem == "Vol" then
+		-- Nageoires / Ailes
+		for side = -1, 1, 2 do
+			local fin = Instance.new("Part")
+			fin.Name = "Fin"
+			fin.Size = Vector3.new(baseSize * 0.05, baseSize * 0.6, baseSize * 0.8)
+			fin.Color = Color3.new(bodyColor.R * 0.9, bodyColor.G * 0.9, bodyColor.B)
+			fin.Material = Enum.Material.SmoothPlastic
+			fin.Transparency = 0.3
+			fin.CanCollide = false
+			fin.CFrame = body.CFrame * CFrame.new(side * baseSize * 0.8, baseSize * 0.2, 0) * CFrame.Angles(0, 0, side * math.rad(30))
+			fin.Parent = monster
+			local finWeld = Instance.new("WeldConstraint")
+			finWeld.Part0 = body
+			finWeld.Part1 = fin
+			finWeld.Parent = fin
+		end
+	elseif elem == "Electrique" then
+		-- Antennes electriques
+		for side = -1, 1, 2 do
+			local antenna = Instance.new("Part")
+			antenna.Name = "Antenna"
+			antenna.Size = Vector3.new(baseSize * 0.08, baseSize * 0.6, baseSize * 0.08)
+			antenna.Color = Color3.fromRGB(255, 255, 50)
+			antenna.Material = Enum.Material.Neon
+			antenna.CanCollide = false
+			antenna.CFrame = head.CFrame * CFrame.new(side * baseSize * 0.2, baseSize * 0.5, -baseSize * 0.1)
+			antenna.Parent = monster
+			local aWeld = Instance.new("WeldConstraint")
+			aWeld.Part0 = head
+			aWeld.Part1 = antenna
+			aWeld.Parent = antenna
+		end
+	elseif elem == "Plante" then
+		-- Feuilles sur le dos
+		for i = 1, 3 do
+			local leaf = Instance.new("Part")
+			leaf.Name = "Leaf"
+			leaf.Size = Vector3.new(baseSize * 0.5, baseSize * 0.05, baseSize * 0.3)
+			leaf.Color = Color3.fromRGB(40, 160, 40)
+			leaf.Material = Enum.Material.Grass
+			leaf.CanCollide = false
+			leaf.CFrame = body.CFrame * CFrame.new(0, baseSize * 0.5, (i - 2) * baseSize * 0.4) * CFrame.Angles(0, math.rad(i * 40), 0)
+			leaf.Parent = monster
+			local lWeld = Instance.new("WeldConstraint")
+			lWeld.Part0 = body
+			lWeld.Part1 = leaf
+			lWeld.Parent = leaf
+		end
+	elseif elem == "Sol" then
+		-- Plaques rocheuses
+		for i = 1, 3 do
+			local plate = Instance.new("Part")
+			plate.Name = "ArmorPlate"
+			plate.Size = Vector3.new(baseSize * 0.5, baseSize * 0.15, baseSize * 0.4)
+			plate.Color = Color3.fromRGB(120, 100, 70)
+			plate.Material = Enum.Material.Slate
+			plate.CanCollide = false
+			plate.CFrame = body.CFrame * CFrame.new(0, baseSize * 0.55, (i - 2) * baseSize * 0.5)
+			plate.Parent = monster
+			local pWeld = Instance.new("WeldConstraint")
+			pWeld.Part0 = body
+			pWeld.Part1 = plate
+			pWeld.Parent = plate
+		end
+	elseif elem == "Ange" then
+		-- Halo
+		local halo = Instance.new("Part")
+		halo.Name = "Halo"
+		halo.Shape = Enum.PartType.Cylinder
+		halo.Size = Vector3.new(baseSize * 0.08, baseSize * 0.8, baseSize * 0.8)
+		halo.Color = Color3.fromRGB(255, 255, 180)
+		halo.Material = Enum.Material.Neon
+		halo.CanCollide = false
+		halo.CFrame = head.CFrame * CFrame.new(0, baseSize * 0.55, 0) * CFrame.Angles(0, 0, math.rad(90))
+		halo.Parent = monster
+		local hWeld = Instance.new("WeldConstraint")
+		hWeld.Part0 = head
+		hWeld.Part1 = halo
+		hWeld.Parent = halo
+	elseif elem == "Tenebres" then
+		-- Aura sombre
+		local aura = Instance.new("Part")
+		aura.Name = "Aura"
+		aura.Shape = Enum.PartType.Ball
+		aura.Size = Vector3.new(baseSize * 2.0, baseSize * 1.6, baseSize * 2.0)
+		aura.Color = Color3.fromRGB(30, 0, 60)
+		aura.Material = Enum.Material.ForceField
+		aura.Transparency = 0.7
+		aura.CanCollide = false
+		aura.CFrame = body.CFrame
+		aura.Parent = monster
+		local auWeld = Instance.new("WeldConstraint")
+		auWeld.Part0 = body
+		auWeld.Part1 = aura
+		auWeld.Parent = aura
+	end
+	
+	-- Boss glow
+	if isBoss then
+		local glow = Instance.new("PointLight")
+		glow.Brightness = 2
+		glow.Range = 15
+		glow.Color = bodyColor
+		glow.Parent = body
+	end
 	
 	-- Humanoid
 	local humanoid = Instance.new("Humanoid")
@@ -271,7 +484,19 @@ local function createWildMonster(spawnPos, wildLevel, isBoss, speciesId, rarity)
 		-- Pour l'instant, pas d'element sur l'arme
 		local damage = math.floor(baseDmg)
 		
+		-- Critical hit? (10% de chance)
+		local isCrit = math.random() < 0.10
+		if isCrit then
+			damage = math.floor(damage * 1.8)
+		end
+		
 		humanoid:TakeDamage(damage)
+		
+		-- Envoyer le numero de degats au client
+		local dmgRemote = remotes:FindFirstChild("DamageNumber")
+		if dmgRemote and body then
+			dmgRemote:FireClient(player, body.Position, damage, isCrit)
+		end
 		
 		-- Tracker les degats
 		damageTracking[player.UserId] = (damageTracking[player.UserId] or 0) + damage
@@ -494,19 +719,75 @@ local function spawnDefenderModel(player, monsterData)
 	local defender = Instance.new("Model")
 	defender.Name = "Defender_" .. monsterData.Name .. "_" .. player.UserId
 	
+	local defColor = ElementSystem:GetColor(species.element)
+	local defSize = (species.size or 2.5) * 0.8
+	local spawnCF = CFrame.new(crystalPos + Vector3.new(math.random(-8, 8), defSize * 0.8, math.random(-8, 8)))
+	
+	-- Corps
 	local body = Instance.new("Part")
 	body.Name = "Body"
-	body.Shape = Enum.PartType.Ball
-	body.Size = Vector3.new(3, 3, 3)
-	body.Color = ElementSystem:GetColor(species.element)
+	body.Size = Vector3.new(defSize * 1.4, defSize * 1.0, defSize * 1.8)
+	body.Color = defColor
 	body.Material = Enum.Material.Neon
 	body.CanCollide = true
-	body.CFrame = CFrame.new(crystalPos + Vector3.new(math.random(-8, 8), 2, math.random(-8, 8)))
+	body.CFrame = spawnCF
 	body.Parent = defender
 	defender.PrimaryPart = body
 	
-	-- Ajouter les textures de face au defenseur
-	addMonsterFace(body)
+	-- Tete
+	local dHead = Instance.new("Part")
+	dHead.Name = "Head"
+	dHead.Shape = Enum.PartType.Ball
+	dHead.Size = Vector3.new(defSize * 1.0, defSize * 0.9, defSize * 0.9)
+	dHead.Color = defColor
+	dHead.Material = Enum.Material.Neon
+	dHead.CanCollide = false
+	dHead.CFrame = body.CFrame * CFrame.new(0, defSize * 0.3, -defSize * 1.1)
+	dHead.Parent = defender
+	Instance.new("WeldConstraint", dHead).Part0 = body; dHead:FindFirstChild("WeldConstraint").Part1 = dHead
+	local dHeadWeld = Instance.new("WeldConstraint")
+	dHeadWeld.Part0 = body
+	dHeadWeld.Part1 = dHead
+	dHeadWeld.Parent = dHead
+	
+	addMonsterFace(dHead)
+	
+	-- Yeux
+	for side = -1, 1, 2 do
+		local eye = Instance.new("Part")
+		eye.Shape = Enum.PartType.Ball
+		eye.Size = Vector3.new(defSize * 0.2, defSize * 0.22, defSize * 0.12)
+		eye.Color = Color3.new(1, 1, 1)
+		eye.Material = Enum.Material.SmoothPlastic
+		eye.CanCollide = false
+		eye.CFrame = dHead.CFrame * CFrame.new(side * defSize * 0.25, defSize * 0.15, -defSize * 0.35)
+		eye.Parent = defender
+		local ew = Instance.new("WeldConstraint"); ew.Part0 = dHead; ew.Part1 = eye; ew.Parent = eye
+	end
+	
+	-- Pattes
+	for _, offset in ipairs({
+		Vector3.new(-defSize*0.4, -defSize*0.4, -defSize*0.5),
+		Vector3.new(defSize*0.4, -defSize*0.4, -defSize*0.5),
+		Vector3.new(-defSize*0.4, -defSize*0.4, defSize*0.5),
+		Vector3.new(defSize*0.4, -defSize*0.4, defSize*0.5),
+	}) do
+		local leg = Instance.new("Part")
+		leg.Size = Vector3.new(defSize * 0.3, defSize * 0.5, defSize * 0.3)
+		leg.Color = Color3.new(defColor.R * 0.7, defColor.G * 0.7, defColor.B * 0.7)
+		leg.Material = Enum.Material.Neon
+		leg.CanCollide = false
+		leg.CFrame = body.CFrame * CFrame.new(offset)
+		leg.Parent = defender
+		local lw = Instance.new("WeldConstraint"); lw.Part0 = body; lw.Part1 = leg; lw.Parent = leg
+	end
+	
+	-- Glow defenseur
+	local glow = Instance.new("PointLight")
+	glow.Brightness = 1
+	glow.Range = 10
+	glow.Color = defColor
+	glow.Parent = body
 	
 	local hum = Instance.new("Humanoid")
 	hum.MaxHealth = monsterData.MaxHP or 200

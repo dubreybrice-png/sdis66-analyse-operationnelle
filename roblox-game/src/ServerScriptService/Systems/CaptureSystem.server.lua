@@ -100,6 +100,101 @@ if requestCapture then
 			monsterModel.PrimaryPart.Material = Enum.Material.ForceField
 		end
 		
+		-- === ANIMATION DE CAPTURE: Beam laser + cercle lumineux ===
+		local captureBeam = nil
+		local captureGlow = nil
+		local captureRing = nil
+		local captureParticles = {}
+		
+		if player.Character and player.Character:FindFirstChild("HumanoidRootPart") and monsterModel.PrimaryPart then
+			local hrp = player.Character.HumanoidRootPart
+			local mPos = monsterModel.PrimaryPart.Position
+			
+			-- Beam laser (Part allongee entre joueur et monstre)
+			local dist = (hrp.Position - mPos).Magnitude
+			captureBeam = Instance.new("Part")
+			captureBeam.Name = "CaptureBeam"
+			captureBeam.Size = Vector3.new(0.3, 0.3, dist)
+			captureBeam.Color = Color3.fromRGB(100, 255, 200)
+			captureBeam.Material = Enum.Material.Neon
+			captureBeam.Transparency = 0.3
+			captureBeam.Anchored = true
+			captureBeam.CanCollide = false
+			captureBeam.CFrame = CFrame.lookAt(hrp.Position, mPos) * CFrame.new(0, 0, -dist / 2)
+			captureBeam.Parent = Workspace
+			
+			-- Glow autour du monstre (sphere forcefield)
+			captureGlow = Instance.new("Part")
+			captureGlow.Name = "CaptureGlow"
+			captureGlow.Shape = Enum.PartType.Ball
+			captureGlow.Size = Vector3.new(6, 6, 6)
+			captureGlow.Color = Color3.fromRGB(100, 255, 200)
+			captureGlow.Material = Enum.Material.ForceField
+			captureGlow.Transparency = 0.5
+			captureGlow.Anchored = true
+			captureGlow.CanCollide = false
+			captureGlow.CFrame = CFrame.new(mPos)
+			captureGlow.Parent = Workspace
+			
+			-- Anneau rotatif
+			captureRing = Instance.new("Part")
+			captureRing.Name = "CaptureRing"
+			captureRing.Shape = Enum.PartType.Cylinder
+			captureRing.Size = Vector3.new(0.2, 8, 8)
+			captureRing.Color = Color3.fromRGB(50, 200, 255)
+			captureRing.Material = Enum.Material.Neon
+			captureRing.Transparency = 0.4
+			captureRing.Anchored = true
+			captureRing.CanCollide = false
+			captureRing.CFrame = CFrame.new(mPos) * CFrame.Angles(0, 0, math.rad(90))
+			captureRing.Parent = Workspace
+			
+			-- Particules orbitales
+			for i = 1, 4 do
+				local particle = Instance.new("Part")
+				particle.Name = "CaptureParticle"
+				particle.Shape = Enum.PartType.Ball
+				particle.Size = Vector3.new(0.5, 0.5, 0.5)
+				particle.Color = Color3.fromRGB(255, 255, 100)
+				particle.Material = Enum.Material.Neon
+				particle.Transparency = 0
+				particle.Anchored = true
+				particle.CanCollide = false
+				particle.CFrame = CFrame.new(mPos)
+				particle.Parent = Workspace
+				table.insert(captureParticles, particle)
+			end
+			
+			-- Animation async: pulse le glow + rotate ring + orbit particles
+			task.spawn(function()
+				local t = 0
+				while captureGlow and captureGlow.Parent do
+					t = t + 0.03
+					local pulse = 0.3 + math.sin(t * 6) * 0.2
+					if captureGlow.Parent then
+						captureGlow.Transparency = pulse
+						captureGlow.Size = Vector3.new(5 + math.sin(t * 4), 5 + math.sin(t * 4), 5 + math.sin(t * 4))
+					end
+					if captureRing and captureRing.Parent then
+						captureRing.CFrame = CFrame.new(mPos) * CFrame.Angles(t * 2, t * 3, math.rad(90))
+					end
+					for idx, p in ipairs(captureParticles) do
+						if p.Parent then
+							local angle = t * 4 + (idx / #captureParticles) * math.pi * 2
+							p.CFrame = CFrame.new(mPos + Vector3.new(math.cos(angle) * 4, math.sin(t * 3 + idx) * 2, math.sin(angle) * 4))
+						end
+					end
+					if captureBeam and captureBeam.Parent and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+						local hrp2 = player.Character.HumanoidRootPart
+						local d2 = (hrp2.Position - mPos).Magnitude
+						captureBeam.Size = Vector3.new(0.2 + math.sin(t * 8) * 0.1, 0.2 + math.sin(t * 8) * 0.1, d2)
+						captureBeam.CFrame = CFrame.lookAt(hrp2.Position, mPos) * CFrame.new(0, 0, -d2 / 2)
+					end
+					task.wait(0.03)
+				end
+			end)
+		end
+		
 		task.wait(channelTime)
 		
 		-- Verifier que le monstre est toujours la
@@ -129,6 +224,30 @@ if requestCapture then
 		
 		if captured then
 			-- CAPTURE REUSSIE!
+			
+			-- === ANIMATION SUCCES: flash vert + monstre aspiré ===
+			if captureGlow and captureGlow.Parent then
+				captureGlow.Color = Color3.fromRGB(50, 255, 50)
+				captureGlow.Transparency = 0.2
+			end
+			-- Shrink le monstre
+			if monsterModel.PrimaryPart then
+				for i = 1, 10 do
+					for _, part in ipairs(monsterModel:GetDescendants()) do
+						if part:IsA("BasePart") then
+							part.Size = part.Size * 0.85
+							part.Transparency = part.Transparency + 0.08
+						end
+					end
+					task.wait(0.05)
+				end
+			end
+			-- Cleanup capture effects
+			if captureBeam and captureBeam.Parent then captureBeam:Destroy() end
+			if captureGlow and captureGlow.Parent then captureGlow:Destroy() end
+			if captureRing and captureRing.Parent then captureRing:Destroy() end
+			for _, p in ipairs(captureParticles) do if p.Parent then p:Destroy() end end
+			
 			local speciesId = monsterModel:GetAttribute("SpeciesID")
 			local wildLevel = monsterModel:GetAttribute("WildLevel") or 1
 			local traitId = monsterModel:GetAttribute("TraitID")
@@ -162,6 +281,18 @@ if requestCapture then
 			monsterModel:Destroy()
 		else
 			-- ECHEC
+			-- === ANIMATION ECHEC: flash rouge ===
+			if captureGlow and captureGlow.Parent then
+				captureGlow.Color = Color3.fromRGB(255, 50, 50)
+				captureGlow.Transparency = 0.2
+			end
+			task.wait(0.3)
+			-- Cleanup capture effects
+			if captureBeam and captureBeam.Parent then captureBeam:Destroy() end
+			if captureGlow and captureGlow.Parent then captureGlow:Destroy() end
+			if captureRing and captureRing.Parent then captureRing:Destroy() end
+			for _, p in ipairs(captureParticles) do if p.Parent then p:Destroy() end end
+			
 			local percent = math.floor(captureChance * 100)
 			notify(player, "Capture echouee! (" .. percent .. "% de chance) Le monstre s'enfuit...")
 			
@@ -231,26 +362,72 @@ if assignRemote then
 			table.insert(data.DefenseSlots, monsterUID)
 			monster.Assignment = "defense"
 			
-			-- Spawn le modele defenseur
-			local MonsterSpawner = {} -- Reference pour spawn
-			-- On cree directement ici
+			-- Spawn le modele defenseur (modele multi-parts)
 			local species = MonsterDB:Get(monster.SpeciesID)
 			if species then
+				local ElementSystem = require(ReplicatedStorage.Data.ElementSystem)
 				local crystalPos = Workspace.Crystal and (Workspace.Crystal.PrimaryPart and Workspace.Crystal.PrimaryPart.Position or Workspace.Crystal:GetPivot().Position) or Vector3.new(0, 5, 0)
 				
 				local defender = Instance.new("Model")
 				defender.Name = "Defender_" .. monster.Name .. "_" .. player.UserId
 				
+				local defColor = ElementSystem:GetColor(species.element)
+				local defSize = (species.size or 2.5) * 0.8
+				local spawnCF = CFrame.new(crystalPos + Vector3.new(math.random(-8, 8), defSize * 0.8, math.random(-8, 8)))
+				
 				local body = Instance.new("Part")
 				body.Name = "Body"
-				body.Shape = Enum.PartType.Ball
-				body.Size = Vector3.new(3, 3, 3)
-				body.Color = require(ReplicatedStorage.Data.ElementSystem):GetColor(species.element)
+				body.Size = Vector3.new(defSize * 1.4, defSize * 1.0, defSize * 1.8)
+				body.Color = defColor
 				body.Material = Enum.Material.Neon
 				body.CanCollide = true
-				body.CFrame = CFrame.new(crystalPos + Vector3.new(math.random(-8, 8), 2, math.random(-8, 8)))
+				body.CFrame = spawnCF
 				body.Parent = defender
 				defender.PrimaryPart = body
+				
+				-- Tete
+				local dHead = Instance.new("Part")
+				dHead.Shape = Enum.PartType.Ball
+				dHead.Size = Vector3.new(defSize * 1.0, defSize * 0.9, defSize * 0.9)
+				dHead.Color = defColor
+				dHead.Material = Enum.Material.Neon
+				dHead.CanCollide = false
+				dHead.CFrame = body.CFrame * CFrame.new(0, defSize * 0.3, -defSize * 1.1)
+				dHead.Parent = defender
+				local dhw = Instance.new("WeldConstraint"); dhw.Part0 = body; dhw.Part1 = dHead; dhw.Parent = dHead
+				
+				-- Yeux
+				for side = -1, 1, 2 do
+					local eye = Instance.new("Part")
+					eye.Shape = Enum.PartType.Ball
+					eye.Size = Vector3.new(defSize * 0.2, defSize * 0.22, defSize * 0.12)
+					eye.Color = Color3.new(1, 1, 1)
+					eye.Material = Enum.Material.SmoothPlastic
+					eye.CanCollide = false
+					eye.CFrame = dHead.CFrame * CFrame.new(side * defSize * 0.25, defSize * 0.15, -defSize * 0.35)
+					eye.Parent = defender
+					local ew = Instance.new("WeldConstraint"); ew.Part0 = dHead; ew.Part1 = eye; ew.Parent = eye
+				end
+				
+				-- Pattes
+				for _, offset in ipairs({
+					Vector3.new(-defSize*0.4, -defSize*0.4, -defSize*0.5),
+					Vector3.new(defSize*0.4, -defSize*0.4, -defSize*0.5),
+					Vector3.new(-defSize*0.4, -defSize*0.4, defSize*0.5),
+					Vector3.new(defSize*0.4, -defSize*0.4, defSize*0.5),
+				}) do
+					local leg = Instance.new("Part")
+					leg.Size = Vector3.new(defSize * 0.3, defSize * 0.5, defSize * 0.3)
+					leg.Color = Color3.new(defColor.R * 0.7, defColor.G * 0.7, defColor.B * 0.7)
+					leg.Material = Enum.Material.Neon
+					leg.CanCollide = false
+					leg.CFrame = body.CFrame * CFrame.new(offset)
+					leg.Parent = defender
+					local lw = Instance.new("WeldConstraint"); lw.Part0 = body; lw.Part1 = leg; lw.Parent = leg
+				end
+				
+				local glow = Instance.new("PointLight")
+				glow.Brightness = 1; glow.Range = 10; glow.Color = defColor; glow.Parent = body
 				
 				local hum = Instance.new("Humanoid")
 				hum.MaxHealth = monster.MaxHP or 200

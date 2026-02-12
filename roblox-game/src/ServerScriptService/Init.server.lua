@@ -4,8 +4,8 @@
 ]]
 
 print("===================================================")
-print("  VERSION TEST 20 - MEGA CONTENT UPDATE!")
-print("  Vagues, Capture, Batiments, Elements, Bestiaire")
+print("  VERSION TEST 23 - VISUAL OVERHAUL + BUILDING UIs")
+print("  Monstres reels, Batiments, Capture anim, Minimap")
 print("===================================================")
 
 local ServerScriptService = game:GetService("ServerScriptService")
@@ -52,6 +52,7 @@ local remotesList = {
 	"WeatherUpdate",         -- meteo
 	"NotifyPlayer",          -- notification generique
 	"OpenBuildingUI",        -- ouvrir l'UI d'un batiment
+	"DamageNumber",          -- afficher numero de degats flottant
 }
 
 for _, remoteName in ipairs(remotesList) do
@@ -209,4 +210,4 @@ Players.PlayerAdded:Connect(function(player)
 	end)
 end)
 
-print("[Server] V20 Init complete! All systems go.")
+print("[Server] V23 Init complete! All systems go.")
