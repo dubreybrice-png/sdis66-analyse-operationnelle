@@ -318,7 +318,7 @@
         <button class="sideBtn" onclick="openPlanningModal()" style="position:relative;overflow:hidden;"><span style="position:relative;z-index:2;">📅 Planning</span><div id="planningPreview" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;opacity:0.3;"></div></button>
       </div>
       
-      <div id="todayInfoBox" style="padding:12px;background:rgba(255,255,255,0.05);border-top:1px solid rgba(255,255,255,.1);font-size:10px;color:#8899b3;margin-top:auto;">
+      <div id="todayInfoBox" style="padding:12px;background:rgba(255,255,255,0.05);border-top:1px solid rgba(255,255,255,.1);font-size:10px;color:#8899b3;margin-top:15px;">
         <div style="font-weight:bold;color:#e0e8f0;margin-bottom:8px;" id="todayDate">-</div>
         <div style="line-height:1.6;">
           <div><span style="color:#8899b3;">ISP Garde Matin:</span> <span id="todayGardeMatin" style="color:#e0e8f0;font-weight:bold;">-</span></div>
@@ -343,7 +343,7 @@
         
         <div class="periodHero">Les données sont comparées du <b style="color:#1a2744;font-size:16px;">01/01/2026</b> au <b style="color:#1a2744;font-size:16px;"><span id="cutoffDateBig">...</span></b></div>
 
-        <div class="kpiGrid">
+        <div class="kpiGrid" style="display:flex;gap:15px;flex-wrap:wrap;">
            <div class="panel"><div class="panelBody">
               <div style="font-size:11px;color:var(--muted)">Interventions — Garde PSud</div><div style="font-size:32px;font-weight:900" id="psud2026">...</div>
               <div class="kpiBottom"><span style="color:var(--muted);font-size:11px">Total 2025:</span><span class="badge" id="psud2025Badge">...</span></div>
@@ -361,7 +361,7 @@
            </div></div>
         </div>
 
-        <div class="panel" style="margin-bottom:20px;"><div class="panelBody" style="display:flex;align-items:center;gap:40px;">
+        <div class="panel" style="margin-bottom:20px;width:fit-content;"><div class="panelBody" style="display:flex;align-items:center;gap:40px;">
             <div><div style="font-size:11px;color:var(--muted)">Astreintes / Dispo 2026</div><div style="font-size:24px;font-weight:bold" id="hrs2026">...</div><div style="font-size:9px;color:var(--muted);margin-top:4px;">Comparaison du 1er janvier au <span id="cutoffCompAst">...</span></div></div>
             <div><div style="font-size:11px;color:var(--muted)">Total 2025</div><div class="badge" id="hrs2025Badge">...</div></div>
         </div></div>
