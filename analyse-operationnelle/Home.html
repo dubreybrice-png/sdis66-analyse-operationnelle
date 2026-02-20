@@ -733,6 +733,15 @@
                 <button class="btn ok" id="sendBtn" onclick="sendApp()">Envoyer et Clôturer</button>
                 <button class="btn warn" id="skipBtn" onclick="skipApp()">Ignorer</button>
             </div>
+            <!-- Overlay chargement sauvegarde -->
+            <div id="saveOverlay" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.85);z-index:999999;flex-direction:column;align-items:center;justify-content:center;gap:20px;">
+                <div style="font-size:24px;font-weight:bold;color:var(--accent3);text-transform:uppercase;letter-spacing:2px;">⏳ Enregistrement en cours...</div>
+                <div style="width:400px;max-width:90vw;">
+                    <div class="neo-text"><span>SAUVEGARDE</span><span id="savePct">0%</span></div>
+                    <div class="neo-track"><div id="saveFill" class="neo-fill" style="width:0%"></div></div>
+                </div>
+                <div style="font-size:13px;color:var(--muted);margin-top:10px;">Ne fermez pas cette page</div>
+            </div>
             </div>
         </div>
       </div>
@@ -1164,6 +1173,12 @@
       isAppSubmitting = true;
       setStatus("Enregistrement..."); setButtons(true);
 
+      // Afficher overlay chargement
+      const ov = document.getElementById("saveOverlay");
+      ov.style.display = "flex";
+      let pct = 0;
+      const saveInterval = setInterval(() => { if(pct < 90) { pct += Math.random()*15; pct = Math.min(pct, 90); } document.getElementById("saveFill").style.width = pct+"%"; document.getElementById("savePct").textContent = Math.round(pct)+"%"; }, 200);
+
       const checks = {};
       document.querySelectorAll('input[type="checkbox"][name^="chk_"]').forEach(cb => {
          const dataCol = cb.getAttribute('data-col');
@@ -1201,6 +1216,10 @@
       console.log("Sending saveCase payload:", payload);
       google.script.run.withSuccessHandler((res)=>{ 
           console.log("saveCase success:", res);
+          clearInterval(saveInterval);
+          document.getElementById("saveFill").style.width = "100%";
+          document.getElementById("savePct").textContent = "100%";
+          setTimeout(() => { document.getElementById("saveOverlay").style.display = "none"; }, 500);
           isAppSubmitting = false;
           setStatus("Sauvegardé"); 
           toast("Enregistré et Clôturé ✅"); 
@@ -1208,6 +1227,8 @@
       })
       .withFailureHandler(e=>{ 
           console.error("saveCase error:", e);
+          clearInterval(saveInterval);
+          document.getElementById("saveOverlay").style.display = "none";
           isAppSubmitting = false;
           setStatus("Erreur"); 
           toast("Erreur: " + e.message,"err"); 
