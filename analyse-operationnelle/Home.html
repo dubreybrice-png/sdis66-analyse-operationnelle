@@ -38,7 +38,7 @@
     49: "Hors Protocole (HPE)"
   };</script>
   <style>
-    :root{ --bg0:#0b0f1f; --bg1:#0f1430; --text:#eaf0ff; --muted:#a9b5db; --border:rgba(255,255,255,.08); --accent3:#4fc3f7; --ok:#47d18c; --radius:18px; --red:#ff4d4d; --orange:#ffa500; --accent:#6ea8fe; --danger:#ff6b6b; --selectBg:#0e1730; }
+    :root{ --bg0:#060911; --bg1:#0a0e1a; --text:#eaf0ff; --muted:#a9b5db; --border:rgba(255,255,255,.08); --accent3:#4fc3f7; --ok:#47d18c; --radius:18px; --red:#ff4d4d; --orange:#ffa500; --accent:#6ea8fe; --danger:#ff6b6b; --selectBg:#0e1730; }
     *{ box-sizing:border-box; }
     body{ margin:0; font-family: ui-sans-serif, system-ui, sans-serif; color:var(--text); background:linear-gradient(180deg, var(--bg0), var(--bg1)); min-height:100vh; font-size:13px; }
     
@@ -375,8 +375,8 @@
             <div class="panelHead">Données par ISP</div>
             <div class="panelBody">
                 <div id="ispLogin" style="display:flex;gap:10px;align-items:center;">
-                    <input type="text" id="matInput" class="inp" placeholder="Matricule" style="width:120px;">
-                    <input type="text" id="dobInput" class="inp" placeholder="JJ/MM/AAAA" style="width:140px;">
+                    <input type="text" id="matInput" class="inp" placeholder="Matricule" style="width:120px;" onkeydown="if(event.key==='Enter')loginIsp()">
+                    <input type="text" id="dobInput" class="inp" placeholder="JJ/MM/AAAA" style="width:140px;" onkeydown="if(event.key==='Enter')loginIsp()">
                     <button class="btnGo" style="width:auto;margin:0" onclick="loginIsp()">Voir mes données</button>
                     <div id="ispLoadBox" class="mini-load-box">
                        <div class="mini-load-text"><span id="ispPct">0</span>%</div>
@@ -443,7 +443,7 @@
             <div class="panelHead">Administration (à date)</div>
             <div class="panelBody">
                 <div id="adminLogin" style="display:flex;gap:10px;align-items:center;">
-                    <input type="password" id="adminPwd" class="inp" placeholder="Code...">
+                    <input type="password" id="adminPwd" class="inp" placeholder="Code..." onkeydown="if(event.key==='Enter')loadAdmin()">
                     <button class="btnGo" style="width:auto;margin:0" onclick="loadAdmin()">Valider</button>
                 </div>
                 <div id="adminLoadBox" class="mini-load-box" style="margin-top:10px;">
