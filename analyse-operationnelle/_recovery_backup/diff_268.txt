@@ -1,0 +1,2181 @@
+Comparaison des fichiers _RECOVERY_BACKUP\Home_local.html et HOME.HTML
+***** _RECOVERY_BACKUP\Home_local.html
+    1:  n++<!doctype html>
+    2:  <!-- Version: v1.50 | 2026-01-30 -->
+    3:  <html>
+***** HOME.HTML
+    1:  <!doctype html>
+    2:  <!-- Version: v1.72 | 2026-02-09 | FIX: div+chk+onerror -->
+    3:  <html>
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+    6:    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    7:    <script>const SCRIPT_URL = "<?= scriptUrl ?>";
+***** HOME.HTML
+    6:    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    7:    <script>
+    8:      window.onerror = function(msg, src, line, col, err) {
+    9:          try {
+   10:              var d = document.createElement('div');
+   11:              d.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#d00;color:#fff;z-index:999999;padding:15px;font-
+   12:  size:14px;font-family:monospace;white-space:pre-wrap;';
+   13:              var srcInfo = src ? (' | src: ' + src) : '';
+   14:              d.textContent = 'JS ERROR: ' + msg + ' (ligne ' + line + ', col ' + col + ')' + srcInfo;
+   15:              if (err && err.stack) {
+   16:                  var pre = document.createElement('pre');
+   17:                  pre.style.cssText = 'margin:8px 0 0 0;white-space:pre-wrap;opacity:0.9;font-size:12px;';
+   18:                  pre.textContent = err.stack;
+   19:                  d.appendChild(pre);
+   20:              }
+   21:              if (document.body) {
+   22:                  document.body.insertBefore(d, document.body.firstChild);
+   23:              } else {
+   24:                  document.addEventListener('DOMContentLoaded', function(){
+   25:                      document.body.insertBefore(d, document.body.firstChild);
+   26:                  });
+   27:              }
+   28:              console.error('JS ERROR:', msg, src, line, col, err);
+   29:          } catch (e) {
+   30:              // Fallback silent
+   31:          }
+   32:      };
+   33:    </script>
+   34:    <script>const SCRIPT_URL = "<?= scriptUrl ?>";
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+   11:      22: "VVP (1A)",
+   12:      23: "Hypoglyc+¬mie (2A)",
+   13:      24: "D+¬tr. Circu (3A)",
+   14:      25: "Brulures (4A)",
+***** HOME.HTML
+   38:      22: "VVP (1A)",
+   39:      23: "Hypoglyc\u00e9mie (2A)",
+   40:      24: "D\u00e9tr. Circu (3A)",
+   41:      25: "Brulures (4A)",
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+   20:      31: "DRA (8A)",
+   21:      32: "Intox Fum+¬es (9A)",
+   22:      33: "Convulsions (10A)",
+***** HOME.HTML
+   47:      31: "DRA (8A)",
+   48:      32: "Intox Fum\u00e9es (9A)",
+   49:      33: "Convulsions (10A)",
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+   28:      39: "VVP (1E)",
+   29:      40: "Hypoglyc+¬mie (2E)",
+   30:      41: "Brulures (4E)",
+***** HOME.HTML
+   55:      39: "VVP (1E)",
+   56:      40: "Hypoglyc\u00e9mie (2E)",
+   57:      41: "Brulures (4E)",
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+   34:      45: "DRA (8E)",
+   35:      46: "Intox Fum+¬es (9E)",
+   36:      47: "Convulsions (10E)",
+   37:      48: "Nouveau N+¬ (11E)",
+   38:      49: "Hors Protocole (HPE)"
+***** HOME.HTML
+   61:      45: "DRA (8E)",
+   62:      46: "Intox Fum\u00e9es (9E)",
+   63:      47: "Convulsions (10E)",
+   64:      48: "Nouveau N\u00e9 (11E)",
+   65:      49: "Hors Protocole (HPE)"
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+   58:  ,26,59,.65); backdrop-filter:blur(10px); display:flex; flex-direction:column; overflow-y:auto; }
+   59:      .sideTop{ display:flex; flex-direction:column; align-items:center; text-align:center; gap:10px; margin-bottom:30px; }
+   60:      .sideLogo{ width:70px; height:70px; border-radius:14px; overflow:hidden; border:1px solid var(--border); }
+   61:      .sideLogo img{ width:100%; height:100%; object-fit:cover; }
+***** HOME.HTML
+   85:  ,26,59,.65); backdrop-filter:blur(10px); display:flex; flex-direction:column; overflow-y:auto; }
+   86:      .sideTop{ display:flex; flex-direction:column; align-items:center; text-align:center; margin-bottom:30px; }
+   87:      .sideLogo{ width:60px; height:60px; border-radius:12px; overflow:hidden; border:1px solid var(--border); margin-bottom:12px
+   88:  ; }
+   89:      .sideLogo img{ width:100%; height:100%; object-fit:cover; }
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+   74:      .view.active { display:block; }
+   75:      #viewChefferie.active { display:flex !important; flex-direction:column; position:absolute; top:0; left:0; right:0; bottom:0
+   76:  ; overflow:hidden; background:#0b0f1f; z-index:50; }
+   77:      @keyframes fadeIn { from{opacity:0;transform:translateY(5px);} to{opacity:1;transform:translateY(0);} }
+***** HOME.HTML
+  102:      .view.active { display:block; }
+  103:      #viewChefferie.active { display:flex; flex-direction:column; position:absolute; top:0; left:0; right:0; bottom:0; z-index:1
+  104:  0; background:linear-gradient(180deg, var(--bg0), var(--bg1)); }
+  105:      .chefHeader { flex-shrink:0; border-bottom:2px solid var(--border); padding:12px 20px; background:var(--bg0); }
+  106:      .chefBtnRow { flex-shrink:0; background:rgba(11,15,31,0.98); border-bottom:1px solid var(--border); padding:15px 20px; disp
+  107:  lay:flex; gap:12px; flex-wrap:wrap; }
+  108:      .chefContent { flex:1; overflow-y:auto; padding:20px; min-height:0; }
+  109:      @keyframes fadeIn { from{opacity:0;transform:translateY(5px);} to{opacity:1;transform:translateY(0);} }
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+  119:  
+  120:      .btn-row { display:flex; gap:15px; margin-bottom:20px; position:sticky; top:35px; z-index:10; background:rgba(11,15,31,0.95
+  121:  ); padding:15px 0; border-bottom:1px solid var(--border); }
+  122:      .c-btn { flex:1; padding:15px; background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:12px; color
+***** HOME.HTML
+  151:  
+  152:      .btn-row { display:flex; gap:15px; margin-bottom:20px; position:sticky; top:0; z-index:10; background:rgba(11,15,31,0.95); 
+  153:  padding:15px 0; border-bottom:1px solid var(--border); }
+  154:      .c-btn { flex:1; padding:15px; background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:12px; color
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+  157:      
+  158:      #modalPdf { flex:2.5; border:0; background:#000; position:relative; width:auto; height:auto; }
+  159:      #modalPdfInfo { flex:1; min-width:350px; background:#1a2245; padding:20px; border-left:1px solid var(--border); overflow-y:
+  160:  auto; display:flex; flex-direction:column; gap:15px; }
+  161:      
+***** HOME.HTML
+  189:      
+  190:      #modalPdf { flex:1; border:0; background:#000; }
+  191:      #modalPdfInfo { flex:0 0 300px; background:#1a2245; padding:20px; border-left:1px solid var(--border); overflow-y:auto; dis
+  192:  play:flex; flex-direction:column; gap:15px; }
+  193:      
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+  199:  radius: var(--radius); box-shadow: 0 18px 50px rgba(0,0,0,.35); overflow:hidden; display:flex; flex-direction:column; flex:1; }
+  200:  
+  201:      .cardHead{ padding:8px 12px; border-bottom:1px solid var(--border); background: rgba(255,255,255,.02); flex-shrink:0; }
+***** HOME.HTML
+  231:  radius: var(--radius); box-shadow: 0 18px 50px rgba(0,0,0,.35); overflow:hidden; display:flex; flex-direction:column; flex:1; }
+  232:      .cardHead{ padding:8px 12px; border-bottom:1px solid var(--border); background: rgba(255,255,255,.02); flex-shrink:0; }
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+  295:   id="cntAppBadge">...</span></button>
+  296:          <button class="sideBtn" onclick="askPass('chef')"><span>Acc+¿s chefferie</span><span style="display:flex;align-items:ce
+  297:  nter;gap:4px;"><span class="badgeBtn" id="cntIspGBadge">...</span><span class="badgeBtn" style="background:var(--orange);color:
+  298:  #000;" id="cntMedBadge">...</span><span class="badgeBtn red" id="cntActionBadge">...</span></span></button>
+  299:        </div>
+***** HOME.HTML
+  326:   id="cntAppBadge">...</span></button>
+  327:          <button class="sideBtn" onclick="askPass('chef')"><span>Acc+¿s Chefferie</span><span style="display:flex;align-items:ce
+  328:  nter;gap:4px;"><span class="badgeBtn" id="cntIspGBadge">...</span><span style="color:var(--muted);">/</span><span class="badgeB
+  329:  tn" style="background:var(--orange);color:#000;" id="cntIspRBadge">...</span></span></button>
+  330:        </div>
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+  383:  span>h | Total 2025: <span id="ispGarde25Tot"></span>h</div>
+  384:                              <hr style="border:0;border-top:1px solid #333;margin:8px 0 4px 0">
+  385:                              <div style="font-size:11px;font-weight:bold;margin-bottom:3px;">D+¬tail mensuel 2026 :</div>
+  386:                              <table style="font-size:10px;width:100%;border-collapse:collapse;">
+  387:                                  <thead><tr style="border-bottom:1px solid #444;"><th style="text-align:left;padding:2px 4px;">M
+  388:  ois</th><th style="text-align:right;padding:2px 4px;">Astreinte</th><th style="text-align:right;padding:2px 4px;">Garde</th></t
+  389:  r></thead>
+  390:                                  <tbody id="ispMonthlyTbody"></tbody>
+  391:                              </table>
+  392:                          </div>
+***** HOME.HTML
+  414:  span>h | Total 2025: <span id="ispGarde25Tot"></span>h</div>
+  415:                          </div>
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+  449:                                          <th onclick="sortAdmin(0)">Nom <span id="sortA0">Gåò</span></th>
+  450:                                          <th onclick="sortAdmin(1)" class="num">Nbr inter<br>hors garde<br>2026 <span id="sortA1
+  451:  ">Gû+</span></th>
+  452:                                          <th onclick="sortAdmin(2)" class="num" style="color:var(--muted)">Nbr inter<br>hors gar
+  453:  de<br>2025 <span id="sortA2">Gåò</span></th>
+  454:                                          <th onclick="sortAdmin(3)" class="num">Nbr inter<br>en garde<br>2026 <span id="sortA3">
+  455:  Gåò</span></th>
+  456:                                          <th onclick="sortAdmin(4)" class="num" style="color:var(--muted)">Nbr inter<br>en garde
+  457:  <br>2025 <span id="sortA4">Gåò</span></th>
+  458:                                          <th onclick="sortAdmin(5)" class="num">Temps astreinte<br>et dispo<br>2026 <span id="so
+  459:  rtA5">Gåò</span></th>
+  460:                                          <th onclick="sortAdmin(6)" class="num" style="color:var(--muted)">Temps astreinte<br>et
+  461:   dispo<br>2025 <span id="sortA6">Gåò</span></th>
+  462:                                          <th onclick="sortAdmin(7)" class="num">Temps pass+¬<br>en garde<br>2026 <span id="sortA
+  463:  7">Gåò</span></th>
+  464:                                          <th onclick="sortAdmin(8)" class="num" style="color:var(--muted)">Temps pass+¬<br>en ga
+  465:  rde<br>2025 <span id="sortA8">Gåò</span></th>
+  466:                                      </tr></thead>
+***** HOME.HTML
+  472:                                          <th onclick="sortAdmin(0)">Nom <span id="sortA0">Gåò</span></th>
+  473:                                          <th onclick="sortAdmin(1)" class="num">Inter<br>Hors Garde<br>26 <span id="sortA1">Gû+<
+  474:  /span></th>
+  475:                                          <th onclick="sortAdmin(2)" class="num" style="color:var(--muted)">Inter<br>Hors Garde<b
+  476:  r>25 <span id="sortA2">Gåò</span></th>
+  477:                                          <th onclick="sortAdmin(3)" class="num">Inter<br>En Garde<br>26 <span id="sortA3">Gåò</s
+  478:  pan></th>
+  479:                                          <th onclick="sortAdmin(4)" class="num" style="color:var(--muted)">Inter<br>En Garde<br>
+  480:  25 <span id="sortA4">Gåò</span></th>
+  481:                                          <th onclick="sortAdmin(5)" class="num">Astreinte<br>26 <span id="sortA5">Gåò</span></th
+  482:  >
+  483:                                          <th onclick="sortAdmin(6)" class="num" style="color:var(--muted)">Astreinte<br>25 <span
+  484:   id="sortA6">Gåò</span></th>
+  485:                                          <th onclick="sortAdmin(7)" class="num">Garde<br>26 <span id="sortA7">Gåò</span></th>
+  486:                                          <th onclick="sortAdmin(8)" class="num" style="color:var(--muted)">Garde<br>25 <span id=
+  487:  "sortA8">Gåò</span></th>
+  488:                                      </tr></thead>
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+  472:                              <div class="table-title">Taux sollicitation</div>
+  473:                              <div style="font-size:10px;color:gray;margin-bottom:5px;padding:0 8px;">(% de temps pass+¬ en inter
+  474:  vention par rapport temps dispo total hors garde)</div>
+  475:                              <div class="admin-scroll">
+***** HOME.HTML
+  494:                              <div class="table-title">Taux sollicitation</div>
+  495:                              <div class="admin-scroll">
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+  484:                          <div class="panel"><div class="panelHead">Interventions par CIS (d+¬croissant)</div><div class="panelSc
+  485:  rollWrapper" style="max-height:250px;"><table id="tableAdminCis"><thead><tr><th>CIS</th><th class="num">Nbr intervention<br>en 
+  486:  2026</th><th class="num">Nbr intervention<br>en 2025 (Date)</th><th class="num">Nbr intervention<br>en 2025 (Total)</th></tr></
+  487:  thead><tbody></tbody></table></div></div>
+  488:                          <div class="panel"><div class="panelHead">Interventions par Secteur (d+¬croissant)</div><div class="pan
+  489:  elScrollWrapper" style="max-height:250px;"><table id="tableAdminSect"><thead><tr><th>Secteur</th><th class="num">Nbr interventi
+  490:  on<br>en 2026</th><th class="num">Nbr intervention<br>en 2025 (Date)</th><th class="num">Nbr intervention<br>en 2025 (Total)</t
+  491:  h></tr></thead><tbody></tbody></table></div></div>
+  492:                      </div>
+  493:                      
+  494:                      <div class="panel" style="margin-top:20px;">
+  495:                          <div class="panelHead">Temps de disponibilit+¬ et astreinte par ISP et par mois GÇö 2026</div>
+  496:                          <div class="panelScrollWrapper" style="max-height:400px;">
+  497:                              <table id="adminMonthlyTable" style="font-size:11px;">
+  498:                                  <thead><tr>
+  499:                                      <th>Nom</th>
+  500:                                      <th class="num">Jan</th><th class="num">F+¬v</th><th class="num">Mar</th>
+  501:                                      <th class="num">Avr</th><th class="num">Mai</th><th class="num">Jun</th>
+  502:                                      <th class="num">Jul</th><th class="num">Ao++</th><th class="num">Sep</th>
+  503:                                      <th class="num">Oct</th><th class="num">Nov</th><th class="num">D+¬c</th>
+  504:                                      <th class="num" style="font-weight:bold;">Total</th>
+  505:                                  </tr></thead>
+  506:                                  <tbody id="adminMonthlyTbody"></tbody>
+  507:                              </table>
+  508:                          </div>
+  509:                      </div>
+***** HOME.HTML
+  504:                          <div class="panel"><div class="panelHead">Interventions par CIS (d+¬croissant)</div><div class="panelSc
+  505:  rollWrapper" style="max-height:250px;"><table id="tableAdminCis"><thead><tr><th>CIS</th><th class="num">2026</th><th class="num
+  506:  ">2025 (Date)</th><th class="num">2025 (Total)</th></tr></thead><tbody></tbody></table></div></div>
+  507:                          <div class="panel"><div class="panelHead">Interventions par Secteur (d+¬croissant)</div><div class="pan
+  508:  elScrollWrapper" style="max-height:250px;"><table id="tableAdminSect"><thead><tr><th>Secteur</th><th class="num">2026</th><th c
+  509:  lass="num">2025 (Date)</th><th class="num">2025 (Total)</th></tr></thead><tbody></tbody></table></div></div>
+  510:                      </div>
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+  510:                  </div>
+  511:                  </div>
+  512:              </div>
+***** HOME.HTML
+  511:                  </div>
+  512:              </div>
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+  517:        <div id="viewChefferie" class="view">
+  518:            <!-- Header fixe -->
+  519:            <div style="background:var(--bg); border-bottom:2px solid var(--border); padding:12px 20px; display:flex; align-items
+  520:  :center; gap:15px;">
+  521:                <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTytvs_50DuR6nodg_2fA5DzNfpdDSR1s_YaQ&s" style="wi
+  522:  dth:40px;height:40px;border-radius:10px;border:1px solid var(--border);">
+  523:                <button class="btnGo" style="width:auto;padding:8px 16px;" onclick="goHome()">GåÉ Retour Dashboard</button>
+  524:                <h1 style="margin:0;font-size:18px;font-weight:800;">Espace Chefferie</h1>
+  525:            </div>
+  526:            
+  527:            <!-- 4 Boutons TOUJOURS EN HAUT -->
+  528:            <div style="background:rgba(11,15,31,0.98); border-bottom:1px solid var(--border); padding:15px 20px; display:flex; g
+  529:  ap:12px; position:sticky; top:0; z-index:100;">
+  530:                <button class="c-btn" style="flex:1;" onclick="showChefferieMode('app')">
+  531:                    <h3 style="margin:0 0 4px 0; font-size:14px;">=ƒôï Faire APP Chefferie <span class="badgeBtn" id="btnBadgeIsp
+  532:  G" style="font-size:10px;">...</span></h3>
+  533:                    <p style="margin:0; font-size:11px; opacity:0.8;">Fiches Bilan/Pisu incomplets</p>
+***** HOME.HTML
+  517:        <div id="viewChefferie" class="view">
+  518:            <div class="chefHeader">
+  519:                <button class="btnGo" style="width:auto;padding:8px 16px;" onclick="goHome()">GåÉ Retour Dashboard</button>
+  520:                <h1 style="display:inline;margin-left:20px;font-size:18px;font-weight:800;">Espace Chefferie</h1>
+  521:            </div>
+  522:            <div class="chefBtnRow">
+  523:                <button class="c-btn" style="flex:1;" onclick="showChefferieMode('app')">
+  524:                    <h3 style="margin:0 0 4px 0; font-size:14px;">=ƒôï Faire APP Chefferie</h3>
+  525:                    <p style="margin:0; font-size:11px; opacity:0.8;">Fiches Bilan/Pisu incomplets</p>
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+  535:                <button class="c-btn" style="flex:1;" onclick="showChefferieMode('med')">
+  536:                    <h3 style="margin:0 0 4px 0; font-size:14px;">GÜán+Å Analyse M+¬decin Cheffe <span class="badgeBtn" style="ba
+  537:  ckground:var(--orange);color:#000;font-size:10px;" id="btnBadgeMed">...</span></h3>
+  538:                    <p style="margin:0; font-size:11px; opacity:0.8;">Erreurs graves</p>
+***** HOME.HTML
+  527:                <button class="c-btn" style="flex:1;" onclick="showChefferieMode('med')">
+  528:                    <h3 style="margin:0 0 4px 0; font-size:14px;">GÜán+Å Analyse M+¬decin Cheffe</h3>
+  529:                    <p style="margin:0; font-size:11px; opacity:0.8;">Erreurs graves</p>
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+  540:                <button class="c-btn" style="flex:1;" onclick="showChefferieMode('action')">
+  541:                    <h3 style="margin:0 0 4px 0; font-size:14px;">=ƒÄ» R+¬aliser actions chefferie <span class="badgeBtn red" sty
+  542:  le="font-size:10px;" id="btnBadgeAction">...</span></h3>
+  543:                    <p style="margin:0; font-size:11px; opacity:0.8;">Actions finales +á mener</p>
+  544:                </button>
+***** HOME.HTML
+  531:                <button class="c-btn" style="flex:1;" onclick="showChefferieMode('action')">
+  532:                    <h3 style="margin:0 0 4px 0; font-size:14px;">=ƒÄ» Action +á mener chefferie</h3>
+  533:                    <p style="margin:0; font-size:11px; opacity:0.8;">Actions finales +á traiter</p>
+  534:                </button>
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+  549:            </div>
+  550:            
+  551:            <!-- Zone de contenu -->
+  552:            <div style="flex:1; overflow-y:auto; padding:20px;">
+  553:                <!-- Mode APP Chefferie -->
+  554:                <div id="chefModeApp" style="display:none;">
+  555:                    <div id="chefAppContent"></div>
+  556:                </div>
+  557:                
+  558:                <!-- Mode M+¬decin -->
+  559:                <div id="chefModeMed" style="display:none;">
+  560:                    <div id="chefMedContent"></div>
+  561:                </div>
+  562:                
+  563:                <!-- Mode Action -->
+  564:                <div id="chefModeAction" style="display:none;">
+  565:                    <div id="chefActionContent"></div>
+  566:                </div>
+  567:  
+  568:                <!-- Mode Data -->
+  569:                <div id="chefModeData" style="display:none;">
+  570:                    <div style="display:flex; gap:10px; margin-bottom:15px;">
+  571:                        <button class="btnGo" style="flex:1; background:var(--red); border-color:var(--red); color:#fff;" onclick
+  572:  ="showErrorsByType('Erreur Grave')">=ƒÜ¿ Voir erreurs graves</button>
+  573:                        <button class="btnGo" style="flex:1; background:var(--orange); border-color:var(--orange); color:#000;" o
+  574:  nclick="showErrorsByType('Erreur Pisu L+¬g+¿re')">GÜá Voir erreurs pisu l+¬g+¿res</button>
+  575:                        <button class="btnGo" style="flex:1; background:var(--orange); border-color:var(--orange); color:#000;" o
+  576:  nclick="showErrorsByType('Erreur Bilan L+¬g+¿re')">GÜá Voir erreurs bilan l+¬g+¿res</button>
+  577:                    </div>
+  578:                    <div class="panel">
+  579:                        <div class="panelHead">R+¬capitulatif par ISP</div>
+  580:                        <div class="panelBody">
+  581:                            <table id="globalTable" style="width:100%;">
+  582:                                <thead><tr>
+  583:                                    <th>Nom ISP</th>
+  584:                                    <th>Bilan OK</th>
+  585:                                    <th>Pisu OK</th>
+  586:                                    <th>Err. Bilan L+¬g.</th>
+  587:                                    <th>Err. Pisu L+¬g.</th>
+  588:                                    <th>Err. Grave</th>
+  589:                                </tr></thead>
+  590:                                <tbody id="globalTbody"></tbody>
+  591:                            </table>
+  592:                        </div>
+***** HOME.HTML
+  539:            </div>
+  540:            <div class="chefContent">
+  541:                    <!-- Mode APP Chefferie -->
+  542:                    <div id="chefModeApp" style="display:none;">
+  543:                        <div id="chefAppContent"></div>
+  544:                    </div>
+  545:                    
+  546:                    <!-- Mode M+¬decin -->
+  547:                    <div id="chefModeMed" style="display:none;">
+  548:                        <div id="chefMedContent"></div>
+  549:                    </div>
+  550:                    
+  551:                    <!-- Mode Action -->
+  552:                    <div id="chefModeAction" style="display:none;">
+  553:                        <div id="chefActionContent"></div>
+  554:                    </div>
+  555:                    
+  556:                    <!-- Mode Data -->
+  557:                    <div id="chefModeData" style="display:none;">
+  558:                        <div style="display:flex; gap:12px; margin-bottom:15px;">
+  559:                            <button class="btnGo" style="background:var(--red);border-color:rgba(255,77,77,0.5);box-shadow:0 0 12
+  560:  px rgba(255,77,77,0.3);" onclick="loadAllGraveErrors()">=ƒÜ¿ Voir toutes les erreurs graves</button>
+  561:                            <button class="btnGo" style="background:var(--orange);border-color:rgba(255,165,0,0.5);box-shadow:0 0
+  562:   12px rgba(255,165,0,0.3);" onclick="loadAllLegereErrors()">GÜán+Å Voir toutes les erreurs l+¬g+¿res</button>
+  563:                        </div>
+  564:                        <div class="panel">
+  565:                            <div class="panelHead">R+¬capitulatif par ISP</div>
+  566:                            <div class="panelBody">
+  567:                                <table id="globalTable" style="width:100%;">
+  568:                                    <thead><tr>
+  569:                                        <th onclick="sortGlobal(0)" style="cursor:pointer;">Nom ISP <span id="sortIcon0">Gåò</spa
+  570:  n></th>
+  571:                                        <th onclick="sortGlobal(1)" style="cursor:pointer;">Bilan OK <span id="sortIcon1">Gåò</sp
+  572:  an></th>
+  573:                                        <th onclick="sortGlobal(2)" style="cursor:pointer;">Pisu OK <span id="sortIcon2">Gåò</spa
+  574:  n></th>
+  575:                                        <th onclick="sortGlobal(3)" style="cursor:pointer;">Err. Bilan L+¬g. <span id="sortIcon3"
+  576:  >Gåò</span></th>
+  577:                                        <th onclick="sortGlobal(4)" style="cursor:pointer;">Err. Pisu L+¬g. <span id="sortIcon4">
+  578:  Gåò</span></th>
+  579:                                        <th onclick="sortGlobal(5)" style="cursor:pointer;">Err. Grave <span id="sortIcon5">Gåò</
+  580:  span></th>
+  581:                                    </tr></thead>
+  582:                                    <tbody id="globalTbody"></tbody>
+  583:                                </table>
+  584:                            </div>
+  585:                        </div>
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+  594:                </div>
+  595:            </div>
+  596:        </div>
+***** HOME.HTML
+  587:                </div>
+  588:        </div>
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+  631:                  <div class="interItem"><span class="interLabel">Motif</span><span class="interVal" id="iMotif">GÇö</span></div>
+  632:  
+  633:                  <div class="interItem"><span class="interLabel">Engin</span><span class="interVal" id="iEngin">GÇö</span></div>
+  634:  
+  635:              </div>
+***** HOME.HTML
+  623:                  <div class="interItem"><span class="interLabel">Motif</span><span class="interVal" id="iMotif">GÇö</span></div>
+  624:                  <div class="interItem"><span class="interLabel">Engin</span><span class="interVal" id="iEngin">GÇö</span></div>
+  625:              </div>
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+  726:          <span>D+¬tail de l'intervention</span>
+  727:          <button class="closeBtn" onclick="closeModal('modalDetail')">+ù</button>
+  728:        </div>
+  729:        <div class="modalBody" style="display:flex; gap:0;">
+  730:          <iframe id="modalPdf" style="flex:2.5; border:0; background:#000;"></iframe>
+  731:          <div id="modalPdfInfo" style="flex:1; min-width:350px; background:#1a2245; padding:20px; border-left:1px solid var(--bo
+  732:  rder); overflow-y:auto; display:flex; flex-direction:column; gap:15px;">
+  733:            <h4 style="color:var(--accent3);margin:0 0 15px 0;">Informations</h4>
+  734:            <div style="display:flex;flex-direction:column;gap:12px;font-size:13px;">
+  735:              <div><span style="color:var(--muted);font-size:11px;">N-¦ Intervention</span><br><b id="detailId" style="font-size:
+  736:  15px;color:#fff;"></b></div>
+  737:              <div><span style="color:var(--muted);font-size:11px;">Date</span><br><b id="detailDate"></b></div>
+  738:              <div><span style="color:var(--muted);font-size:11px;">Statut</span><br><b id="detailCentre"></b></div>
+  739:              <div><span style="color:var(--muted);font-size:11px;">Motif d'intervention</span><br><b id="detailMotif"></b></div>
+  740:  
+  741:              <div><span style="color:var(--muted);font-size:11px;">Engin</span><br><b id="detailEngin"></b></div>
+  742:            </div>
+  743:            <h4 style="color:var(--accent3);margin:15px 0 10px 0;">Commentaire Chefferie</h4>
+  744:            <div id="commChef" class="static-box"></div>
+  745:            <div id="blockMed" style="display:none;">
+  746:              <h4 style="color:var(--red);margin:15px 0 10px 0;">Analyse M+¬decin</h4>
+  747:              <div id="commMed" class="static-box" style="color:var(--red);"></div>
+  748:            </div>
+  749:            <button class="btnGo" style="width:100%;margin-bottom:8px;" onclick="document.getElementById('modalDetail').style.dis
+  750:  play='none'; document.getElementById('modalList').style.display='flex';">GåÉ Retour aux fiches</button>
+  751:            <button class="btnGo" style="width:100%;" onclick="closeModal('modalDetail')">Fermer</button>
+  752:          </div>
+  753:        </div>
+***** HOME.HTML
+  716:          <span>D+¬tail de l'intervention</span>
+  717:          <button class="closeBtn" onclick="closeModalDetail()">+ù</button>
+  718:        </div>
+  719:        <div id="modalDetailBody" class="modalBody" style="display:flex; gap:0;">
+  720:          <!-- Contenu inject+¬ dynamiquement par loadInterDetail -->
+  721:        </div>
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+  791:      function goHome(){ document.querySelectorAll('.view').forEach(v=>v.classList.remove('active')); document.getElementById('vi
+  792:  ewDashboard').classList.add('active'); }
+  793:      function setText(id,v){ const e=document.getElementById(id); if(e) e.textContent=(v==null?"-":v); }
+***** HOME.HTML
+  759:      function goHome(){ document.querySelectorAll('.view').forEach(v=>v.classList.remove('active')); document.getElementById('vi
+  760:  ewDashboard').classList.add('active'); const m=document.querySelector('.main'); if(m){m.style.padding='25px';m.style.overflow='
+  761:  auto';} }
+  762:      function setText(id,v){ const e=document.getElementById(id); if(e) e.textContent=(v==null?"-":v); }
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+  794:      function getTrendHtml(a,b){ const v1=parseFloat(a)||0, v2=parseFloat(b)||0; if(v2===0 && v1>0) return '<span class="trendUp
+  795:  ">Gû¦</span>'; if(v1>v2) return '<span class="trendUp">Gû¦</span>'; if(v1<v2) return '<span class="trendDown">Gû+</span>'; retu
+  796:  rn '<span class="trendEq">=</span>'; }
+  797:      document.getElementById('dobInput').addEventListener('input', function(e){ if(e.inputType!="deleteContentBackward"){ let v=
+  798:  this.value; if(v.length==2||v.length==5) this.value=v+'/'; } });
+  799:  
+***** HOME.HTML
+  763:      function getTrendHtml(a,b){ const v1=parseFloat(a)||0, v2=parseFloat(b)||0; if(v2===0 && v1>0) return '<span class="trendUp
+  764:  ">\u25b2</span>'; if(v1>v2) return '<span class="trendUp">\u25b2</span>'; if(v1<v2) return '<span class="trendDown">\u25bc</spa
+  765:  n>'; return '<span class="trendEq">=</span>'; }
+  766:  
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+  810:          startLoad();
+  811:          google.script.run.withSuccessHandler(d => {
+  812:              stopLoad();
+***** HOME.HTML
+  777:          startLoad();
+  778:          google.script.run.withFailureHandler(e => {
+  779:              stopLoad();
+  780:              toast("Erreur chargement: " + e.message);
+  781:              console.error('getStats2026 failed:', e);
+  782:          }).withSuccessHandler(d => {
+  783:              stopLoad();
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+  827:              
+  828:              setText("cntAppBadge", d.cntApp||0);
+  829:              setText("cntIspGBadge", d.cntIspG||0);
+  830:              setText("cntMedBadge", d.cntMed||0);
+  831:              setText("cntActionBadge", d.cntAction||0);
+  832:              setText("btnBadgeIspG", d.cntIspG||0);
+  833:              setText("btnBadgeMed", d.cntMed||0);
+  834:              setText("btnBadgeAction", d.cntAction||0);
+  835:  
+***** HOME.HTML
+  798:              
+  799:              setText("cntAppBadge", d.cntApp||0); setText("cntIspGBadge", d.cntIspG||0); setText("cntIspRBadge", d.cntIspR||0);
+  800:  
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+  855:  
+  856:                  google.script.run.preCacheAllData();
+***** HOME.HTML
+  820:  
+  821:                  // Pr\u00e9charger toutes les donn\u00e9es automatiquement
+  822:                  google.script.run.preCacheAllData();
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+  865:          
+  866:          // Gestion fl+¿che scroll
+  867:          const checkScroll = () => {
+***** HOME.HTML
+  831:          
+  832:          // Gestion fl\u00e8che scroll
+  833:          const checkScroll = () => {
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+  891:          }
+  892:      };
+***** HOME.HTML
+  857:          }
+  858:          
+  859:          // Auto-format date input
+  860:          const dobInput = document.getElementById('dobInput');
+  861:          if(dobInput) {
+  862:              dobInput.addEventListener('input', function(e){ 
+  863:                  if(e.inputType!="deleteContentBackward"){ 
+  864:                      let v=this.value; 
+  865:                      if(v.length==2||v.length==5) this.value=v+'/'; 
+  866:                  } 
+  867:              });
+  868:          }
+  869:      };
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+  897:              document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  898:              if(target==='chef') document.getElementById('viewChefferie').classList.add('active');
+  899:              if(target==='med') { document.getElementById('viewMedecin').classList.add('active'); loadChefCase('med_chef'); }
+  900:          } else toast("Erreur");
+***** HOME.HTML
+  874:              document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  875:              const mainEl = document.querySelector('.main');
+  876:              if(target==='chef') {
+  877:                  document.getElementById('viewChefferie').classList.add('active');
+  878:                  if(mainEl) { mainEl.style.padding='0'; mainEl.style.overflow='hidden'; mainEl.scrollTop=0; }
+  879:              }
+  880:          } else toast("Erreur");
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+  918:      function setStatus(t){ document.getElementById("statusPill").textContent=t; }
+  919:      function extractDriveFileId(u){ if(!u)return ""; const m=String(u).match(/\/file\/d\/([^\/\?]+)/i); return (m&&m[1])?m[1]:"
+  920:  "; }
+  921:      function buildPdfEmbed(u){ const id=extractDriveFileId(u); return id ? "https://drive.google.com/file/d/"+id+"/preview" : "
+  922:  "; }
+  923:      function setButtons(d){ ["sendBtn","skipBtn"].forEach(i=>document.getElementById(i).disabled=d); }
+***** HOME.HTML
+  898:      function setStatus(t){ document.getElementById("statusPill").textContent=t; }
+  899:          function extractDriveFileId(u){
+  900:              if(!u) return "";
+  901:              const s = String(u);
+  902:              let m = s.match(/\/file\/d\/([^\/\?]+)/i);
+  903:              if(m && m[1]) return m[1];
+  904:              m = s.match(/[?&]id=([^&]+)/i);
+  905:              if(m && m[1]) return m[1];
+  906:              return "";
+  907:          }
+  908:          function buildPdfEmbed(u){
+  909:              const id = extractDriveFileId(u);
+  910:              if(!id) return "";
+  911:              // Utiliser l'URL de preview directe sans viewer externe
+  912:              return "https://drive.google.com/file/d/" + id + "/preview";
+  913:          }
+  914:          function buildPdfEmbedModal(u){
+  915:              const id = extractDriveFileId(u);
+  916:              if(!id) return "";
+  917:              return "https://drive.google.com/file/d/" + id + "/preview";
+  918:          }
+  919:      function setButtons(d){ ["sendBtn","skipBtn"].forEach(i=>document.getElementById(i).disabled=d); }
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+  951:          if(res.done){
+  952:            setStatus("Termin+¬"); 
+  953:            toast(res.message);
+***** HOME.HTML
+  947:          if(res.done){
+  948:            setStatus("Termin\u00e9"); 
+  949:            toast(res.message);
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+  961:          currentAppRowNumber = res.rowNumber;
+  962:          setStatus("Fiche pr+¬te");
+  963:          
+***** HOME.HTML
+  957:          currentAppRowNumber = res.rowNumber;
+  958:          setStatus("Fiche pr\u00eate");
+  959:          
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+  993:           
+  994:           // Pour biBmBox, cr+¬er un layout group+¬
+  995:           if(boxId === "biBmBox") {
+***** HOME.HTML
+  989:           
+  990:           // Pour biBmBox, cr\u00e9er un layout group\u00e9
+  991:           if(boxId === "biBmBox") {
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+  999:              items.forEach((item, idx) => {
+ 1000:                 // "Absence tra+ºabilit+¬" seule sur sa ligne
+ 1001:                 const isAbsenceTracabilite = item.label.includes("Absence tra+ºabilit+¬");
+ 1002:                 const itemsPerRow = isAbsenceTracabilite ? 1 : 2;
+***** HOME.HTML
+  995:              items.forEach((item, idx) => {
+  996:                 // "Absence tra\u00e7abilit\u00e9" seule sur sa ligne
+  997:                 const isAbsenceTracabilite = item.label.includes("Absence tra\u00e7abilit\u00e9");
+  998:                 const itemsPerRow = isAbsenceTracabilite ? 1 : 2;
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+ 1003:                 
+ 1004:                 // Cr+¬er une nouvelle ligne si n+¬cessaire
+ 1005:                 if(itemsInRow === 0) {
+***** HOME.HTML
+  999:                 
+ 1000:                 // Cr\u00e9er une nouvelle ligne si n\u00e9cessaire
+ 1001:                 if(itemsInRow === 0) {
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+ 1013:                 } else if(itemsInRow >= 2) {
+ 1014:                    // Si on a 2 items et qu'on en ajoute un 3e, cr+¬er une nouvelle ligne
+ 1015:                    currentRow = document.createElement("div");
+***** HOME.HTML
+ 1009:                 } else if(itemsInRow >= 2) {
+ 1010:                    // Si on a 2 items et qu'on en ajoute un 3e, cr\u00e9er une nouvelle ligne
+ 1011:                    currentRow = document.createElement("div");
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+ 1036:                 
+ 1037:                 // Si c'est "Absence tra+ºabilit+¬", reset pour la prochaine ligne
+ 1038:                 if(isAbsenceTracabilite) {
+***** HOME.HTML
+ 1032:                 
+ 1033:                 // Si c'est "Absence tra\u00e7abilit\u00e9", reset pour la prochaine ligne
+ 1034:                 if(isAbsenceTracabilite) {
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+ 1093:         
+ 1094:         // Ajouter event listeners sur les checkboxes du r+¬sultat
+ 1095:         const checkboxes = document.querySelectorAll('#biBmBox input[type="checkbox"]');
+***** HOME.HTML
+ 1089:         
+ 1090:         // Ajouter event listeners sur les checkboxes du r\u00e9sultat
+ 1091:         const checkboxes = document.querySelectorAll('#biBmBox input[type="checkbox"]');
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+ 1101:      function updateMotifVisibility() {
+ 1102:         // R+¬cup+¬rer les checkboxes de biBmBox
+ 1103:         const checkboxes = document.querySelectorAll('#biBmBox input[type="checkbox"]');
+***** HOME.HTML
+ 1097:      function updateMotifVisibility() {
+ 1098:         // R\u00e9cup\u00e9rer les checkboxes de biBmBox
+ 1099:         const checkboxes = document.querySelectorAll('#biBmBox input[type="checkbox"]');
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+ 1107:         checkboxes.forEach(cb => {
+ 1108:             // Chercher le texte du label - peut +¬tre dans un span ou directement apr+¿s l'input
+ 1109:             let labelText = '';
+***** HOME.HTML
+ 1103:         checkboxes.forEach(cb => {
+ 1104:             // Chercher le texte du label - peut \u00eatre dans un span ou directement apr\u00e8s l'input
+ 1105:             let labelText = '';
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+ 1142:         const s = document.getElementById(id);
+ 1143:         s.innerHTML = '<option value="">GÇö</option>';
+ 1144:         if(opts) {
+***** HOME.HTML
+ 1138:         const s = document.getElementById(id);
+ 1139:         s.innerHTML = '<option value="">\u2014</option>';
+ 1140:         if(opts) {
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+ 1156:        const isp = document.getElementById("ispSelect").value;
+ 1157:        if(!isp) { toast("Veuillez s+¬lectionner l'ISP Analyse","err"); return; }
+ 1158:  
+***** HOME.HTML
+ 1152:        const isp = document.getElementById("ispSelect").value;
+ 1153:        if(!isp) { toast("Veuillez s\u00e9lectionner l'ISP Analyse","err"); return; }
+ 1154:  
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+ 1182:              bh: document.getElementById("chkBh").checked,
+ 1183:              bi: document.getElementById("chkBi").checked,
+ 1184:              bj: document.getElementById("chkBj").checked,
+ 1185:              bk: document.getElementById("chkBk").checked,
+ 1186:              bl: document.getElementById("chkBl").checked,
+ 1187:              bm: document.getElementById("chkBm").checked
+ 1188:           },
+***** HOME.HTML
+ 1178:              bh: document.getElementById("chkBh").checked,
+ 1179:              bi: (document.querySelector('input[name="chk_bi"]') || {}).checked || false,
+ 1180:              bj: (document.querySelector('input[name="chk_bj"]') || {}).checked || false,
+ 1181:              bk: (document.querySelector('input[name="chk_bk"]') || {}).checked || false,
+ 1182:              bl: (document.querySelector('input[name="chk_bl"]') || {}).checked || false,
+ 1183:              bm: (document.querySelector('input[name="chk_bm"]') || {}).checked || false
+ 1184:           },
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+ 1198:            isAppSubmitting = false;
+ 1199:            setStatus("Sauvegard+¬"); 
+ 1200:            toast("Enregistr+¬ et Cl+¦tur+¬ G£à"); 
+ 1201:            loadNext(); 
+***** HOME.HTML
+ 1194:            isAppSubmitting = false;
+ 1195:            setStatus("Sauvegard\u00e9"); 
+ 1196:            toast("Enregistr\u00e9 et Cl\u00f4tur\u00e9 \u2705"); 
+ 1197:            loadNext(); 
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+ 1247:  xt("ispErrLourd", (res.errLourde||[]).length);
+ 1248:              
+ 1249:              // Monthly breakdown
+ 1250:              const moisNoms = ['Janvier','F+¬vrier','Mars','Avril','Mai','Juin','Juillet','Ao++t','Septembre','Octobre','Novembr
+ 1251:  e','D+¬cembre'];
+ 1252:              const mA = res.monthlyAst26 || new Array(12).fill(0);
+ 1253:              const mG = res.monthlyGarde26 || new Array(12).fill(0);
+ 1254:              document.getElementById("ispMonthlyTbody").innerHTML = moisNoms.map((m, i) => {
+ 1255:                  const a = Math.ceil(mA[i]), g = Math.ceil(mG[i]);
+ 1256:                  if(a === 0 && g === 0) return '';
+ 1257:                  return `<tr style="border-bottom:1px solid #333;"><td style="padding:2px 4px;">${m}</td><td style="text-align:r
+ 1258:  ight;padding:2px 4px;">${a}h</td><td style="text-align:right;padding:2px 4px;">${g}h</td></tr>`;
+ 1259:              }).join('');
+ 1260:              
+ 1261:              window_currentIspData = res;
+***** HOME.HTML
+ 1243:  xt("ispErrLourd", (res.errLourde||[]).length);
+ 1244:              window_currentIspData = res;
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+ 1273:          google.script.run.withSuccessHandler(() => {
+ 1274:              toast("Cache vid+¬ - rechargement...");
+ 1275:              loginIsp();
+***** HOME.HTML
+ 1256:          google.script.run.withSuccessHandler(() => {
+ 1257:              toast("Cache vid\u00e9 - rechargement...");
+ 1258:              loginIsp();
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+ 1281:          
+ 1282:          // R+¬cup+¬rer le matricule depuis les inputs
+ 1283:          const mat = document.getElementById("matInput").value;
+***** HOME.HTML
+ 1264:          
+ 1265:          // R\u00e9cup\u00e9rer le matricule depuis les inputs
+ 1266:          const mat = document.getElementById("matInput").value;
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+ 1285:          
+ 1286:          // Si les donn+¬es sont d+¬j+á charg+¬es ET le modal est visible, juste mettre +á jour les checkboxes
+ 1287:          if(currentDetailList && currentDetailList.length > 0 && document.getElementById("modalList").style.display === "flex") 
+***** HOME.HTML
+ 1268:          
+ 1269:          // Si les donn\u00e9es sont d\u00e9j\u00e0 charg\u00e9es ET le modal est visible, juste mettre \u00e0 jour les checkbox
+ 1270:  es
+ 1271:          if(currentDetailList && currentDetailList.length > 0 && document.getElementById("modalList").style.display === "flex") 
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+ 1291:                  'Pisu': 'Pisu OK',
+ 1292:                  'BilanLeg': 'Erreur Bilan L+¬g+¿re',
+ 1293:                  'PisuLeg': 'Erreur Pisu L+¬g+¿re',
+ 1294:                  'Grave': 'Erreur Grave'
+***** HOME.HTML
+ 1275:                  'Pisu': 'Pisu OK',
+ 1276:                  'BilanLeg': 'Erreur Bilan L\u00e9g\u00e8re',
+ 1277:                  'PisuLeg': 'Erreur Pisu L\u00e9g\u00e8re',
+ 1278:                  'Grave': 'Erreur Grave'
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+ 1297:              
+ 1298:              // Cocher seulement le type cliqu+¬
+ 1299:              document.querySelectorAll('#filterBox input[type="checkbox"]').forEach(cb => {
+***** HOME.HTML
+ 1281:              
+ 1282:              // Cocher seulement le type cliqu\u00e9
+ 1283:              document.querySelectorAll('#filterBox input[type="checkbox"]').forEach(cb => {
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+ 1302:              filterDetails();
+ 1303:              return; // Pas besoin de recharger les donn+¬es
+ 1304:          }
+***** HOME.HTML
+ 1286:              filterDetails();
+ 1287:              return; // Pas besoin de recharger les donn\u00e9es
+ 1288:          }
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+ 1305:          
+ 1306:          // Chargement: charger TOUTES les donn+¬es fra+«ches
+ 1307:          google.script.run.withSuccessHandler(fullList => {
+ 1308:              // Stocker toutes les donn+¬es en m+¬moire pour filtrage c+¦t+¬ client
+ 1309:              currentDetailList = fullList;
+***** HOME.HTML
+ 1289:          
+ 1290:          // Chargement: charger TOUTES les donn\u00e9es fra\u00eeches
+ 1291:          google.script.run.withSuccessHandler(fullList => {
+ 1292:              // Stocker toutes les donn\u00e9es en m\u00e9moire pour filtrage c\u00f4t\u00e9 client
+ 1293:              currentDetailList = fullList;
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+ 1310:              
+ 1311:              // Initialiser tous les checkboxes +á coch+¬
+ 1312:              document.querySelectorAll('#filterBox input[type="checkbox"]').forEach(cb => {
+***** HOME.HTML
+ 1294:              
+ 1295:              // Initialiser tous les checkboxes \u00e0 coch\u00e9
+ 1296:              document.querySelectorAll('#filterBox input[type="checkbox"]').forEach(cb => {
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+ 1351:              
+ 1352:              // Monthly table
+ 1353:              if(res.monthly && res.monthly.length) {
+ 1354:                  document.getElementById("adminMonthlyTbody").innerHTML = res.monthly.map(r => {
+ 1355:                      const cells = r.months.map(v => `<td class="num">${v||''}</td>`).join('');
+ 1356:                      return `<tr><td><b>${r.nom}</b></td>${cells}<td class="num" style="font-weight:bold;">${r.total}</td></tr>`
+ 1357:  ;
+ 1358:                  }).join('');
+ 1359:              }
+ 1360:              
+ 1361:              // Remplir tableaux CIS et Secteurs depuis getStats2025() pour avoir les bonnes donn+¬es YTD
+ 1362:              google.script.run.withSuccessHandler(stats25 => {
+ 1363:                  // R+¬cup+¬rer les comptages 2025 YTD depuis cisMap et sectMap
+ 1364:                  const cisNames = Object.keys(stats25.cisMap || {});
+***** HOME.HTML
+ 1335:              
+ 1336:              // Remplir tableaux CIS et Secteurs depuis getStats2025() pour avoir les bonnes donn\u00e9es YTD
+ 1337:              google.script.run.withSuccessHandler(stats25 => {
+ 1338:                  // R\u00e9cup\u00e9rer les comptages 2025 YTD depuis cisMap et sectMap
+ 1339:                  const cisNames = Object.keys(stats25.cisMap || {});
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+ 1366:                  
+ 1367:                  // R+¬cup+¬rer aussi les totaux 2026 et 2025 total depuis getStats2026
+ 1368:                  google.script.run.withSuccessHandler(stats26 => {
+ 1369:                      // Combiner les donn+¬es: cisMap pour 2025 YTD, cis array pour 2026 et 2025 total
+ 1370:                      const cisData = (stats26.cis || []).map(x => ({
+***** HOME.HTML
+ 1341:                  
+ 1342:                  // R\u00e9cup\u00e9rer aussi les totaux 2026 et 2025 total depuis getStats2026
+ 1343:                  google.script.run.withSuccessHandler(stats26 => {
+ 1344:                      // Combiner les donn\u00e9es: cisMap pour 2025 YTD, cis array pour 2026 et 2025 total
+ 1345:                      const cisData = (stats26.cis || []).map(x => ({
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+ 1382:                      
+ 1383:                      // Trier par 2026 d+¬croissant
+ 1384:                      const cisSorted = cisData.sort((a,b) => b.v26 - a.v26);
+***** HOME.HTML
+ 1357:                      
+ 1358:                      // Trier par 2026 d\u00e9croissant
+ 1359:                      const cisSorted = cisData.sort((a,b) => b.v26 - a.v26);
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+ 1413:  erCase();} if(v1>v2)return adminSortDir; if(v1<v2)return -adminSortDir; return 0; });
+ 1414:          for(let i=0; i<9; i++) document.getElementById("sortA"+i).textContent="Gåò";
+ 1415:          document.getElementById("sortA"+colIdx).textContent = adminSortDir===1 ? "Gû¦" : "Gû+";
+ 1416:          renderAdminTable();
+***** HOME.HTML
+ 1388:  erCase();} if(v1>v2)return adminSortDir; if(v1<v2)return -adminSortDir; return 0; });
+ 1389:          for(let i=0; i<9; i++) document.getElementById("sortA"+i).textContent="\u2195";
+ 1390:          document.getElementById("sortA"+colIdx).textContent = adminSortDir===1 ? "\u25b2" : "\u25bc";
+ 1391:          renderAdminTable();
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+ 1439:          document.getElementById('chefModeData').style.display = 'none';
+ 1440:          
+***** HOME.HTML
+ 1414:          document.getElementById('chefModeData').style.display = 'none';
+ 1415:          const mainEl = document.querySelector('.main');
+ 1416:          if(mainEl) mainEl.scrollTop = 0;
+ 1417:          
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+ 1459:                  setText("cntIspGBadge", res.isp||0);
+ 1460:                  setText("cntMedBadge", res.med||0);
+ 1461:                  setText("cntActionBadge", res.action||0);
+ 1462:                  setText("btnBadgeIspG", res.isp||0);
+ 1463:                  setText("btnBadgeMed", res.med||0);
+ 1464:                  setText("btnBadgeAction", res.action||0);
+ 1465:              }
+***** HOME.HTML
+ 1436:                  setText("cntIspGBadge", res.isp||0);
+ 1437:                  setText("cntIspRBadge", res.med||0);
+ 1438:              }
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+ 1488:              <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; height:calc(100vh - 200px);">
+ 1489:                  <!-- PDF +á gauche -->
+ 1490:                  <div style="border:1px solid var(--border); border-radius:12px; overflow:hidden;">
+ 1491:                      <iframe src="${(info.pdf||'').replace('/view','/preview')}" style="width:100%; height:100%; border:none; po
+ 1492:  sition:relative;"></iframe>
+ 1493:                  </div>
+***** HOME.HTML
+ 1461:              <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; height:calc(100vh - 200px);">
+ 1462:                  <!-- PDF \u00e0 gauche -->
+ 1463:                  <div style="border:1px solid var(--border); border-radius:12px; overflow:hidden; position:relative;">
+ 1464:                      <iframe src="${(info.pdf||'').replace('/view','/preview')}" style="width:100%; height:100%; border:none; po
+ 1465:  sition:absolute; top:0; left:0;"></iframe>
+ 1466:                  </div>
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+ 1494:                  
+ 1495:                  <!-- Formulaire +á droite -->
+ 1496:                  <div style="overflow-y:auto; padding:15px;">
+***** HOME.HTML
+ 1467:                  
+ 1468:                  <!-- Formulaire \u00e0 droite -->
+ 1469:                  <div style="overflow-y:auto; padding:15px;">
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+ 1512:                              <div style="background:rgba(255,255,255,0.05); padding:10px; border-radius:6px; font-size:12px;">${
+ 1513:  info.motifBilan || 'Aucun motif renseign+¬'}</div>
+ 1514:                          </div>
+***** HOME.HTML
+ 1485:                              <div style="background:rgba(255,255,255,0.05); padding:10px; border-radius:6px; font-size:12px;">${
+ 1486:  info.motifBilan || 'Aucun motif renseign\u00e9'}</div>
+ 1487:                          </div>
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+ 1520:                              <div style="background:rgba(255,255,255,0.05); padding:10px; border-radius:6px; font-size:12px;">${
+ 1521:  info.motifPisu || 'Aucun motif renseign+¬'}</div>
+ 1522:                          </div>
+***** HOME.HTML
+ 1493:                              <div style="background:rgba(255,255,255,0.05); padding:10px; border-radius:6px; font-size:12px;">${
+ 1494:  info.motifPisu || 'Aucun motif renseign\u00e9'}</div>
+ 1495:                          </div>
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+ 1525:                      <div class="panel" style="margin-top:15px;">
+ 1526:                          <div class="panelHead">C+¦ter la fiche</div>
+ 1527:                          <div class="panelBody">
+***** HOME.HTML
+ 1498:                      <div class="panel" style="margin-top:15px;">
+ 1499:                          <div class="panelHead">C\u00f4ter la fiche</div>
+ 1500:                          <div class="panelBody">
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+ 1530:                                  <input type="checkbox" id="chkH" ${data.checks.H?'checked':''}>
+ 1531:                                  <span style="color:var(--ok);">G£ô Passer Bilan en OK</span>
+ 1532:                              </label>
+***** HOME.HTML
+ 1503:                                  <input type="checkbox" id="chkH" ${data.checks.H?'checked':''}>
+ 1504:                                  <span style="color:var(--ok);">\u2713 Passer Bilan en OK</span>
+ 1505:                              </label>
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+ 1535:                                  <input type="checkbox" id="chkI" ${data.checks.I?'checked':''}>
+ 1536:                                  <span style="color:var(--ok);">G£ô Passer Pisu en OK</span>
+ 1537:                              </label>
+***** HOME.HTML
+ 1508:                                  <input type="checkbox" id="chkI" ${data.checks.I?'checked':''}>
+ 1509:                                  <span style="color:var(--ok);">\u2713 Passer Pisu en OK</span>
+ 1510:                              </label>
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+ 1540:                                  <input type="checkbox" id="chkJ" ${data.checks.J?'checked':''}>
+ 1541:                                  <span style="color:orange;">GÜá Erreur Bilan L+¬g+¿re</span>
+ 1542:                              </label>
+***** HOME.HTML
+ 1513:                                  <input type="checkbox" id="chkJ" ${data.checks.J?'checked':''}>
+ 1514:                                  <span style="color:orange;">\u26a0 Erreur Bilan L\u00e9g\u00e8re</span>
+ 1515:                              </label>
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+ 1545:                                  <input type="checkbox" id="chkK" ${data.checks.K?'checked':''}>
+ 1546:                                  <span style="color:orange;">GÜá Erreur Pisu L+¬g+¿re</span>
+ 1547:                              </label>
+***** HOME.HTML
+ 1518:                                  <input type="checkbox" id="chkK" ${data.checks.K?'checked':''}>
+ 1519:                                  <span style="color:orange;">\u26a0 Erreur Pisu L\u00e9g\u00e8re</span>
+ 1520:                              </label>
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+ 1550:                                  <input type="checkbox" id="chkL" ${data.checks.L?'checked':''}>
+ 1551:                                  <span style="color:var(--danger);">=ƒÜ¿ Erreur Grave</span>
+ 1552:                              </label>
+***** HOME.HTML
+ 1523:                                  <input type="checkbox" id="chkL" ${data.checks.L?'checked':''}>
+ 1524:                                  <span style="color:var(--danger);">\uD83D\uDEA8 Erreur Grave</span>
+ 1525:                              </label>
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+ 1561:                              <div style="margin-top:20px; display:flex; gap:10px;">
+ 1562:                                  <button class="btn ok" style="flex:1;" onclick="saveAndNextAppChef()">=ƒÆ+ Cl+¦turer et Suivant
+ 1563:  </button>
+ 1564:                              </div>
+***** HOME.HTML
+ 1534:                              <div style="margin-top:20px; display:flex; gap:10px;">
+ 1535:                                  <button class="btn ok" style="flex:1;" onclick="saveAndNextAppChef()">\uD83D\uDCBE Cl\u00f4ture
+ 1536:  r et Suivant</button>
+ 1537:                                  <button class="btn" style="flex:1;" onclick="skipToNextAppChef()">Suivant sans valider</button>
+ 1538:                              </div>
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+ 1589:          google.script.run.withSuccessHandler(() => {
+ 1590:              toast("Fiche cl+¦tur+¬e G£à");
+ 1591:              loadChefferieCounts(); // Mettre +á jour les badges
+ 1592:              loadAppChefferie(); // Charger la suivante
+***** HOME.HTML
+ 1563:          google.script.run.withSuccessHandler(() => {
+ 1564:              toast("Fiche cl\u00f4tur\u00e9e \u2705");
+ 1565:              loadChefferieCounts(); // Mettre \u00e0 jour les badges
+ 1566:              loadAppChefferie(); // Charger la suivante
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+ 1618:              <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; height:calc(100vh - 200px);">
+ 1619:                  <!-- PDF +á gauche -->
+ 1620:                  <div style="border:1px solid var(--border); border-radius:12px; overflow:hidden;">
+ 1621:                      <iframe src="${(info.pdf||'').replace('/view','/preview')}" style="width:100%; height:100%; border:none; po
+ 1622:  sition:relative;"></iframe>
+ 1623:                  </div>
+***** HOME.HTML
+ 1592:              <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; height:calc(100vh - 200px);">
+ 1593:                  <!-- PDF \u00e0 gauche -->
+ 1594:                  <div style="border:1px solid var(--border); border-radius:12px; overflow:hidden; position:relative;">
+ 1595:                      <iframe src="${(info.pdf||'').replace('/view','/preview')}" style="width:100%; height:100%; border:none; po
+ 1596:  sition:absolute; top:0; left:0;"></iframe>
+ 1597:                  </div>
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+ 1624:                  
+ 1625:                  <!-- Formulaire +á droite -->
+ 1626:                  <div style="overflow-y:auto; padding:15px;">
+***** HOME.HTML
+ 1598:                  
+ 1599:                  <!-- Formulaire \u00e0 droite -->
+ 1600:                  <div style="overflow-y:auto; padding:15px;">
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+ 1627:                      <div class="panel">
+ 1628:                          <div class="panelHead" style="background:rgba(255,107,107,.2);">GÜán+Å Erreur Grave</div>
+ 1629:                          <div class="panelBody">
+***** HOME.HTML
+ 1601:                      <div class="panel">
+ 1602:                          <div class="panelHead" style="background:rgba(255,107,107,.2);">\u26a0\ufe0f Erreur Grave</div>
+ 1603:                          <div class="panelBody">
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+ 1647:                      <div class="panel" style="margin-top:15px;">
+ 1648:                          <div class="panelHead">Analyse M+¬decin Cheffe</div>
+ 1649:                          <div class="panelBody">
+***** HOME.HTML
+ 1621:                      <div class="panel" style="margin-top:15px;">
+ 1622:                          <div class="panelHead">Analyse M\u00e9decin Cheffe</div>
+ 1623:                          <div class="panelBody">
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+ 1659:  se</label>
+ 1660:                                  <textarea id="txtAction" style="width:100%; min-height:80px;" placeholder="Actions +á mener..."
+ 1661:  ></textarea>
+ 1662:                              </div>
+***** HOME.HTML
+ 1633:  se</label>
+ 1634:                                  <textarea id="txtAction" style="width:100%; min-height:80px;" placeholder="Actions \u00e0 mener
+ 1635:  ..."></textarea>
+ 1636:                              </div>
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+ 1664:                              <div style="margin-top:20px;">
+ 1665:                                  <button class="btn ok" style="width:100%;" onclick="saveAndNextMedChef()">=ƒÆ+ Enregistrer et S
+ 1666:  uivant</button>
+ 1667:                              </div>
+***** HOME.HTML
+ 1638:                              <div style="margin-top:20px;">
+ 1639:                                  <button class="btn ok" style="width:100%;" onclick="saveAndNextMedChef()">\uD83D\uDCBE Enregist
+ 1640:  rer et Suivant</button>
+ 1641:                              </div>
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+ 1685:          google.script.run.withSuccessHandler(() => {
+ 1686:              toast("Analyse enregistr+¬e G£à");
+ 1687:              loadChefferieCounts(); // Mettre +á jour les badges
+ 1688:              loadMedecinChef(); // Charger la suivante
+***** HOME.HTML
+ 1659:          google.script.run.withSuccessHandler(() => {
+ 1660:              toast("Analyse enregistr\u00e9e \u2705");
+ 1661:              loadChefferieCounts(); // Mettre \u00e0 jour les badges
+ 1662:              loadMedecinChef(); // Charger la suivante
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+ 1694:  
+ 1695:      // === ACTION CHEFFERIE ===
+ 1696:      function loadActionChefferie() {
+***** HOME.HTML
+ 1668:  
+ 1669:      // === ACTION \u00c0 MENER CHEFFERIE ===
+ 1670:      let currentActionData = null;
+ 1671:      
+ 1672:      function loadActionChefferie() {
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+ 1701:              if(!res.found) {
+ 1702:                  div.innerHTML = `<div style="text-align:center;padding:40px;color:var(--accent3);">${res.message}</div>`;
+ 1703:                  return;
+***** HOME.HTML
+ 1677:              if(!res.found) {
+ 1678:                  div.innerHTML = `<div style="text-align:center;padding:40px;color:var(--accent3);">${res.message}</div>
+ 1679:                      <div style="text-align:center;margin-top:20px;">
+ 1680:                          <button class="btnGo" onclick="openArchivedActions()">\uD83D\uDCC1 Voir toutes les actions men\u00e9es<
+ 1681:  /button>
+ 1682:                      </div>`;
+ 1683:                  return;
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+ 1704:              }
+ 1705:              currentChefData = res;
+ 1706:              renderActionChefferie(res);
+***** HOME.HTML
+ 1684:              }
+ 1685:              currentActionData = res;
+ 1686:              renderActionChefferie(res);
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+ 1714:          div.innerHTML = `
+ 1715:              <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; height:calc(100vh - 200px);">
+ 1716:                  <div style="border:1px solid var(--border); border-radius:12px; overflow:hidden;">
+ 1717:                      <iframe src="${(info.pdf||'').replace('/view','/preview')}" style="width:100%; height:100%; border:none; po
+ 1718:  sition:relative;"></iframe>
+ 1719:                  </div>
+ 1720:                  <div style="overflow-y:auto; padding:15px;">
+***** HOME.HTML
+ 1694:          div.innerHTML = `
+ 1695:              <div style="margin-bottom:15px; text-align:right;">
+ 1696:                  <button class="btnGo" style="background:#444;border-color:#666;" onclick="openArchivedActions()">\uD83D\uDCC1 V
+ 1697:  oir toutes les actions men\u00e9es</button>
+ 1698:              </div>
+ 1699:              <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; height:calc(100vh - 280px);">
+ 1700:                  <!-- PDF \u00e0 gauche -->
+ 1701:                  <div style="border:1px solid var(--border); border-radius:12px; overflow:hidden; position:relative;">
+ 1702:                      <iframe src="${(info.pdf||'').replace('/view','/preview')}" style="width:100%; height:100%; border:none; po
+ 1703:  sition:absolute; top:0; left:0;"></iframe>
+ 1704:                  </div>
+ 1705:                  
+ 1706:                  <!-- Infos + Action \u00e0 droite -->
+ 1707:                  <div style="overflow-y:auto; padding:15px;">
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+ 1721:                      <div class="panel">
+ 1722:                          <div class="panelHead" style="background:rgba(255,165,0,.2);">=ƒÄ» Action Chefferie</div>
+ 1723:                          <div class="panelBody">
+ 1724:                              <div style="margin-bottom:10px;"><strong>ID:</strong> ${info.interId}</div>
+ 1725:                              <div style="margin-bottom:10px;"><strong>Date:</strong> ${info.date}</div>
+***** HOME.HTML
+ 1708:                      <div class="panel">
+ 1709:                          <div class="panelHead">Informations Intervention</div>
+ 1710:                          <div class="panelBody">
+ 1711:                              <div style="margin-bottom:10px;"><strong>N\u00b0 Intervention:</strong> ${info.interId}</div>
+ 1712:                              <div style="margin-bottom:10px;"><strong>Date:</strong> ${info.date}</div>
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+ 1726:                              <div style="margin-bottom:10px;"><strong>ISP:</strong> ${info.infName}</div>
+ 1727:                              <div style="margin-bottom:10px;"><strong>Statut:</strong> ${info.status}</div>
+ 1728:                              <div style="margin-bottom:10px;"><strong>Motif:</strong> ${info.motif}</div>
+ 1729:                              <div style="margin-bottom:10px;"><strong>Engin:</strong> ${info.engin}</div>
+ 1730:                          </div>
+***** HOME.HTML
+ 1713:                              <div style="margin-bottom:10px;"><strong>ISP:</strong> ${info.infName}</div>
+ 1714:                              <div style="margin-bottom:10px;"><strong>Astreinte/Garde:</strong> ${info.status}</div>
+ 1715:                              <div style="margin-bottom:10px;"><strong>Motif de d\u00e9part:</strong> ${info.motif}</div>
+ 1716:                              <div style="margin-bottom:10px;"><strong>Engin:</strong> ${info.engin || '-'}</div>
+ 1717:                          </div>
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+ 1733:                      ${info.commChef ? `<div class="panel" style="margin-top:15px;">
+ 1734:                          <div class="panelHead">Commentaire Chefferie</div>
+ 1735:                          <div class="panelBody">
+ 1736:                              <div style="background:rgba(255,255,255,0.05); padding:10px; border-radius:6px; font-size:12px;">${
+ 1737:  info.commChef}</div>
+ 1738:                          </div>
+***** HOME.HTML
+ 1720:                      ${info.commChef ? `<div class="panel" style="margin-top:15px;">
+ 1721:                          <div class="panelHead" style="background:rgba(79,195,247,.1);">\uD83D\uDCAC Commentaire Chefferie (APP 
+ 1722:  Alex)</div>
+ 1723:                          <div class="panelBody">
+ 1724:                              <div class="static-box">${info.commChef}</div>
+ 1725:                          </div>
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+ 1741:                      ${info.analyseMed ? `<div class="panel" style="margin-top:15px;">
+ 1742:                          <div class="panelHead" style="color:var(--red);">Analyse M+¬decin</div>
+ 1743:                          <div class="panelBody">
+ 1744:                              <div style="background:rgba(255,107,107,0.1); padding:10px; border-radius:6px; font-size:12px; colo
+ 1745:  r:var(--red);">${info.analyseMed}</div>
+ 1746:                          </div>
+***** HOME.HTML
+ 1728:                      ${info.analyseMed ? `<div class="panel" style="margin-top:15px;">
+ 1729:                          <div class="panelHead" style="background:rgba(255,107,107,.15);">\uD83E\uDE7A Analyse M\u00e9decin (APP
+ 1730:   Eve)</div>
+ 1731:                          <div class="panelBody">
+ 1732:                              <div class="static-box" style="color:var(--red);">${info.analyseMed}</div>
+ 1733:                          </div>
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+ 1749:                      ${info.actionRequise ? `<div class="panel" style="margin-top:15px;">
+ 1750:                          <div class="panelHead" style="color:var(--orange);">Action Requise par M+¬decin</div>
+ 1751:                          <div class="panelBody">
+ 1752:                              <div style="background:rgba(255,165,0,0.1); padding:10px; border-radius:6px; font-size:12px; color:
+ 1753:  var(--orange);">${info.actionRequise}</div>
+ 1754:                          </div>
+***** HOME.HTML
+ 1736:                      ${info.actionRequise ? `<div class="panel" style="margin-top:15px;">
+ 1737:                          <div class="panelHead" style="background:rgba(255,165,0,.15);">\u26a0\ufe0f Action Requise (APP Eve)</d
+ 1738:  iv>
+ 1739:                          <div class="panelBody">
+ 1740:                              <div class="static-box" style="color:var(--orange);">${info.actionRequise}</div>
+ 1741:                          </div>
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+ 1757:                      <div class="panel" style="margin-top:15px;">
+ 1758:                          <div class="panelHead">Action R+¬alis+¬e</div>
+ 1759:                          <div class="panelBody">
+ 1760:                              <textarea id="txtActionFaite" style="width:100%; min-height:100px;" placeholder="D+¬crivez l'action
+ 1761:   r+¬alis+¬e...">${info.actionFaite || ''}</textarea>
+ 1762:                              <div style="margin-top:20px;">
+ 1763:                                  <button class="btn ok" style="width:100%;" onclick="saveAndNextAction()">=ƒÆ+ Cl+¦turer et Suiv
+ 1764:  ant</button>
+ 1765:                              </div>
+***** HOME.HTML
+ 1744:                      <div class="panel" style="margin-top:15px;">
+ 1745:                          <div class="panelHead" style="background:rgba(71,209,140,.15);">\u2705 Action faite par Chefferie</div>
+ 1746:                          <div class="panelBody">
+ 1747:                              <textarea id="txtActionFaite" style="width:100%; min-height:100px;" placeholder="D\u00e9crivez l'ac
+ 1748:  tion men\u00e9e...">${info.actionFaite || ''}</textarea>
+ 1749:                              
+ 1750:                              <div style="margin-top:15px; display:flex; gap:10px;">
+ 1751:                                  <button class="btn ok" style="flex:1;" onclick="saveAndNextAction()">\uD83D\uDCBE Cl\u00f4turer
+ 1752:   et Suivant</button>
+ 1753:                                  <button class="btn" style="flex:1;" onclick="skipToNextAction()">Suivant sans valider</button>
+ 1754:                              </div>
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+ 1773:      function saveAndNextAction() {
+ 1774:          const form = {
+ 1775:              rowEve: currentChefData.rowEve,
+ 1776:              actionFaite: document.getElementById('txtActionFaite').value
+ 1777:          };
+***** HOME.HTML
+ 1762:      function saveAndNextAction() {
+ 1763:          if(!currentActionData) return;
+ 1764:          const actionText = document.getElementById('txtActionFaite').value;
+ 1765:          if(!actionText.trim()) { toast("D\u00e9crivez l'action men\u00e9e"); return; }
+ 1766:          
+ 1767:          const form = {
+ 1768:              rowEve: currentActionData.rowEve,
+ 1769:              actionFaite: actionText
+ 1770:          };
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+ 1778:          
+ 1779:          if(!form.actionFaite) { toast("Veuillez d+¬crire l'action r+¬alis+¬e"); return; }
+ 1780:          
+ 1781:          document.getElementById('chefActionContent').innerHTML = '<div style="text-align:center;padding:40px;">Enregistrement..
+***** HOME.HTML
+ 1771:          
+ 1772:          document.getElementById('chefActionContent').innerHTML = '<div style="text-align:center;padding:40px;">Enregistrement..
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+ 1783:          
+ 1784:          google.script.run.withSuccessHandler(res => {
+ 1785:              if(res.success) {
+ 1786:                  toast("Action cl+¦tur+¬e");
+ 1787:                  refreshChefferieBadges();
+ 1788:                  loadActionChefferie();
+ 1789:              } else {
+ 1790:                  toast("Erreur: " + (res.error||"inconnue"), "err");
+ 1791:                  loadActionChefferie();
+ 1792:              }
+ 1793:          }).withFailureHandler(e => {
+ 1794:              toast("Erreur: " + e.message, "err");
+ 1795:              loadActionChefferie();
+***** HOME.HTML
+ 1774:          
+ 1775:          google.script.run.withSuccessHandler(() => {
+ 1776:              toast("Action cl\u00f4tur\u00e9e \u2705");
+ 1777:              loadChefferieCounts();
+ 1778:              loadActionChefferie();
+ 1779:          }).withFailureHandler(e => {
+ 1780:              toast("Erreur: " + e.message);
+ 1781:              loadActionChefferie();
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+ 1798:      
+ 1799:      function refreshChefferieBadges() {
+ 1800:          google.script.run.withSuccessHandler(res => {
+ 1801:              if(res) {
+ 1802:                  setText("cntIspGBadge", res.isp||0);
+ 1803:                  setText("cntMedBadge", res.med||0);
+ 1804:                  setText("cntActionBadge", res.action||0);
+ 1805:                  setText("btnBadgeIspG", res.isp||0);
+ 1806:                  setText("btnBadgeMed", res.med||0);
+ 1807:                  setText("btnBadgeAction", res.action||0);
+ 1808:              }
+ 1809:          }).getChefferieCounts();
+ 1810:      }
+ 1811:  
+ 1812:      // CHEFFERIE (ANCIENNE - +á garder pour compatibilit+¬)
+ 1813:      let currentSchema = null;
+ 1814:      function hideGlobal() { document.getElementById("globalListArea").style.display="none"; document.getElementById("chefFormAr
+ 1815:  ea").style.display="block"; }
+ 1816:      function loadChefCase(mode) {
+ 1817:          const area = (mode==='med_chef') ? 'medFormArea' : 'chefFormArea';
+ 1818:          document.getElementById(area).innerHTML = "<div style='text-align:center;padding:50px;color:gray'>Chargement...</div>";
+ 1819:  
+ 1820:          google.script.run.withSuccessHandler(res => {
+ 1821:              if(res.done) { document.getElementById(area).innerHTML = `<div style='text-align:center;padding:50px;color:var(--ac
+ 1822:  cent3)'>${res.message}</div>`; return; }
+ 1823:              currentSchema = res;
+ 1824:              renderChefForm(res, area);
+ 1825:          }).getChefferieNextCase(mode);
+ 1826:      }
+***** HOME.HTML
+ 1784:      
+ 1785:      function skipToNextAction() {
+ 1786:          loadActionChefferie();
+ 1787:      }
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+ 1827:      
+ 1828:      function renderChefForm(s, areaId) {
+ 1829:          const i = s.info;
+ 1830:          const html = `
+ 1831:          <div style="height:100%;">
+ 1832:              <div class="info-banner">
+ 1833:                  <div class="info-banner-row"><span>N-¦ Inter: <b>${i.interId}</b></span> <span>ISP: <b>${i.infName}</b></span><
+ 1834:  /div>
+ 1835:                  <div class="info-banner-row"><span>Motif: <b>${i.motif || 'GÇö'}</b></span> <span>${i.date}</span></div>
+ 1836:              </div>
+ 1837:              <div class="chef-layout">
+ 1838:                  <div class="chef-pdf"><iframe src="${(i.pdf||'').replace('/view','/preview')}" style="width:100%;height:100%;bo
+ 1839:  rder:0"></iframe></div>
+ 1840:                  <div class="chef-form">
+ 1841:                      ${s.mode==='app_isp' ? `
+ 1842:                         <div><label>Commentaire ISP</label><div class="static-box">${i.commBN||"-"}</div></div>
+ 1843:                         <div><label>Checklist Qualit+¬</label><div class="check-list">
+ 1844:                            ${s.checks.map((c,k) => {
+ 1845:                                let cls = ""; if(c.label.includes("OK")) cls="chk-green"; if(c.label.includes("KO")) cls="chk-red
+ 1846:  ";
+ 1847:                                const checked = c.checked ? " checked" : "";
+ 1848:                                return `<div class="check-item ${cls}"><input type="checkbox" id="chk_${k}" name="check_${c.id}"$
+ 1849:  {checked}> ${c.label}</div>`;
+ 1850:                            }).join('')}
+ 1851:                         </div></div>
+ 1852:                         <div><label>Commentaire Chefferie</label><textarea id="chefComm">${s.existingComment||""}</textarea></di
+ 1853:  v>
+ 1854:                         <button class="btnGo" onclick="sendChef()">Valider</button>
+ 1855:                      ` : s.mode==='med_chef' ? `
+ 1856:                         <div><label>Analyse</label><div class="static-box">${i.motif||"-"}</div></div>
+ 1857:                         <div><label>Analyse M+¬decin</label><textarea id="medAnalyse"></textarea></div>
+ 1858:                         <div><label>Actions</label><textarea id="medAction"></textarea></div>
+ 1859:                         <button class="btnGo" onclick="sendChef()">Valider</button>
+ 1860:                      ` : `<div>Formulaire non d+¬fini</div>`}
+ 1861:                  </div>
+ 1862:              </div>
+ 1863:          </div>`;
+ 1864:          document.getElementById(areaId).innerHTML = html;
+ 1865:      }
+***** HOME.HTML
+ 1788:      
+ 1789:      // === ACTIONS ARCHIV\u00c9ES ===
+ 1790:      function openArchivedActions() {
+ 1791:          startLoad();
+ 1792:          google.script.run.withSuccessHandler(data => {
+ 1793:              stopLoad();
+ 1794:              if(!data || data.length === 0) {
+ 1795:                  toast("Aucune action archiv\u00e9e");
+ 1796:                  return;
+ 1797:              }
+ 1798:              renderArchivedIspList(data);
+ 1799:              document.getElementById("modalList").style.display = "flex";
+ 1800:          }).withFailureHandler(e => {
+ 1801:              stopLoad();
+ 1802:              toast("Erreur: " + e.message);
+ 1803:          }).getArchivedActions();
+ 1804:      }
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+ 1866:      
+ 1867:      function sendChef() {
+ 1868:          if(!currentSchema) return;
+ 1869:          const s = currentSchema;
+ 1870:          const payload = { mode:s.mode, info:s.info };
+ 1871:          if(s.mode==='app_isp') {
+ 1872:              payload.comment = document.getElementById("chefComm").value;
+ 1873:              if(!payload.comment) { toast("Commentaire requis"); return; }
+ 1874:              payload.checks = {};
+ 1875:              s.checks.forEach((c,k) => {
+ 1876:                  const chk = document.getElementById("chk_"+k);
+ 1877:                  if(chk) payload.checks[c.id] = chk.checked;
+ 1878:              });
+ 1879:          } else if(s.mode==='med_chef') {
+ 1880:              payload.analyse = document.getElementById("medAnalyse").value;
+ 1881:              payload.action = document.getElementById("medAction").value;
+ 1882:          }
+ 1883:          const areaId = (s.mode==='med_chef') ? 'medFormArea' : 'chefFormArea';
+ 1884:          document.getElementById(areaId).innerHTML = "<div style='text-align:center;padding:50px'>Enregistrement...</div>";
+ 1885:          google.script.run.withSuccessHandler(() => { toast("Enregistr+¬"); loadChefCase(s.mode); }).saveChefferie(payload);
+ 1886:      }
+ 1887:  
+ 1888:      // LIST & SORT
+ 1889:      let globalList = [], currentDetailList = [], currentDetailIspName = "";
+ 1890:      let sortDir = 1;
+ 1891:      function loadGlobalList() {
+ 1892:          const tbody = document.getElementById("globalTbody");
+ 1893:          if(!tbody) return;
+ 1894:          tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:30px;color:gray;">Chargement...</td></tr>';
+ 1895:          
+ 1896:          google.script.run.withSuccessHandler(res => {
+ 1897:              globalList = res;
+ 1898:              renderGlobalTable(res);
+ 1899:          }).getAllIspErrorStats();
+ 1900:      }
+***** HOME.HTML
+ 1805:      
+ 1806:      let archivedData = [];
+ 1807:      
+ 1808:      function renderArchivedIspList(data) {
+ 1809:          archivedData = data;
+ 1810:          document.getElementById("modalListTitle").textContent = "Actions men\u00e9es \u2014 Par agent";
+ 1811:          const c = document.getElementById("modalListContent");
+ 1812:          // Masquer les filtres checkbox
+ 1813:          document.getElementById("filterBox").style.display = "none";
+ 1814:          c.innerHTML = data.map((isp, idx) => `
+ 1815:              <div class="detail-row" onclick="showArchivedFichesForIsp(${idx})" style="padding:15px; cursor:pointer; display:fle
+ 1816:  x; justify-content:space-between; align-items:center;">
+ 1817:                  <div>
+ 1818:                      <div style="font-weight:bold; color:#fff; font-size:14px;">${isp.ispName}</div>
+ 1819:                  </div>
+ 1820:                  <div style="background:var(--accent3); color:#000; padding:4px 12px; border-radius:8px; font-weight:bold; font-
+ 1821:  size:13px;">${isp.count} fiche${isp.count>1?'s':''}</div>
+ 1822:              </div>
+ 1823:          `).join('');
+ 1824:      }
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+ 1901:      
+ 1902:      function renderGlobalTable(data) {
+ 1903:          document.getElementById("globalTbody").innerHTML = data.map(r => `
+ 1904:            <tr onclick="loadIspDetail('${r.mat}', '${r.nom}')"><td><b>${r.nom}</b></td><td class="text-green">${r.bilanOk}</td><
+ 1905:  td class="text-green">${r.pisuOk}</td><td class="text-orange">${r.errBilL}</td><td class="text-orange">${r.errPisuL}</td><td cl
+ 1906:  ass="text-red">${r.errGrave}</td></tr>
+ 1907:          `).join('');
+***** HOME.HTML
+ 1825:      
+ 1826:      function showArchivedFichesForIsp(idx) {
+ 1827:          const isp = archivedData[idx];
+ 1828:          if(!isp) return;
+ 1829:          document.getElementById("modalListTitle").textContent = `Actions men\u00e9es \u2014 ${isp.ispName}`;
+ 1830:          const c = document.getElementById("modalListContent");
+ 1831:          c.innerHTML = `<div style="padding:10px; border-bottom:1px solid var(--border);">
+ 1832:              <button class="btnGo" style="width:auto;background:#444;border-color:#666;" onclick="renderArchivedIspList(archived
+ 1833:  Data)">\u2190 Retour liste agents</button>
+ 1834:          </div>` + isp.fiches.map((f, fi) => `
+ 1835:              <div class="detail-row" onclick="showArchivedDetail(${idx}, ${fi})" style="padding:12px; cursor:pointer;">
+ 1836:                  <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+ 1837:                      <span style="font-weight:bold; color:#39ff14; font-size:13px;">${f.id}</span>
+ 1838:                      <span style="font-size:11px; color:var(--muted);">${f.date || '-'}</span>
+ 1839:                  </div>
+ 1840:                  <div style="font-size:12px; color:#ccc; margin-bottom:4px;"><b>Motif:</b> ${f.motif || '-'}</div>
+ 1841:                  <div style="font-size:10px; color:var(--muted);">${f.status} | Engin: ${f.engin || '-'}</div>
+ 1842:                  ${f.actionFaite ? `<div style="font-size:10px; color:var(--ok); margin-top:4px; background:#1a1a1a; padding:4px
+ 1843:  ; border-radius:3px;">\u2705 ${f.actionFaite}</div>` : ''}
+ 1844:              </div>
+ 1845:          `).join('');
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+ 1909:      
+ 1910:      function sortGlobal(idx) {
+ 1911:          sortDir *= -1;
+ 1912:          const keys = ['nom', 'bilanOk', 'pisuOk', 'errBilL', 'errPisuL', 'errGrave'];
+ 1913:          const k = keys[idx];
+ 1914:          globalList.sort((a,b) => { if(a[k]>b[k]) return sortDir; if(a[k]<b[k]) return -sortDir; return 0; });
+ 1915:          for(let i=0; i<6; i++) document.getElementById("sortIcon"+i).textContent="Gåò";
+ 1916:          document.getElementById("sortIcon"+idx).textContent = sortDir===1 ? "Gû+" : "Gû¦";
+ 1917:          renderGlobalTable(globalList);
+ 1918:      }
+ 1919:      
+ 1920:      function loadIspDetail(mat, ispName) {
+ 1921:          currentDetailIspName = ispName || mat;
+ 1922:          startLoad();
+ 1923:          google.script.run.withSuccessHandler(list => {
+ 1924:              stopLoad();
+ 1925:              currentDetailList = list;
+ 1926:              document.getElementById('filterBox').style.display = 'flex';
+ 1927:              document.querySelectorAll('#filterBox input[type="checkbox"]').forEach(cb => cb.checked = true);
+ 1928:              document.getElementById("modalListTitle").textContent = `Dossiers de ${ispName || mat}`;
+ 1929:              filterDetails();
+ 1930:              document.getElementById("modalList").style.display="flex";
+ 1931:          }).getIspDetailsAdmin(mat);
+ 1932:      }
+***** HOME.HTML
+ 1847:      
+ 1848:      function showArchivedDetail(ispIdx, ficheIdx) {
+ 1849:          const f = archivedData[ispIdx].fiches[ficheIdx];
+ 1850:          const fileId = extractDriveFileId(f.pdf || '');
+ 1851:          const pdfSrc = fileId ? "https://drive.google.com/file/d/" + fileId + "/preview" : "";
+ 1852:          
+ 1853:          document.getElementById("modalDetailBody").innerHTML = `
+ 1854:              ${pdfSrc ? `<iframe src="${pdfSrc}" style="flex:2.5; border:0; background:#000; position:static;"></iframe>` : '<di
+ 1855:  v style="flex:2.5;background:#000;display:flex;align-items:center;justify-content:center;color:gray;">PDF indisponible</div>'}
+ 1856:              <div style="flex:1; min-width:350px; background:#1a2245; padding:20px; border-left:1px solid var(--border); overflo
+ 1857:  w-y:auto; display:flex; flex-direction:column; gap:15px;">
+ 1858:                  <h4 style="color:var(--accent3);margin:0 0 15px 0;">Informations</h4>
+ 1859:                  <div style="display:flex;flex-direction:column;gap:12px;font-size:13px;">
+ 1860:                      <div><span style="color:var(--muted);font-size:11px;">N\u00b0 Intervention</span><br><b style="font-size:15
+ 1861:  px;color:#fff;">${f.id}</b></div>
+ 1862:                      <div><span style="color:var(--muted);font-size:11px;">Date</span><br><b>${f.date || '-'}</b></div>
+ 1863:                      <div><span style="color:var(--muted);font-size:11px;">Astreinte / Garde</span><br><b>${f.status || '-'}</b>
+ 1864:  </div>
+ 1865:                      <div><span style="color:var(--muted);font-size:11px;">Motif</span><br><b>${f.motif || '-'}</b></div>
+ 1866:                      <div><span style="color:var(--muted);font-size:11px;">Engin</span><br><b>${f.engin || '-'}</b></div>
+ 1867:                  </div>
+ 1868:                  ${f.commChef ? `<h4 style="color:var(--accent3);margin:15px 0 5px 0;">\uD83D\uDCAC Commentaire Chefferie</h4><d
+ 1869:  iv class="static-box">${f.commChef}</div>` : ''}
+ 1870:                  ${f.analyseMed ? `<h4 style="color:var(--red);margin:15px 0 5px 0;">\uD83E\uDE7A Analyse M\u00e9decin</h4><div 
+ 1871:  class="static-box" style="color:var(--red);">${f.analyseMed}</div>` : ''}
+ 1872:                  ${f.actionRequise ? `<h4 style="color:var(--orange);margin:15px 0 5px 0;">\u26a0\ufe0f Action Requise</h4><div 
+ 1873:  class="static-box" style="color:var(--orange);">${f.actionRequise}</div>` : ''}
+ 1874:                  ${f.actionFaite ? `<h4 style="color:var(--ok);margin:15px 0 5px 0;">\u2705 Action Men\u00e9e</h4><div class="st
+ 1875:  atic-box" style="color:var(--ok);">${f.actionFaite}</div>` : ''}
+ 1876:                  <button class="btnGo" style="width:100%;margin-top:auto;" onclick="closeModalDetail(); document.getElementById(
+ 1877:  'modalList').style.display='flex';">\u2190 Retour</button>
+ 1878:              </div>
+ 1879:          `;
+ 1880:          document.getElementById("modalDetail").style.display = "flex";
+ 1881:      }
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+ 1933:  
+ 1934:      function loadAllGraveErrors() {
+ 1935:          startLoad();
+ 1936:          let allGraveList = [];
+ 1937:          let loaded = 0;
+ 1938:          let totalIsps = globalList.length;
+ 1939:  
+ 1940:          if(totalIsps === 0) { toast("Aucune donn+¬e"); stopLoad(); return; }
+ 1941:  
+ 1942:          globalList.forEach(isp => {
+ 1943:              google.script.run.withSuccessHandler(list => {
+ 1944:                  loaded++;
+ 1945:                  const graveErrors = list.filter(x => x.errorType === "Erreur Grave");
+ 1946:                  graveErrors.forEach(e => {
+ 1947:                      e.ispName = isp.nom;
+ 1948:                  });
+ 1949:                  allGraveList = allGraveList.concat(graveErrors);
+ 1950:  
+ 1951:                  if(loaded === totalIsps) {
+ 1952:                      stopLoad();
+ 1953:                      currentDetailList = allGraveList;
+ 1954:                      document.querySelectorAll('#filterBox input[type="checkbox"]').forEach(cb => {
+ 1955:                          cb.checked = cb.value === "Erreur Grave";
+ 1956:                      });
+ 1957:                      document.getElementById("modalListTitle").textContent = "Toutes les fiches en erreur grave";
+ 1958:                      filterDetails();
+ 1959:                      document.getElementById("modalList").style.display="flex";
+ 1960:                  }
+ 1961:              }).getIspDetailsAdmin(isp.mat);
+ 1962:          });
+ 1963:      }
+***** HOME.HTML
+ 1882:  
+ 1883:      // CHEFFERIE (ANCIENNE - \u00e0 garder pour compatibilit\u00e9)
+ 1884:      let currentSchema = null;
+ 1885:      function hideGlobal() { document.getElementById("globalListArea").style.display="none"; document.getElementById("chefFormAr
+ 1886:  ea").style.display="block"; }
+ 1887:      function loadChefCase(mode) {
+ 1888:          const area = (mode==='med_chef') ? 'medFormArea' : 'chefFormArea';
+ 1889:          document.getElementById(area).innerHTML = "<div style='text-align:center;padding:50px;color:gray'>Chargement...</div>";
+ 1890:          google.script.run.withSuccessHandler(res => {
+ 1891:              if(res.done) { document.getElementById(area).innerHTML = `<div style='text-align:center;padding:50px;color:var(--ac
+ 1892:  cent3)'>${res.message}</div>`; return; }
+ 1893:              currentSchema = res;
+ 1894:              renderChefForm(res, area);
+ 1895:          }).getChefferieNextCase(mode);
+ 1896:      }
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+ 1964:      
+ 1965:      function filterDetails() {
+ 1966:          const filters = Array.from(document.querySelectorAll('input[type=checkbox]:checked')).map(c=>c.value);
+ 1967:          const c = document.getElementById("modalListContent"); 
+ 1968:          c.innerHTML="";
+ 1969:          const filtered = currentDetailList.filter(x => x.types.some(t => filters.includes(t)));
+ 1970:          if(filtered.length===0) c.innerHTML="<div style='padding:20px;text-align:center;color:gray'>Aucun dossier</div>";
+ 1971:          filtered.forEach(x => {
+ 1972:              // Cr+¬er les tags pour chaque type (peut +¬tre "Bilan OK", "Pisu OK", "Erreur Grave", etc.)
+ 1973:              const tagHtml = x.types.map(t => {
+ 1974:                  let tagBg = "#47d18c", tagColor = "white";
+ 1975:                  if(t.includes("Grave")) {
+ 1976:                      tagBg = "#d32f2f";
+ 1977:                      tagColor = "white";
+ 1978:                  } else if(t.includes("L+¬g+¿re")) {
+ 1979:                      tagBg = "#ff9800";
+ 1980:                      tagColor = "white";
+ 1981:                  }
+ 1982:                  return `<span style="display:inline-block;padding:3px 8px;border-radius:3px;font-size:10px;font-weight:bold;bac
+ 1983:  kground:${tagBg};color:${tagColor};margin-left:4px;">${t}</span>`;
+ 1984:              }).join('');
+ 1985:              const ispLabel = x.ispName ? `<div style="font-size:10px;color:var(--accent3);margin-top:4px;">ISP: <b>${x.ispName}
+ 1986:  </b></div>` : '';
+ 1987:              c.innerHTML += `
+ 1988:                  <div class="detail-row" onclick="loadInterDetail('${x.id}', '${x.date || ''}', '${(x.motif || '').replace(/'/g,
+ 1989:   "\\'")}', '${x.status || ''}', '${x.centre || ''}', '${x.engin || ''}')" style="padding:12px;border-bottom:1px solid #333;curs
+ 1990:  or:pointer;">
+ 1991:                      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
+ 1992:                          <div style="flex:1;">
+ 1993:                              <div style="font-weight:bold;color:#39ff14;font-size:13px;">Num+¬ro d'intervention: ${x.id}</div>
+ 1994:                              <div style="font-size:10px;color:#aaa;margin-top:3px;">Date: <b>${x.date || '-'}</b></div>
+ 1995:                          </div>
+ 1996:                          <div style="margin-left:10px;">${tagHtml}</div>
+ 1997:                      </div>
+ 1998:                      <div style="font-size:12px;color:#ccc;margin-bottom:6px;"><b>Motif: ${x.motif || '-'}</b></div>
+ 1999:                      <div style="font-size:10px;color:#aaa;margin-bottom:3px;">Type: <b>${x.status || '-'}</b></div>
+ 2000:                      <div style="font-size:10px;color:#aaa;">Engin: <b>${x.engin || '-'}</b></div>
+ 2001:                      ${ispLabel}
+ 2002:                      ${x.commChef ? `<div style="font-size:10px;color:var(--accent3);margin-top:4px;">Chef: ${x.commChef}</div>`
+ 2003:   : ''}
+ 2004:                      ${x.commMed ? `<div style="font-size:10px;color:var(--red);">Med: ${x.commMed}</div>` : ''}
+ 2005:                  </div>
+ 2006:              `;
+ 2007:          });
+ 2008:      }
+***** HOME.HTML
+ 1897:      
+ 1898:      function renderChefForm(s, areaId) {
+ 1899:          const i = s.info;
+ 1900:          const html = `
+ 1901:          <div style="height:100%;">
+ 1902:              <div class="info-banner">
+ 1903:                  <div class="info-banner-row"><span>N\u00b0 Inter: <b>${i.interId}</b></span> <span>ISP: <b>${i.infName}</b></sp
+ 1904:  an></div>
+ 1905:                  <div class="info-banner-row"><span>Motif: <b>${i.motif || '\u2014'}</b></span> <span>${i.date}</span></div>
+ 1906:              </div>
+ 1907:              <div class="chef-layout">
+ 1908:                  <div class="chef-pdf"><iframe src="${(i.pdf||'').replace('/view','/preview')}" style="width:100%;height:100%;bo
+ 1909:  rder:0"></iframe></div>
+ 1910:                  <div class="chef-form">
+ 1911:                      ${s.mode==='app_isp' ? `
+ 1912:                         <div><label>Commentaire ISP</label><div class="static-box">${i.commBN||"-"}</div></div>
+ 1913:                         <div><label>Checklist Qualit\u00e9</label><div class="check-list">
+ 1914:                            ${s.checks.map((c,k) => {
+ 1915:                                let cls = ""; if(c.label.includes("OK")) cls="chk-green"; if(c.label.includes("KO")) cls="chk-red
+ 1916:  ";
+ 1917:                                const checked = c.checked ? " checked" : "";
+ 1918:                                return `<div class="check-item ${cls}"><input type="checkbox" id="chk_${k}" name="check_${c.id}"$
+ 1919:  {checked}> ${c.label}</div>`;
+ 1920:                            }).join('')}
+ 1921:                         </div></div>
+ 1922:                         <div><label>Commentaire Chefferie</label><textarea id="chefComm">${s.existingComment||""}</textarea></di
+ 1923:  v>
+ 1924:                         <button class="btnGo" onclick="sendChef()">Valider</button>
+ 1925:                      ` : s.mode==='med_chef' ? `
+ 1926:                         <div><label>Analyse</label><div class="static-box">${i.motif||"-"}</div></div>
+ 1927:                         <div><label>Analyse M\u00e9decin</label><textarea id="medAnalyse"></textarea></div>
+ 1928:                         <div><label>Actions</label><textarea id="medAction"></textarea></div>
+ 1929:                         <button class="btnGo" onclick="sendChef()">Valider</button>
+ 1930:                      ` : `<div>Formulaire non d\u00e9fini</div>`}
+ 1931:                  </div>
+ 1932:              </div>
+ 1933:          </div>`;
+ 1934:          document.getElementById(areaId).innerHTML = html;
+ 1935:      }
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+ 2009:      
+ 2010:      function showErrorsByType(errorType) {
+ 2011:          if(!globalList || globalList.length === 0) { toast("Chargez d'abord les donn\u00e9es"); return; }
+ 2012:          
+ 2013:          document.getElementById("modalListTitle").textContent = errorType + ' \u2014 par ISP';
+ 2014:          document.getElementById('filterBox').style.display = 'none';
+ 2015:          const c = document.getElementById("modalListContent");
+ 2016:          c.innerHTML = '<div style="padding:30px;text-align:center;color:gray;">Chargement des donn\u00e9es...</div>';
+ 2017:          document.getElementById("modalList").style.display = "flex";
+ 2018:          
+ 2019:          let colorMap = { 'Erreur Grave': 'var(--red)', 'Erreur Pisu L\u00e9g\u00e8re': 'var(--orange)', 'Erreur Bilan L\u00e9g\
+ 2020:  u00e8re': 'var(--orange)' };
+ 2021:          let color = colorMap[errorType] || 'var(--red)';
+ 2022:          
+ 2023:          let loaded = 0;
+***** HOME.HTML
+ 1936:      
+ 1937:      function sendChef() {
+ 1938:          if(!currentSchema) return;
+ 1939:          const s = currentSchema;
+ 1940:          const payload = { mode:s.mode, info:s.info };
+ 1941:          if(s.mode==='app_isp') {
+ 1942:              payload.comment = document.getElementById("chefComm").value;
+ 1943:              if(!payload.comment) { toast("Commentaire requis"); return; }
+ 1944:              payload.checks = {};
+ 1945:              s.checks.forEach((c,k) => {
+ 1946:                  const chk = document.getElementById("chk_"+k);
+ 1947:                  if(chk) payload.checks[c.id] = chk.checked;
+ 1948:              });
+ 1949:          } else if(s.mode==='med_chef') {
+ 1950:              payload.analyse = document.getElementById("medAnalyse").value;
+ 1951:              payload.action = document.getElementById("medAction").value;
+ 1952:          }
+ 1953:          const areaId = (s.mode==='med_chef') ? 'medFormArea' : 'chefFormArea';
+ 1954:          document.getElementById(areaId).innerHTML = "<div style='text-align:center;padding:50px'>Enregistrement...</div>";
+ 1955:          google.script.run.withSuccessHandler(() => { toast("Enregistr\u00e9"); loadChefCase(s.mode); }).saveChefferie(payload);
+ 1956:      }
+ 1957:  
+ 1958:      // LIST & SORT
+ 1959:      let globalList = [], currentDetailList = [], currentDetailIspName = "";
+ 1960:      let sortDir = 1;
+ 1961:      function loadGlobalList() {
+ 1962:          const tbody = document.getElementById("globalTbody");
+ 1963:          if(!tbody) return;
+ 1964:          tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:30px;color:gray;">Chargement...</td></tr>';
+ 1965:          
+ 1966:          google.script.run.withSuccessHandler(res => {
+ 1967:              globalList = res;
+ 1968:              renderGlobalTable(res);
+ 1969:          }).getAllIspErrorStats();
+ 1970:      }
+ 1971:      
+ 1972:      function renderGlobalTable(data) {
+ 1973:          document.getElementById("globalTbody").innerHTML = data.map(r => `
+ 1974:            <tr onclick="loadIspDetail('${r.mat}', '${r.nom}')"><td><b>${r.nom}</b></td><td class="text-green">${r.bilanOk}</td><
+ 1975:  td class="text-green">${r.pisuOk}</td><td class="text-orange">${r.errBilL}</td><td class="text-orange">${r.errPisuL}</td><td cl
+ 1976:  ass="text-red">${r.errGrave}</td></tr>
+ 1977:          `).join('');
+ 1978:      }
+ 1979:      
+ 1980:      function sortGlobal(idx) {
+ 1981:          sortDir *= -1;
+ 1982:          const keys = ['nom', 'bilanOk', 'pisuOk', 'errBilL', 'errPisuL', 'errGrave'];
+ 1983:          const k = keys[idx];
+ 1984:          globalList.sort((a,b) => { if(a[k]>b[k]) return sortDir; if(a[k]<b[k]) return -sortDir; return 0; });
+ 1985:          for(let i=0; i<6; i++) document.getElementById("sortIcon"+i).textContent="\u2195";
+ 1986:          document.getElementById("sortIcon"+idx).textContent = sortDir===1 ? "\u25bc" : "\u25b2";
+ 1987:          renderGlobalTable(globalList);
+ 1988:      }
+ 1989:      
+ 1990:      function loadIspDetail(mat, ispName) {
+ 1991:          currentDetailIspName = ispName || mat;
+ 1992:          startLoad();
+ 1993:          google.script.run.withSuccessHandler(list => {
+ 1994:              stopLoad();
+ 1995:              currentDetailList = list;
+ 1996:              document.getElementById("filterBox").style.display = "flex";
+ 1997:              document.querySelectorAll('#filterBox input[type="checkbox"]').forEach(cb => cb.checked = true);
+ 1998:              document.getElementById("modalListTitle").textContent = `Dossiers de ${ispName || mat}`;
+ 1999:              filterDetails();
+ 2000:              document.getElementById("modalList").style.display="flex";
+ 2001:          }).getIspDetailsAdmin(mat);
+ 2002:      }
+ 2003:  
+ 2004:      function loadAllGraveErrors() {
+ 2005:          startLoad();
+ 2006:          let allGraveList = [];
+ 2007:          let loaded = 0;
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+ 2024:          let totalIsps = globalList.length;
+ 2025:          let ispResults = [];
+ 2026:          
+ 2027:          globalList.forEach(isp => {
+***** HOME.HTML
+ 2008:          let totalIsps = globalList.length;
+ 2009:  
+ 2010:          if(totalIsps === 0) { toast("Aucune donn\u00e9e"); stopLoad(); return; }
+ 2011:  
+ 2012:          globalList.forEach(isp => {
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+ 2029:                  loaded++;
+ 2030:                  const matched = list.filter(x => x.types.some(t => t === errorType));
+ 2031:                  if(matched.length > 0) {
+ 2032:                      ispResults.push({ nom: isp.nom, mat: isp.mat, count: matched.length, fiches: matched });
+ 2033:                  }
+ 2034:                  if(loaded === totalIsps) {
+ 2035:                      ispResults.sort((a,b) => b.count - a.count);
+ 2036:                      if(ispResults.length === 0) {
+ 2037:                          c.innerHTML = '<div style="padding:30px;text-align:center;color:gray;">Aucun ISP avec ce type d\'erreur
+ 2038:  </div>';
+ 2039:                          return;
+ 2040:                      }
+ 2041:                      let tagBg = errorType.includes('Grave') ? '#d32f2f' : '#ff9800';
+ 2042:                      c.innerHTML = ispResults.map(r => {
+ 2043:                          let fichesHtml = r.fiches.map(x => {
+ 2044:                              let safeMotif = (x.motif||'').replace(/'/g, "\\'");
+ 2045:                              let safeDate = (x.date||'').replace(/'/g, "\\'");
+ 2046:                              let safeStatus = (x.status||'').replace(/'/g, "\\'");
+ 2047:                              let safeCentre = (x.centre||'').replace(/'/g, "\\'");
+ 2048:                              let safeEngin = (x.engin||'').replace(/'/g, "\\'");
+ 2049:                              return '<div class="detail-row" onclick="event.stopPropagation();loadInterDetailFromGroup(\''+x.id+
+ 2050:  '\', \''+safeDate+'\', \''+safeMotif+'\', \''+safeStatus+'\', \''+safeCentre+'\', \''+safeEngin+'\');" style="padding:10px 0;bo
+ 2051:  rder-bottom:1px solid rgba(255,255,255,0.05);cursor:pointer;">'
+ 2052:                                  +'<div style="display:flex;justify-content:space-between;align-items:center;">'
+ 2053:                                  +'<div><span style="color:#39ff14;font-weight:bold;font-size:12px;">'+x.id+'</span><span style=
+ 2054:  "color:#aaa;font-size:11px;margin-left:10px;">'+(x.date||'-')+'</span></div>'
+ 2055:                                  +'<span style="background:'+tagBg+';color:#fff;padding:2px 6px;border-radius:4px;font-size:10px
+ 2056:  ;font-weight:bold;">'+errorType+'</span>'
+ 2057:                                  +'</div>'
+ 2058:                                  +'<div style="font-size:11px;color:#ccc;margin-top:4px;">Motif: <b>'+(x.motif||'-')+'</b></div>
+ 2059:  '
+ 2060:                                  +(x.commChef ? '<div style="font-size:10px;color:var(--accent3);margin-top:2px;">Chef: '+x.comm
+ 2061:  Chef+'</div>' : '')
+ 2062:                                  +'</div>';
+ 2063:                          }).join('');
+ 2064:                          return '<div style="border-bottom:1px solid #333;">'
+ 2065:                              +'<div class="detail-row" onclick="toggleExpand(this)" style="padding:14px 16px;cursor:pointer;disp
+ 2066:  lay:flex;justify-content:space-between;align-items:center;">'
+ 2067:                              +'<div style="flex:1;"><b style="color:#fff;font-size:14px;">'+r.nom+'</b></div>'
+ 2068:                              +'<div style="display:flex;align-items:center;gap:8px;">'
+ 2069:                              +'<span style="background:'+color+';color:#fff;padding:4px 10px;border-radius:6px;font-weight:bold;
+ 2070:  font-size:12px;">'+r.count+' fiche'+(r.count>1?'s':'')+'</span>'
+ 2071:                              +'<span class="expand-arrow" style="color:var(--muted);font-size:16px;">\u25b6</span>'
+ 2072:                              +'</div></div>'
+ 2073:                              +'<div class="isp-expand" style="display:none;background:rgba(0,0,0,0.2);padding:0 16px;">'+fichesH
+ 2074:  tml+'</div>'
+ 2075:                              +'</div>';
+ 2076:                      }).join('');
+ 2077:                  }
+***** HOME.HTML
+ 2014:                  loaded++;
+ 2015:                  const graveErrors = list.filter(x => x.errorType === "Erreur Grave");
+ 2016:                  graveErrors.forEach(e => {
+ 2017:                      e.ispName = isp.nom;
+ 2018:                  });
+ 2019:                  allGraveList = allGraveList.concat(graveErrors);
+ 2020:  
+ 2021:                  if(loaded === totalIsps) {
+ 2022:                      stopLoad();
+ 2023:                      currentDetailList = allGraveList;
+ 2024:                      document.getElementById("filterBox").style.display = "flex";
+ 2025:                      document.querySelectorAll('#filterBox input[type="checkbox"]').forEach(cb => {
+ 2026:                          cb.checked = cb.value === "Erreur Grave";
+ 2027:                      });
+ 2028:                      document.getElementById("modalListTitle").textContent = "Toutes les fiches en erreur grave";
+ 2029:                      filterDetails();
+ 2030:                      document.getElementById("modalList").style.display="flex";
+ 2031:                  }
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+ 2081:      
+ 2082:      function toggleExpand(btn) {
+ 2083:          const expandDiv = btn.nextElementSibling;
+ 2084:          const arrow = btn.querySelector('.expand-arrow');
+ 2085:          if(expandDiv.style.display === 'block') {
+ 2086:              expandDiv.style.display = 'none';
+ 2087:              arrow.textContent = '\u25b6';
+ 2088:          } else {
+ 2089:              expandDiv.style.display = 'block';
+ 2090:              arrow.textContent = '\u25bc';
+ 2091:          }
+ 2092:      }
+***** HOME.HTML
+ 2035:      
+ 2036:      function loadAllLegereErrors() {
+ 2037:          startLoad();
+ 2038:          let allLegereList = [];
+ 2039:          let loaded = 0;
+ 2040:          let totalIsps = globalList.length;
+ 2041:  
+ 2042:          if(totalIsps === 0) { toast("Chargez d'abord les donn\u00e9es (Voir Donn\u00e9es APP)"); stopLoad(); return; }
+ 2043:  
+ 2044:          globalList.forEach(isp => {
+ 2045:              google.script.run.withSuccessHandler(list => {
+ 2046:                  loaded++;
+ 2047:                  const legereErrors = list.filter(x => x.errorType === "Erreur Bilan L\u00e9g\u00e8re" || x.errorType === "Erreu
+ 2048:  r Pisu L\u00e9g\u00e8re" || (x.types && (x.types.includes("Erreur Bilan L\u00e9g\u00e8re") || x.types.includes("Erreur Pisu L\u
+ 2049:  00e9g\u00e8re"))));
+ 2050:                  legereErrors.forEach(e => { e.ispName = isp.nom; });
+ 2051:                  allLegereList = allLegereList.concat(legereErrors);
+ 2052:  
+ 2053:                  if(loaded === totalIsps) {
+ 2054:                      stopLoad();
+ 2055:                      currentDetailList = allLegereList;
+ 2056:                      document.getElementById("filterBox").style.display = "flex";
+ 2057:                      document.querySelectorAll('#filterBox input[type="checkbox"]').forEach(cb => {
+ 2058:                          cb.checked = cb.value === "Erreur Bilan L\u00e9g\u00e8re" || cb.value === "Erreur Pisu L\u00e9g\u00e8re
+ 2059:  ";
+ 2060:                      });
+ 2061:                      document.getElementById("modalListTitle").textContent = "Toutes les fiches en erreur l\u00e9g\u00e8re";
+ 2062:                      filterDetails();
+ 2063:                      document.getElementById("modalList").style.display="flex";
+ 2064:                  }
+ 2065:              }).getIspDetailsAdmin(isp.mat);
+ 2066:          });
+ 2067:      }
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+ 2093:  
+ 2094:          function loadInterDetailFromGroup(id, date, motif, status, centre, engin) {
+ 2095:          startLoad();
+ 2096:          google.script.run.withSuccessHandler(res => {
+ 2097:              stopLoad();
+ 2098:              document.getElementById("modalPdf").src = (res.pdfUrl||'').replace('/view','/preview');
+ 2099:              setText("detailId", id);
+ 2100:              setText("detailDate", date || "-");
+ 2101:              setText("detailCentre", status || "-");
+ 2102:              setText("detailMotif", motif || "-");
+ 2103:              setText("detailEngin", engin || res.engin || "-");
+ 2104:              document.getElementById("commChef").textContent = res.commentChefferie||"Aucun commentaire.";
+ 2105:              const m = document.getElementById("blockMed");
+ 2106:              if(res.analyseMed) { m.style.display="block"; document.getElementById("commMed").textContent=res.analyseMed; } else
+ 2107:   m.style.display="none";
+ 2108:              document.getElementById("modalDetail").style.display="flex";
+ 2109:          }).getInterventionDetails(id);
+ 2110:      }
+***** HOME.HTML
+ 2068:  
+ 2069:      function skipToNextAppChef() {
+ 2070:          loadAppChefferie();
+ 2071:      }
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+ 2111:  
+ 2112:      function loadInterDetail(id, date, motif, status, centre, engin) {
+ 2113:          // Fermer la liste des interventions
+ 2114:          document.getElementById("modalList").style.display = "none";
+ 2115:          
+ 2116:          startLoad();
+ 2117:          google.script.run.withSuccessHandler(res => {
+ 2118:              stopLoad();
+ 2119:              document.getElementById("modalPdf").src = (res.pdfUrl||'').replace('/view','/preview');
+ 2120:              setText("detailId", id);
+ 2121:              setText("detailDate", date || "-");
+ 2122:              setText("detailCentre", status || "-");
+ 2123:              setText("detailMotif", motif || "-");
+ 2124:              setText("detailEngin", engin || res.engin || "-");
+ 2125:              document.getElementById("commChef").textContent = res.commentChefferie||"Aucun commentaire.";
+ 2126:              const m = document.getElementById("blockMed");
+ 2127:              if(res.analyseMed) { m.style.display="block"; document.getElementById("commMed").textContent=res.analyseMed; } else
+ 2128:   m.style.display="none";
+ 2129:              document.getElementById("modalDetail").style.display="flex";
+ 2130:          }).getInterventionDetails(id);
+ 2131:      }
+***** HOME.HTML
+ 2072:  
+ 2073:      function filterDetails() {
+ 2074:          const filters = Array.from(document.querySelectorAll('input[type=checkbox]:checked')).map(c=>c.value);
+ 2075:          const c = document.getElementById("modalListContent"); 
+ 2076:          c.innerHTML="";
+ 2077:          const filtered = currentDetailList.filter(x => x.types.some(t => filters.includes(t)));
+ 2078:          if(filtered.length===0) c.innerHTML="<div style='padding:20px;text-align:center;color:gray'>Aucun dossier</div>";
+ 2079:          filtered.forEach(x => {
+ 2080:              // Cr\u00e9er les tags pour chaque type (peut \u00eatre "Bilan OK", "Pisu OK", "Erreur Grave", etc.)
+ 2081:              const tagHtml = x.types.map(t => {
+ 2082:                  let tagBg = "#47d18c", tagColor = "white";
+ 2083:                  if(t.includes("Grave")) {
+ 2084:                      tagBg = "#d32f2f";
+ 2085:                      tagColor = "white";
+ 2086:                  } else if(t.includes("L\u00e9g\u00e8re")) {
+ 2087:                      tagBg = "#ff9800";
+ 2088:                      tagColor = "white";
+ 2089:                  }
+ 2090:                  return `<span style="display:inline-block;padding:3px 8px;border-radius:3px;font-size:10px;font-weight:bold;bac
+ 2091:  kground:${tagBg};color:${tagColor};margin-left:4px;">${t}</span>`;
+ 2092:              }).join('');
+ 2093:              const ispLabel = x.ispName ? `<div style="font-size:10px;color:var(--accent3);margin-top:4px;">ISP: <b>${x.ispName}
+ 2094:  </b></div>` : '';
+ 2095:              
+ 2096:              const div = document.createElement('div');
+ 2097:              div.className = 'detail-row';
+ 2098:              div.style.cssText = 'padding:12px;border-bottom:1px solid #333;cursor:pointer;';
+ 2099:              div.addEventListener('click', (e) => { 
+ 2100:                  e.preventDefault(); 
+ 2101:                  e.stopPropagation(); 
+ 2102:                  e.stopImmediatePropagation();
+ 2103:                  console.log("Click intercept\u00e9, ouverture popup pour:", x.id);
+ 2104:                  loadInterDetail(e, x.id, x.date, x.motif, x.status, x.centre, x.engin);
+ 2105:                  return false;
+ 2106:              });
+ 2107:              div.innerHTML = `
+ 2108:                      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
+ 2109:                          <div style="flex:1;">
+ 2110:                              <div style="font-weight:bold;color:#39ff14;font-size:13px;">Num\u00e9ro d'intervention: ${x.id}</di
+ 2111:  v>
+ 2112:                              <div style="font-size:10px;color:#aaa;margin-top:3px;">Date: <b>${x.date || '-'}</b></div>
+ 2113:                          </div>
+ 2114:                          <div style="margin-left:10px;">${tagHtml}</div>
+ 2115:                      </div>
+ 2116:                      <div style="font-size:12px;color:#ccc;margin-bottom:6px;"><b>Motif: ${x.motif || '-'}</b></div>
+ 2117:                      <div style="font-size:10px;color:#aaa;margin-bottom:3px;">Type: <b>${x.status || '-'}</b></div>
+ 2118:                      <div style="font-size:10px;color:#aaa;">Engin: <b>${x.engin || '-'}</b></div>
+ 2119:                      ${ispLabel}
+ 2120:                      ${(x.errorType && x.commChef) ? `<div style="font-size:10px;color:var(--accent3);margin-top:4px;background:
+ 2121:  #1a1a1a;padding:4px;border-radius:3px;">\uD83D\uDCAC Chef: ${x.commChef}</div>` : ''}
+ 2122:                      ${x.commMed ? `<div style="font-size:10px;color:var(--red);margin-top:4px;background:#1a1a1a;padding:4px;bo
+ 2123:  rder-radius:3px;">\uD83E\uDE7A Med: ${x.commMed}</div>` : ''}
+ 2124:              `;
+ 2125:              c.appendChild(div);
+ 2126:          });
+ 2127:      }
+*****
+
+***** _RECOVERY_BACKUP\Home_local.html
+ 2132:      
+ 2133:      function closeModal(id){ document.getElementById(id).style.display="none"; }
+***** HOME.HTML
+ 2128:      
+ 2129:      function loadInterDetail(evt, id, date, motif, status, centre, engin) {
+ 2130:          if(evt) { evt.preventDefault(); evt.stopPropagation(); evt.stopImmediatePropagation(); }
+ 2131:          
+ 2132:          const item = currentDetailList.find(x => x.id === id);
+ 2133:          if(!item) return false;
+ 2134:          
+ 2135:          const fileId = extractDriveFileId(item.pdf || '');
+ 2136:          if(!fileId) { toast("PDF indisponible"); return false; }
+ 2137:          
+ 2138:          // Extraire date/heure
+ 2139:          let dateOnly = date || "-", heureOnly = "\u2014";
+ 2140:          if(date && date.includes(' ')) { const p = date.split(' '); dateOnly = p[0]; heureOnly = p[1] || "\u2014"; }
+ 2141:          
+ 2142:          const pdfSrc = "https://drive.google.com/file/d/" + fileId + "/preview";
+ 2143:          const commChefHtml = item.commChef ? item.commChef : "Aucun commentaire.";
+ 2144:          const commMedHtml = item.commMed ? `<h4 style="color:var(--red);margin:15px 0 10px 0;">Analyse M\u00e9decin</h4><div cl
+ 2145:  ass="static-box" style="color:var(--red);">${item.commMed}</div>` : '';
+ 2146:          
+ 2147:          // Injecter tout le HTML dynamiquement (m\u00eame m\u00e9thode que renderChefForm qui marche)
+ 2148:          document.getElementById("modalDetailBody").innerHTML = `
+ 2149:              <iframe src="${pdfSrc}" style="flex:2.5; border:0; background:#000; position:static;"></iframe>
+ 2150:              <div style="flex:1; min-width:350px; background:#1a2245; padding:20px; border-left:1px solid var(--border); overflo
+ 2151:  w-y:auto; display:flex; flex-direction:column; gap:15px;">
+ 2152:                  <h4 style="color:var(--accent3);margin:0 0 15px 0;">Informations</h4>
+ 2153:                  <div style="display:flex;flex-direction:column;gap:12px;font-size:13px;">
+ 2154:                      <div><span style="color:var(--muted);font-size:11px;">N\u00b0 Intervention</span><br><b style="font-size:15
+ 2155:  px;color:#fff;">${id}</b></div>
+ 2156:                      <div><span style="color:var(--muted);font-size:11px;">Date</span><br><b>${dateOnly}</b></div>
+ 2157:                      <div><span style="color:var(--muted);font-size:11px;">Heure</span><br><b>${heureOnly}</b></div>
+ 2158:                      <div><span style="color:var(--muted);font-size:11px;">V\u00e9hicule / Engin</span><br><b>${engin || '-'}</b
+ 2159:  ></div>
+ 2160:                      <div><span style="color:var(--muted);font-size:11px;">Type d'intervention</span><br><b>${status || '-'}</b>
+ 2161:  </div>
+ 2162:                      <div><span style="color:var(--muted);font-size:11px;">Motif d'intervention</span><br><b>${motif || '-'}</b>
+ 2163:  </div>
+ 2164:                  </div>
+ 2165:                  <h4 style="color:var(--accent3);margin:15px 0 10px 0;">Commentaire Chefferie</h4>
+ 2166:                  <div class="static-box">${commChefHtml}</div>
+ 2167:                  ${commMedHtml}
+ 2168:                  <button class="btnGo" style="width:100%;margin-bottom:8px;" onclick="closeModalDetail(); document.getElementByI
+ 2169:  d('modalList').style.display='flex';">\u2190 Retour aux fiches</button>
+ 2170:                  <button class="btnGo" style="width:100%;" onclick="closeModalDetail()">Fermer</button>
+ 2171:              </div>
+ 2172:          `;
+ 2173:          
+ 2174:          document.getElementById("modalDetail").style.display = "flex";
+ 2175:          return false;
+ 2176:      }
+ 2177:      
+ 2178:      function closeModalDetail() {
+ 2179:          document.getElementById("modalDetailBody").innerHTML = "";
+ 2180:          document.getElementById("modalDetail").style.display = "none";
+ 2181:      }
+ 2182:      
+ 2183:      function closeModal(id){ document.getElementById(id).style.display="none"; }
+*****
+

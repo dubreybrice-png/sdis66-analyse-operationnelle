@@ -12,6 +12,7 @@ const APP_SHEET_NAME = "APP";
 const ID_SS_2025 = "112sOp4EAPm3vq0doLWzWlAbsOdutszGKT86USjSqst0"; 
 const ID_SS_RH   = "1lwQJ6xTET3qpr9-cPGBngdih_bmfrVRMOYcMgMkUVP0"; 
 const ID_PROTOCOLES_CORRESP = "12-7VNgPo7PsoKoRHzm_y24a-2OoDiCvJIyJFTdC9l7c"; 
+const ID_SS_ASTREINTE_DEPT = "1XPyV7-Ulno1f4-TgrtsCprL8c6cs3NU7jt1UNST3oXE"; 
 
 const DASH_LASTDATE_CELL = "D2";
 const DASH_PSUD_2026_CELL = "B3";
@@ -418,6 +419,81 @@ function getAdminData(password) {
   cache.put("admin_data_full_v2", JSON.stringify(result), 21600);
   
   return result;
+}
+
+/* --- ASTREINTE DEPARTEMENTALE ISPP --- */
+function getAstreinteISPP() {
+  const NOMS_ISPP = ["Dubrey", "Bois", "Piguillem", "Le Roy"];
+  const MOIS_NOMS = ["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"];
+  const COL_K = 10; // colonne K = index 10 (0-based)
+  
+  // Vérifier le cache
+  const cache = CacheService.getScriptCache();
+  const cached = cache.get("astreinte_dept_ispp");
+  if (cached) return JSON.parse(cached);
+  
+  const ss = SpreadsheetApp.openById(ID_SS_ASTREINTE_DEPT);
+  
+  // Initialiser compteurs : { nom: [jan, fev, mar, ...] }
+  const compteurs = {};
+  NOMS_ISPP.forEach(n => compteurs[n] = new Array(12).fill(0));
+  
+  for (let m = 0; m < 12; m++) {
+    const sheetName = MOIS_NOMS[m] + " 2026";
+    const sh = ss.getSheetByName(sheetName);
+    if (!sh) continue;
+    const lastRow = sh.getLastRow();
+    if (lastRow < 2) continue;
+    const colData = sh.getRange(2, COL_K + 1, lastRow - 1, 1).getValues();
+    for (let i = 0; i < colData.length; i++) {
+      const val = String(colData[i][0]).trim();
+      if (!val) continue;
+      const valLower = val.toLowerCase();
+      // Chercher les noms de manière stricte
+      if (valLower.indexOf("dubrey") !== -1) compteurs["Dubrey"][m]++;
+      else if (valLower.indexOf("bois") !== -1) compteurs["Bois"][m]++;
+      else if (valLower.indexOf("piguillem") !== -1) compteurs["Piguillem"][m]++;
+      else if (valLower.indexOf("le roy") !== -1) compteurs["Le Roy"][m]++;
+    }
+  }
+  
+  const result = NOMS_ISPP.map(nom => ({
+    nom: nom,
+    months: compteurs[nom],
+    total: compteurs[nom].reduce((a, b) => a + b, 0)
+  }));
+  
+  cache.put("astreinte_dept_ispp", JSON.stringify(result), 21600);
+  return result;
+}
+
+/* --- PLANNING MENSUEL --- */
+function getPlanningMois() {
+  const MOIS_NOMS = ["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"];
+  const today = new Date();
+  const moisIndex = today.getMonth();
+  const moisNom = MOIS_NOMS[moisIndex];
+  
+  const ss = SpreadsheetApp.openById(ID_SS_ASTREINTE_DEPT);
+  const sheetName = moisNom + " 2026";
+  const sh = ss.getSheetByName(sheetName);
+  
+  if (!sh) return null;
+  
+  // A1:Z29
+  const range = sh.getRange("A1:Z29");
+  const values = range.getValues();
+  const backgroundColors = range.getBackgrounds();
+  const fontColors = range.getFontColors();
+  const fontWeights = range.getFontWeights();
+  
+  return {
+    values: values,
+    backgrounds: backgroundColors,
+    fontColors: fontColors,
+    fontWeights: fontWeights,
+    mois: moisNom
+  };
 }
 
 /* --- ISP DATA --- */

@@ -1,4 +1,4 @@
-                                                    <!doctype html>
+<!doctype html>
 <!-- Version: 2026-01-28 16:45 -->
 <html>
 <head>
@@ -152,27 +152,13 @@
 
             <div class="group">
                 <div class="groupTitle">Résultat</div>
-                <div style="margin-bottom:8px;">
-                    <label class="cb"><input type="checkbox" id="chkBh"> <span id="lblBh">Absence / erreur commande PUI</span></label>
-                </div>
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:4px; margin-bottom:8px;">
-                    <label class="cb" style="border-color: rgba(71,209,140,.3); color: var(--ok);"><input type="checkbox" id="chkBi"> <span id="lblBi">Bilan OK</span></label>
-                    <label class="cb" style="border-color: rgba(71,209,140,.3); color: var(--ok);"><input type="checkbox" id="chkBk"> <span id="lblBk">Pisu OK</span></label>
-                </div>
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:4px; margin-bottom:8px;">
-                    <label class="cb" style="border-color: rgba(255,165,0,.3); color: #ff8c00;"><input type="checkbox" id="chkBj"> <span id="lblBj">Bilan incomplet</span></label>
-                    <label class="cb" style="border-color: rgba(255,165,0,.3); color: #ff8c00;"><input type="checkbox" id="chkBl"> <span id="lblBl">Pisu pas ok</span></label>
-                </div>
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:4px; margin-bottom:8px;">
-                    <label class="cb"><input type="checkbox" id="chkBm"> <span id="lblBm">PUI commandée</span></label>
-                    <label class="cb"><input type="checkbox" id="chkBn"> <span id="lblBnSurv">Surveillance transport</span></label>
-                </div>
+                <div id="biBmBox" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap:6px;"></div>
             </div>
 
-            <div class="group">
+            <div class="group" id="motifContainer">
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px;">
-                    <div><label>Motif bilan incomplet</label><textarea id="txtBn"></textarea></div>
-                    <div><label>Motif pisu pas ok</label><textarea id="txtBo"></textarea></div>
+                    <div id="motifBilanDiv"><label>Motif bilan incomplet</label><textarea id="txtBn"></textarea></div>
+                    <div id="motifPisuDiv"><label>Motif pisu pas ok</label><textarea id="txtBo"></textarea></div>
                 </div>
             </div>
 
@@ -264,10 +250,21 @@
        const mkCb = (boxId, items) => {
          const box = document.getElementById(boxId);
          box.innerHTML = "";
+         if (!items || !Array.isArray(items)) return;
+         
          items.forEach(item => {
             const lbl = document.createElement("label");
             lbl.className = "cb";
-            lbl.innerHTML = `<input type="checkbox" name="chk_${item.id}" ${item.checked?'checked':''}> ${item.label}`;
+            if(item.color === "ok") {
+              lbl.style.borderColor = "rgba(71,209,140,.3)";
+              lbl.style.color = "var(--ok)";
+            } else if(item.color === "orange") {
+              lbl.style.borderColor = "rgba(255,165,0,.3)";
+              lbl.style.color = "#ff8c00";
+            }
+            const nameAttr = item.id ? item.id : item.colIdx;
+            const dataColHtml = item.id ? '' : ` data-col="${item.colIdx}"`;
+            lbl.innerHTML = `<input type="checkbox" name="chk_${nameAttr}"${dataColHtml} ${item.checked?'checked':''}> ${item.label}`;
             box.appendChild(lbl);
          });
        };
@@ -284,46 +281,48 @@
        fillSelect("selBb", c.bb.opts, c.bb.val); document.getElementById("lblBb").textContent = c.bb.label;
        
        document.getElementById("lblBc").textContent = c.bc.label;
-       document.getElementById("txtBc").value = c.bc.val || "";
+       document.getElementById("txtBc").value = c.bc.val;
+       
+       fillSelect("selBg", c.bg.opts, c.bg.val); document.getElementById("lblBg").textContent = c.bg.label;
 
-       // RESULTATS
        const r = schema.resultats;
-       fillSelect("selBg", r.bg.opts, r.bg.val); document.getElementById("lblBg").textContent = r.bg.label;
-       
-       document.getElementById("lblBh").textContent = r.bh.label;
-       document.getElementById("chkBh").checked = r.bh.checked;
-       
-       document.getElementById("lblBi").textContent = r.bi.label;
-       document.getElementById("chkBi").checked = r.bi.checked;
-       
-       document.getElementById("lblBj").textContent = r.bj.label;
-       document.getElementById("chkBj").checked = r.bj.checked;
-       
-       document.getElementById("lblBk").textContent = r.bk.label;
-       document.getElementById("chkBk").checked = r.bk.checked;
-       
-       document.getElementById("lblBl").textContent = r.bl.label;
-       document.getElementById("chkBl").checked = r.bl.checked;
-       
-       document.getElementById("lblBm").textContent = r.bm.label;
-       document.getElementById("chkBm").checked = r.bm.checked;
-       
-       if(document.getElementById("chkBn")) {
-           document.getElementById("lblBnSurv").textContent = r.bn ? r.bn.label : "Surveillance transport";
-           document.getElementById("chkBn").checked = r.bn ? r.bn.checked : false;
-       }
 
-       // Textes
-       document.getElementById("lblBn").textContent = schema.fieldBn.label;
+       mkCb("biBmBox", r.checksBiBm);
+
        document.getElementById("txtBn").value = schema.fieldBn.val;
-       document.getElementById("lblBo").textContent = schema.fieldBo.label;
        document.getElementById("txtBo").value = schema.fieldBo.val;
 
-       // Problem
        const pbCb = document.getElementById("pbCheck");
        pbCb.checked = !!schema.pbCheck;
        document.getElementById("pbTxt").value = schema.pbTxt; 
        document.getElementById("pbDetails").style.display = schema.pbCheck ? "block" : "none";
+
+       // Ajouter logique conditionnelle pour afficher/masquer les motifs
+       updateMotifVisibility();
+       
+       // Ajouter event listeners sur les checkboxes du résultat
+       const checkboxes = document.querySelectorAll('#biBmBox input[type="checkbox"]');
+       checkboxes.forEach(cb => {
+           cb.addEventListener('change', updateMotifVisibility);
+       });
+    }
+
+    function updateMotifVisibility() {
+       const checkboxes = document.querySelectorAll('#biBmBox input[type="checkbox"]');
+       let hasBilanIncomplet = false;
+       let hasPisuPasOk = false;
+       checkboxes.forEach(cb => {
+           const parent = cb.closest('label');
+           const labelText = parent ? parent.textContent.toLowerCase() : '';
+           if(labelText.includes('bilan') && labelText.includes('incomplet') && cb.checked) hasBilanIncomplet = true;
+           if(labelText.includes('pisu') && labelText.includes('pas ok') && cb.checked) hasPisuPasOk = true;
+       });
+       const mc = document.getElementById('motifContainer');
+       if(mc) mc.style.display = (hasBilanIncomplet || hasPisuPasOk) ? 'block' : 'none';
+       const mb = document.getElementById('motifBilanDiv');
+       const mp = document.getElementById('motifPisuDiv');
+       if(mb) mb.style.display = hasBilanIncomplet ? 'block' : 'none';
+       if(mp) mp.style.display = hasPisuPasOk ? 'block' : 'none';
     }
 
     function fillSelect(id, opts, currentVal) {
@@ -349,8 +348,23 @@
 
       const checks = {};
       document.querySelectorAll('input[type="checkbox"][name^="chk_"]').forEach(cb => {
+         const dataCol = cb.getAttribute('data-col');
+         if(dataCol) {
+           checks[parseInt(dataCol)] = cb.checked;
+         }
+      });
+
+      // Récupérer les résultats depuis biBmBox
+      const resultats = {
+         bg: document.getElementById("selBg").value
+      };
+      
+      document.querySelectorAll('#biBmBox input[type="checkbox"]').forEach(cb => {
+         const colIdx = parseInt(cb.getAttribute('data-col'));
          const id = cb.name.split('_')[1];
-         checks[id] = cb.checked;
+         if(id === 'bi' || id === 'bj' || id === 'bk' || id === 'bl' || id === 'bh' || id === 'bm') {
+            resultats[id] = cb.checked;
+         }
       });
 
       const payload = {
@@ -365,32 +379,26 @@
             bb: document.getElementById("selBb").value,
             bc: document.getElementById("txtBc").value
          },
-         resultats: {
-            bg: document.getElementById("selBg").value,
-            bh: document.getElementById("chkBh").checked,
-            bi: document.getElementById("chkBi").checked,
-            bj: document.getElementById("chkBj").checked,
-            bk: document.getElementById("chkBk").checked,
-            bl: document.getElementById("chkBl").checked,
-            bm: document.getElementById("chkBm").checked,
-            bn: document.getElementById("chkBn") ? document.getElementById("chkBn").checked : false
-         },
+         resultats: resultats,
          txtBn: document.getElementById("txtBn").value,
          txtBo: document.getElementById("txtBo").value,
          pbCheck: document.getElementById("pbCheck").checked,
          pbTxt: document.getElementById("pbTxt").value
       };
 
-      google.script.run.withSuccessHandler(()=>{ 
+      console.log("Sending payload:", payload);
+      google.script.run.withSuccessHandler((res)=>{ 
+          console.log("saveCase success:", res);
           isSubmitting = false;
           setStatus("Sauvegardé"); 
           toast("Enregistré et Clôturé ✅"); 
           loadNext(); 
       })
       .withFailureHandler(e=>{ 
+          console.error("saveCase error:", e);
           isSubmitting = false;
           setStatus("Erreur"); 
-          toast(e.message,"err"); 
+          toast("Erreur: " + e.message, "err"); 
           setButtons(false); 
       }).saveCase(payload);
     }
