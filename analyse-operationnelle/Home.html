@@ -71,7 +71,7 @@
     .topbar p { margin:2px 0; font-size:12px; }
     .periodHero{ background:#fff; border:1px solid var(--border); padding:15px; border-radius:12px; text-align:center; margin-bottom:20px; box-shadow:0 2px 8px rgba(0,0,0,.04); }
     .kpiGrid{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:15px; margin-bottom:20px; }
-    .panel{ background:#fff; border:1px solid var(--border); border-radius:16px; overflow:hidden; margin-bottom:20px; box-shadow:0 2px 12px rgba(0,0,0,.06); }
+    .panel{ background:#fff; border:1px solid var(--border); border-radius:16px; overflow:hidden; margin-bottom:20px; box-shadow:0 2px 12px rgba(0,0,0,.06); width:fit-content; max-width:100%; }
     .panelHead{ background:#f5f7fa; padding:12px 15px; font-weight:bold; border-bottom:1px solid var(--border); font-size:13px; display:flex; justify-content:space-between; position:sticky; top:0; z-index:5; }
     .panelBody{ padding:15px; }
     .badge{ background:rgba(33,150,243,0.08); padding:3px 8px; border-radius:6px; font-size:12px; border:1px solid rgba(33,150,243,0.15); margin-left:15px; }
@@ -308,8 +308,8 @@
         <div class="sideLogo"><img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTytvs_50DuR6nodg_2fA5DzNfpdDSR1s_YaQ&s"></div>
         <div class="sideTitle">
             <b>Sdis 66 - SDS</b>
-            <span style="display:block;margin-top:2px;">Outil de données<br>opérationnelles</span>
-            <div id="cacheTime" style="font-size:10px;color:gray;margin-top:5px;"></div>
+            <span style="display:block;margin-top:2px;color:#8899b3;">Outil de données<br>opérationnelles</span>
+            <div id="cacheTime" style="font-size:10px;color:#6b7b8d;margin-top:5px;"></div>
         </div>
       </div>
       <div class="sideBtns">
@@ -318,18 +318,18 @@
         <button class="sideBtn" onclick="openPlanningModal()" style="position:relative;overflow:hidden;"><span style="position:relative;z-index:2;">📅 Planning</span><div id="planningPreview" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;opacity:0.3;"></div></button>
       </div>
       
-      <div id="todayInfoBox" style="padding:12px;background:#1a1f2e;border-top:1px solid #444;font-size:10px;color:var(--muted);">
-        <div style="font-weight:bold;color:var(--text);margin-bottom:8px;" id="todayDate">-</div>
+      <div id="todayInfoBox" style="padding:12px;background:rgba(255,255,255,0.05);border-top:1px solid rgba(255,255,255,.1);font-size:10px;color:#8899b3;margin-top:auto;">
+        <div style="font-weight:bold;color:#e0e8f0;margin-bottom:8px;" id="todayDate">-</div>
         <div style="line-height:1.6;">
-          <div><span style="color:#666;">ISP Garde Matin:</span> <span id="todayGardeMatin" style="color:var(--text);font-weight:bold;">-</span></div>
-          <div><span style="color:#666;">ISP Garde AM:</span> <span id="todayGardeAm" style="color:var(--text);font-weight:bold;">-</span></div>
+          <div><span style="color:#8899b3;">ISP Garde Matin:</span> <span id="todayGardeMatin" style="color:#e0e8f0;font-weight:bold;">-</span></div>
+          <div><span style="color:#8899b3;">ISP Garde AM:</span> <span id="todayGardeAm" style="color:#e0e8f0;font-weight:bold;">-</span></div>
           <div style="margin-top:6px;"></div>
-          <div><span style="color:#666;">Conducteur:</span> <span id="todayConduct" style="color:var(--text);font-weight:bold;">-</span></div>
+          <div><span style="color:#8899b3;">Conducteur:</span> <span id="todayConduct" style="color:#e0e8f0;font-weight:bold;">-</span></div>
           <div style="margin-top:6px;"></div>
-          <div><span style="color:#666;">MaD jour:</span> <span id="todayMadJour" style="color:var(--text);font-weight:bold;">-</span></div>
-          <div><span style="color:#666;">MaD nuit:</span> <span id="todayMadNuit" style="color:var(--text);font-weight:bold;">-</span></div>
+          <div><span style="color:#8899b3;">MaD jour:</span> <span id="todayMadJour" style="color:#e0e8f0;font-weight:bold;">-</span></div>
+          <div><span style="color:#8899b3;">MaD nuit:</span> <span id="todayMadNuit" style="color:#e0e8f0;font-weight:bold;">-</span></div>
           <div style="margin-top:6px;"></div>
-          <div><span style="color:#666;">Infirmier astreinte pro:</span> <span id="todayInfirmier" style="color:var(--text);font-weight:bold;">-</span></div>
+          <div><span style="color:#8899b3;">Infirmier astreinte pro:</span> <span id="todayInfirmier" style="color:#e0e8f0;font-weight:bold;">-</span></div>
         </div>
       </div>
     </aside>
@@ -366,7 +366,7 @@
             <div><div style="font-size:11px;color:var(--muted)">Total 2025</div><div class="badge" id="hrs2025Badge">...</div></div>
         </div></div>
 
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px;">
+        <div style="display:flex;gap:20px;margin-bottom:20px;flex-wrap:wrap;">
             <div class="panel"><div class="panelHead">Sorties par CIS</div><div class="panelScrollWrapper"><table id="tableCis" class="compact"><thead><tr><th onclick="sortTable('tableCis',0)" style="cursor:pointer">CIS <span class="sort-icon">↕</span></th><th onclick="sortTable('tableCis',1)" class="num" style="cursor:pointer">2026 <span class="sort-icon">↕</span></th><th onclick="sortTable('tableCis',2)" class="num" style="cursor:pointer">2025 (Date) <span class="sort-icon">↕</span></th><th onclick="sortTable('tableCis',3)" class="num" style="cursor:pointer">2025 (Total) <span class="sort-icon">↕</span></th></tr></thead><tbody></tbody></table></div></div>
             <div class="panel"><div class="panelHead">Sorties par Secteur</div><div class="panelScrollWrapper"><table id="tableSect" class="compact"><thead><tr><th onclick="sortTable('tableSect',0)" style="cursor:pointer">Secteur <span class="sort-icon">↕</span></th><th onclick="sortTable('tableSect',1)" class="num" style="cursor:pointer">2026 <span class="sort-icon">↕</span></th><th onclick="sortTable('tableSect',2)" class="num" style="cursor:pointer">2025 (Date) <span class="sort-icon">↕</span></th><th onclick="sortTable('tableSect',3)" class="num" style="cursor:pointer">2025 (Total) <span class="sort-icon">↕</span></th></tr></thead><tbody></tbody></table></div></div>
         </div>
