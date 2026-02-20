@@ -259,7 +259,7 @@ function getStats2025() {
   if (cached) { return JSON.parse(cached); }
   // Spreadsheet fallback
   const shCached25 = sheetCacheGet(cacheKey);
-  if(shCached25) { try { cache.put(cacheKey, JSON.stringify(shCached25), 21600); } catch(e){} return shCached25; }
+  if(shCached25) { try { cache.put(cacheKey, JSON.stringify(shCached25), 7200); } catch(e){} return shCached25; }
 
   const ss = getSS_();
   const dash = ss.getSheetByName(DASHBOARD_SHEET_NAME);
@@ -319,8 +319,8 @@ function getStats2025() {
     cisMap: cis2025Map, sectMap: sect2025Map,
     cacheTime: formatDateHeureFR_(new Date())
   };
-  cache.put(cacheKey, JSON.stringify(result), 21600);
-  sheetCachePut(cacheKey, result, 21600);
+  cache.put(cacheKey, JSON.stringify(result), 7200);
+  sheetCachePut(cacheKey, result, 7200);
   return result;
 }
 
@@ -339,24 +339,30 @@ function clearIspCache(mat) {
   const cache = CacheService.getScriptCache();
   const normalizedMat = normalizeMat(mat);
   
-  // Nettoyer TOUS les formats de clé pour ce matricule
-  cache.remove("isp_v3_" + normalizedMat); // Ancien format (sans DOB)
-  cache.remove("isp_detail_" + normalizedMat); // Ancien format détail
+  // Nettoyer TOUS les formats de clé pour ce matricule (v3 + v4)
+  cache.remove("isp_v3_" + normalizedMat);
+  cache.remove("isp_v4_" + normalizedMat);
+  cache.remove("isp_detail_" + normalizedMat);
   
   // Nettoyer les anciens caches spreadsheet
   sheetCacheRemove("isp_v3_" + normalizedMat);
+  sheetCacheRemove("isp_v4_" + normalizedMat);
   sheetCacheRemove("isp_detail_" + normalizedMat);
   
-  // Nettoyer les caches avec tous les DOB possibles (force un recompute au prochain appel)
-  for(let i = 1900; i < 2010; i++) {
-    for(let m = 1; m <= 12; m++) {
-      for(let d = 1; d <= 31; d++) {
-        const dobStr = String(d).padStart(2,"0") + String(m).padStart(2,"0") + i;
-        cache.remove("isp_v3_" + normalizedMat + "_" + dobStr);
-        sheetCacheRemove("isp_v3_" + normalizedMat + "_" + dobStr);
+  // Nettoyer via le fichier cache spreadsheet (chercher toutes clés contenant ce matricule)
+  try {
+    const cacheSS = _getCacheSS();
+    const cacheSheet = cacheSS.getSheetByName("Cache");
+    if(cacheSheet) {
+      const data = cacheSheet.getDataRange().getValues();
+      for(let i = data.length - 1; i >= 1; i--) {
+        const key = String(data[i][0] || "");
+        if(key.includes(normalizedMat) && (key.startsWith("isp_v") || key.startsWith("isp_detail_"))) {
+          cacheSheet.deleteRow(i + 1);
+        }
       }
     }
-  }
+  } catch(e) { Logger.log("clearIspCache spreadsheet: " + e); }
   
   return true;
 }
@@ -375,7 +381,7 @@ function getAdminData(password) {
   }
   // Spreadsheet fallback
   const shAdmin = sheetCacheGet("admin_data_full_v2");
-  if(shAdmin) { shAdmin.fromCache = true; try { cache.put("admin_data_full_v2", JSON.stringify(shAdmin), 21600); } catch(e){} return shAdmin; }
+  if(shAdmin) { shAdmin.fromCache = true; try { cache.put("admin_data_full_v2", JSON.stringify(shAdmin), 7200); } catch(e){} return shAdmin; }
   
   const ss = getSS_();
   const dash = ss.getSheetByName(DASHBOARD_SHEET_NAME);
@@ -488,8 +494,8 @@ function getAdminData(password) {
   const result = { activity: stats, sollicitation: soll, monthly: monthly };
   
   // === METTRE EN CACHE ===
-  cache.put("admin_data_full_v2", JSON.stringify(result), 21600);
-  sheetCachePut("admin_data_full_v2", result, 21600);
+  cache.put("admin_data_full_v2", JSON.stringify(result), 7200);
+  sheetCachePut("admin_data_full_v2", result, 7200);
   
   return result;
 }
@@ -501,7 +507,7 @@ function getHistoriqueTempsTravailAdmin() {
   const cached = cache.get(cacheKey);
   if(cached) return JSON.parse(cached);
   const shCached = sheetCacheGet(cacheKey);
-  if(shCached) { try { cache.put(cacheKey, JSON.stringify(shCached), 21600); } catch(e){} return shCached; }
+  if(shCached) { try { cache.put(cacheKey, JSON.stringify(shCached), 7200); } catch(e){} return shCached; }
 
   const ss = SpreadsheetApp.openById(ID_SS_2025);
   const sh = ss.getSheetByName("Historique temps travail");
@@ -524,8 +530,8 @@ function getHistoriqueTempsTravailAdmin() {
     });
   }
 
-  cache.put(cacheKey, JSON.stringify(rows), 21600);
-  sheetCachePut(cacheKey, rows, 21600);
+  cache.put(cacheKey, JSON.stringify(rows), 7200);
+  sheetCachePut(cacheKey, rows, 7200);
   return rows;
 }
 
@@ -540,7 +546,7 @@ function getAstreinteISPP() {
   const cached = cache.get("astreinte_dept_ispp_v3");
   if (cached) return JSON.parse(cached);
   const shCachedIspp = sheetCacheGet("astreinte_dept_ispp_v3");
-  if(shCachedIspp) { try { cache.put("astreinte_dept_ispp_v3", JSON.stringify(shCachedIspp), 21600); } catch(e){} return shCachedIspp; }
+  if(shCachedIspp) { try { cache.put("astreinte_dept_ispp_v3", JSON.stringify(shCachedIspp), 7200); } catch(e){} return shCachedIspp; }
   
   const ss = SpreadsheetApp.openById(ID_SS_ASTREINTE_DEPT);
   
@@ -573,8 +579,8 @@ function getAstreinteISPP() {
     total: compteurs[nom].reduce((a, b) => a + b, 0)
   }));
   
-  cache.put("astreinte_dept_ispp_v3", JSON.stringify(result), 21600);
-  sheetCachePut("astreinte_dept_ispp_v3", result, 21600);
+  cache.put("astreinte_dept_ispp_v3", JSON.stringify(result), 7200);
+  sheetCachePut("astreinte_dept_ispp_v3", result, 7200);
   return result;
 }
 
@@ -653,7 +659,7 @@ function getIspStats(matriculeInput, dobInput, forceRefresh) {
     // === CHERCHER CACHE AVEC CLÉ INCLUANT LA DATE ===
     const cache = CacheService.getScriptCache();
     // Inclure le DOB dans la clé pour isoler les caches par date
-    const cacheKey = "isp_v3_" + mat + "_" + String(dobInput).replace(/\//g, "");
+    const cacheKey = "isp_v4_" + mat + "_" + String(dobInput).replace(/\//g, "");
     if(!forceRefresh) {
       // 1. CacheService (rapide, <100Ko)
       const cached = cache.get(cacheKey);
@@ -1694,7 +1700,9 @@ function saveCase(form) {
           const ispMat = normalizeMat(shAppRef.getRange(row, C_APP_MAT + 1).getValue());
           if(ispMat) {
             cache.remove("isp_v3_" + ispMat);
-            sheetCacheRemove("isp_v3_" + ispMat); // Spreadsheet cache
+            cache.remove("isp_v4_" + ispMat);
+            sheetCacheRemove("isp_v3_" + ispMat);
+            sheetCacheRemove("isp_v4_" + ispMat);
             console.log("Cache ISP vidé pour: " + ispMat);
           }
         } catch(ce) { console.log("Erreur vidage cache ISP: " + ce); }
@@ -1896,8 +1904,8 @@ function getIspDetailsAdmin(mat) {
         });
     }
     
-    cache.put(cacheKey, JSON.stringify(list), 21600);
-    sheetCachePut(cacheKey, list, 21600);
+    cache.put(cacheKey, JSON.stringify(list), 7200);
+    sheetCachePut(cacheKey, list, 7200);
     return list;
 }
 
@@ -2188,6 +2196,10 @@ function _bulkPreCacheAllIsp() {
     if(t25) tempsData25 = t25.getDataRange().getValues();
   } catch(e) { Logger.log("Erreur chargement 2025: " + e); }
   
+  // Charger historique temps travail pour inclure dans chaque ISP
+  let histRows = [];
+  try { histRows = getHistoriqueTempsTravailAdmin() || []; } catch(e) { Logger.log("Erreur chargement historique: " + e); }
+  
   Logger.log("Bulk ISP: Données chargées. Calcul par agent...");
   
   // === 2. Index APP, APP Alex par ID ===
@@ -2240,7 +2252,7 @@ function _bulkPreCacheAllIsp() {
     try {
       const mat = agent.mat;
       const myName = agent.nomLower;
-      const cacheKey = "isp_v3_" + mat;
+      const cacheKey = "isp_v4_" + mat;
       
       // Temps travail 2026
       let hAst26=0, hGarde26=0, interHg26=0;
@@ -2338,11 +2350,22 @@ function _bulkPreCacheAllIsp() {
         }
       }
       
+      // txSoll depuis le Dashboard
+      const txSoll = Number(rawAgents[agent.idx][24]) || 0;
+      // histTempsTravail - chercher par nom dans les données historique
+      let histTempsTravail = null;
+      if(histRows && histRows.length) {
+        const normN = s => String(s || "").trim().toLowerCase();
+        histTempsTravail = histRows.find(r => normN(r.nom) === normN(agent.nom)) || null;
+      }
+
       const result = {
         nom: agent.nom,
         astreinte2026: hAst26, astreinte2025_ytd: hAst25_ytd, astreinte2025_tot: hAst25_tot,
         garde2026: hGarde26, garde2025_ytd: hGarde25_ytd, garde2025_tot: hGarde25_tot,
         inter2026: interHg26, inter2025_ytd: interHg25_ytd, inter2025_tot: interHg25_tot,
+        txSoll: txSoll,
+        histTempsTravail: histTempsTravail,
         bilanConf, pisuConf,
         bilanOkCount, pisuOkCount,
         okBilanList, okPisuList,
@@ -2485,32 +2508,30 @@ function clearAllCaches() {
   const cache = CacheService.getScriptCache();
   cache.removeAll(["admin_data_full_v2", "astreinte_dept_ispp_v3", "cache_status", "history_cache_v2", "historique_temps_travail_v1"]);
   
-  // Vider TOUS les caches ISP avec tous formats (ancien et nouveau)
+  // Vider TOUS les caches ISP avec tous formats (v3, v4, detail)
   const allKeys = cache.getAll({});
   for(let key in allKeys) {
-    if(key.startsWith("isp_v3_") || key.startsWith("isp_detail_")) {
+    if(key.startsWith("isp_v3_") || key.startsWith("isp_v4_") || key.startsWith("isp_detail_")) {
       cache.remove(key);
     }
   }
   
   // Vider aussi les caches spreadsheet
-  const ss = getSS_();
-  const cacheSheet = ss.getSheetByName("📦 Cache SDS-Oper");
-  if(cacheSheet) {
-    const data = cacheSheet.getDataRange().getValues();
-    const rowsToDelete = [];
-    for(let i = data.length - 1; i >= 1; i--) {
-      const key = String(data[i][0] || "");
-      if(key.startsWith("isp_v3_") || key.startsWith("isp_detail_")) {
-        rowsToDelete.push(i + 1);
+  try {
+    const cacheSS = _getCacheSS();
+    const cacheSheet = cacheSS.getSheetByName("Cache");
+    if(cacheSheet && cacheSheet.getLastRow() > 1) {
+      const data = cacheSheet.getDataRange().getValues();
+      for(let i = data.length - 1; i >= 1; i--) {
+        const key = String(data[i][0] || "");
+        if(key.startsWith("isp_v3_") || key.startsWith("isp_v4_") || key.startsWith("isp_detail_")) {
+          cacheSheet.deleteRow(i + 1);
+        }
       }
     }
-    for(let row of rowsToDelete) {
-      cacheSheet.deleteRow(row);
-    }
-  }
+  } catch(e) { Logger.log("clearAllCaches spreadsheet: " + e); }
   
-  return "Tous les caches vidés (incluant ISP)";
+  return "Tous les caches vidés (incluant ISP v3+v4)";
 }
 function getDashboardData(){ return getStats2026(); }
 // force push 20260209234130
