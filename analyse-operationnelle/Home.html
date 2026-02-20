@@ -399,6 +399,10 @@
                             <h4 style="color:var(--accent3);margin:0 0 5px 0">Nbr Inters (Hors Garde)</h4>
                             <div style="font-size:12px;"><b>2026:</b> <span id="ispInter26"></span> <span id="ispInterTrend"></span></div>
                             <div style="font-size:11px;color:var(--muted)">Comparatif 2025 à date: <span id="ispInter25Ytd"></span> | Total 2025: <span id="ispInter25Tot"></span></div>
+                            <hr style="border:0;border-top:1px solid #333;margin:8px 0 6px 0">
+                            <h4 style="color:var(--accent3);margin:0 0 5px 0">Taux sollicitation</h4>
+                            <div style="font-size:12px;"><b>Taux:</b> <span id="ispSollTx">—</span></div>
+                            <div style="font-size:10px;color:var(--muted)">% temps passé en intervention par rapport temps dispo total hors garde</div>
                         </div>
                         <div>
                             <h4 style="color:var(--accent3);margin:0 0 5px 0">Etude qualitative des BPV</h4>
@@ -411,6 +415,17 @@
                             
                             <div style="margin-top:8px;cursor:pointer;text-decoration:underline;" class="text-red" onclick="openErrorList('Grave')">Erreur Grave: <span id="ispErrLourd"></span></div>
                         </div>
+                    </div>
+                    <div style="margin-top:15px;">
+                        <h4 style="color:var(--accent3);margin:0 0 6px 0">Temps de disponibilité — années précédentes</h4>
+                        <table style="font-size:10px;width:100%;border-collapse:collapse;">
+                            <thead><tr style="border-bottom:1px solid #444;">
+                                <th class="num">2019</th><th class="num">2020</th><th class="num">2021</th>
+                                <th class="num">2022</th><th class="num">2023</th><th class="num">2024</th>
+                                <th class="num">2025</th>
+                            </tr></thead>
+                            <tbody id="ispHistTbody"></tbody>
+                        </table>
                     </div>
                     <div style="display:flex;gap:10px;margin-top:15px;">
                         <button class="btnGo" style="width:auto;background:#333;color:#fff" onclick="logoutIsp()">Déconnexion</button>
@@ -1236,6 +1251,13 @@
                 if(a === 0 && g === 0) return '';
                 return `<tr style="border-bottom:1px solid #333;"><td style="padding:2px 4px;">${m}</td><td style="text-align:right;padding:2px 4px;">${a}h</td><td style="text-align:right;padding:2px 4px;">${g}h</td></tr>`;
             }).join('');
+
+            const txSoll = Number(res.txSoll);
+            setText("ispSollTx", isFinite(txSoll) ? (txSoll*100).toFixed(1) + "%" : "—");
+
+            const h = res.histTempsTravail || {};
+            const histRow = [h.y2019, h.y2020, h.y2021, h.y2022, h.y2023, h.y2024, h.y2025].map(v => (v==null || v==="") ? "—" : v);
+            document.getElementById("ispHistTbody").innerHTML = `<tr>${histRow.map(v => `<td class="num">${v}</td>`).join('')}</tr>`;
             
             window_currentIspData = res;
         }).getIspStats(m, d);

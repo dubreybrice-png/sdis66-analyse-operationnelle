@@ -503,7 +503,7 @@ function getHistoriqueTempsTravailAdmin() {
   const shCached = sheetCacheGet(cacheKey);
   if(shCached) { try { cache.put(cacheKey, JSON.stringify(shCached), 21600); } catch(e){} return shCached; }
 
-  const ss = getSS_();
+  const ss = SpreadsheetApp.openById(ID_SS_2025);
   const sh = ss.getSheetByName("Historique temps travail");
   if(!sh) return [];
 
@@ -679,6 +679,14 @@ function getIspStats(matriculeInput, dobInput, forceRefresh) {
     if (idx === -1) throw new Error("Matricule non trouvé.");
     
     const agentName = dash.getRange(3 + idx, 19).getValue(); 
+    const rawRow = dash.getRange(3 + idx, 19, 1, 25).getValues()[0] || [];
+    const txSoll = Number(rawRow[24]) || 0;
+    let histTempsTravail = null;
+    try {
+      const rows = getHistoriqueTempsTravailAdmin() || [];
+      const norm = s => String(s || "").trim().toLowerCase();
+      histTempsTravail = rows.find(r => norm(r.nom) === norm(agentName)) || null;
+    } catch(e) {}
     const myName = String(agentName).trim().toLowerCase();
 
     // 2026
@@ -955,6 +963,8 @@ function getIspStats(matriculeInput, dobInput, forceRefresh) {
         astreinte2026: hAst26, astreinte2025_ytd: hAst25_ytd, astreinte2025_tot: hAst25_tot,
         garde2026: hGarde26, garde2025_ytd: hGarde25_ytd, garde2025_tot: hGarde25_tot,
         inter2026: interHg26, inter2025_ytd: interHg25_ytd, inter2025_tot: interHg25_tot,
+      txSoll: txSoll,
+      histTempsTravail: histTempsTravail,
         bilanConf, pisuConf,
         bilanOkCount: bilanOkCount,
         pisuOkCount: pisuOkCount,
