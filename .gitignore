@@ -1,4 +1,4 @@
-﻿# Node modules
+# Node modules
 node_modules/
 
 # Credentials clasp
@@ -14,9 +14,3 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
-
-# Other projects (separate repos)
-checklist-materiel/
-gestion-evenements/
-visite-intermediaire/
-roblox-game/
