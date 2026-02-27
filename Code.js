@@ -632,6 +632,8 @@ function getPlanningMois(moisParam) {
   // Générer HTML au serveur pour éviter les problèmes de sérialisation
   let html = '<table style="border-collapse:collapse;font-size:10px;width:100%;overflow-x:auto;">';
   for (let i = 0; i < values.length; i++) {
+    // Arrêter dès que colonnes A et B sont vides (sauf header ligne 0)
+    if (i > 0 && !values[i][0] && !values[i][1]) break;
     html += '<tr>';
     for (let j = 0; j < values[i].length; j++) {
       const bg = backgroundColors[i][j];
