@@ -83,9 +83,7 @@
     tbody tr:nth-child(even) td{ background:rgba(33,150,243,0.04); }
     tbody tr:nth-child(odd) td{ background:transparent; }
     tr:hover td{ background:rgba(33,150,243,0.08) !important; cursor:pointer; }
-    #planningContent table tr:hover td{ background:unset !important; cursor:default; }
-    #planningContent table tbody tr:nth-child(even) td{ background:unset !important; }
-    #planningContent table tbody tr:nth-child(odd) td{ background:unset !important; }
+    #planningContent table tr:hover td{ cursor:default; }
     .num{ text-align:right; font-family:monospace; }
     table.compact{ width:auto; }
     table.compact td, table.compact th{ padding:4px 12px; white-space:nowrap; }
@@ -1953,11 +1951,22 @@
     function loadGlobalList() {
         const tbody = document.getElementById("globalTbody");
         if(!tbody) return;
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:30px;color:gray;">Chargement...</td></tr>';
-        
+
+        // 1) Affichage instantané depuis localStorage si dispo
+        var localIsp = null;
+        try { localIsp = JSON.parse(localStorage.getItem('ispErrorStats_cache')); } catch(e){}
+        if (localIsp) {
+            globalList = localIsp;
+            renderGlobalTable(localIsp);
+        } else {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:30px;color:gray;">Chargement...</td></tr>';
+        }
+
+        // 2) Toujours rafraîchir depuis le serveur en arrière-plan
         google.script.run.withSuccessHandler(res => {
             globalList = res;
             renderGlobalTable(res);
+            try { localStorage.setItem('ispErrorStats_cache', JSON.stringify(res)); } catch(e){}
         }).getAllIspErrorStats();
     }
     

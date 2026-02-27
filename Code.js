@@ -635,7 +635,7 @@ function getPlanningMois(moisParam) {
       const bg = backgroundColors[i][j];
       const fc = fontColors[i][j];
       const fw = fontWeights[i][j];
-      const style = `border:1px solid #333;padding:4px;background:${bg};color:${fc};font-weight:${fw};`;
+      const style = `border:1px solid #333;padding:4px;background:${bg} !important;color:${fc};font-weight:${fw};`;
       
       // Colonne B (index 1) : formater les dates en JJ/MM/AAAA
       let cellText = '';
