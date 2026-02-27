@@ -83,6 +83,7 @@
     tbody tr:nth-child(even) td{ background:rgba(33,150,243,0.04); }
     tbody tr:nth-child(odd) td{ background:transparent; }
     tr:hover td{ background:rgba(33,150,243,0.08) !important; cursor:pointer; }
+    #planningContent tr:hover td{ background:inherit !important; cursor:default; }
     .num{ text-align:right; font-family:monospace; }
     table.compact{ width:auto; }
     table.compact td, table.compact th{ padding:4px 12px; white-space:nowrap; }
@@ -315,7 +316,7 @@
       <div class="sideBtns">
         <button class="sideBtn primary" id="btnAppAccess" onclick="openAppView()"><span>Accès APP</span><span class="badgeBtn" id="cntAppBadge">...</span></button>
         <button class="sideBtn" onclick="askPass('chef')"><span>Accès chefferie</span><span style="display:flex;align-items:center;gap:4px;"><span class="badgeBtn" id="cntIspGBadge">...</span><span class="badgeBtn" style="background:var(--orange);color:#000;" id="cntMedBadge">...</span><span class="badgeBtn red" id="cntActionBadge">...</span></span></button>
-        <button class="sideBtn" onclick="openPlanningModal()" style="position:relative;overflow:hidden;"><span style="position:relative;z-index:2;">📅 Planning</span><div id="planningPreview" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;opacity:0.3;"></div></button>
+        <button class="sideBtn" onclick="openPlanningModal()" style="position:relative;overflow:hidden;"><span style="position:relative;z-index:2;display:flex;flex-direction:column;align-items:flex-start;">📅 Planning<span style="font-size:9px;font-weight:400;color:#888;margin-top:2px;">cliquez ici pour voir le planning mensuel</span></span><div id="planningPreview" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;opacity:0.3;"></div></button>
       </div>
       
       <div id="todayInfoBox" style="padding:12px;background:rgba(255,255,255,0.05);border-top:1px solid rgba(255,255,255,.1);font-size:10px;color:#8899b3;margin-top:15px;">
@@ -629,9 +630,9 @@
         <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;max-width:95vw;max-height:85vh;overflow:hidden;padding:20px;position:relative;display:flex;flex-direction:column;">
           <button onclick="document.getElementById('planningModal').style.display='none'" style="position:absolute;top:10px;right:10px;background:none;border:none;color:var(--text);font-size:24px;cursor:pointer;z-index:10;">✕</button>
           <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
-            <button id="planningPrev" onclick="navigatePlanning(-1)" style="background:none;border:2px solid var(--border);border-radius:8px;padding:6px 14px;cursor:pointer;font-size:18px;color:var(--text);transition:background 0.2s;" onmouseover="this.style.background='var(--border)'" onmouseout="this.style.background='none'">◀</button>
+            <button id="planningPrev" onclick="navigatePlanning(-1)" style="background:rgba(33,150,243,0.15);border:2px solid rgba(33,150,243,0.5);border-radius:8px;padding:8px 18px;cursor:pointer;font-size:22px;color:#2196F3;font-weight:bold;transition:all 0.2s;" onmouseover="this.style.background='rgba(33,150,243,0.35)';this.style.transform='scale(1.1)'" onmouseout="this.style.background='rgba(33,150,243,0.15)';this.style.transform='scale(1)'">◀</button>
             <h2 id="planningTitle" style="margin:0;flex:1;text-align:center;"></h2>
-            <button id="planningNext" onclick="navigatePlanning(1)" style="background:none;border:2px solid var(--border);border-radius:8px;padding:6px 14px;cursor:pointer;font-size:18px;color:var(--text);transition:background 0.2s;" onmouseover="this.style.background='var(--border)'" onmouseout="this.style.background='none'">▶</button>
+            <button id="planningNext" onclick="navigatePlanning(1)" style="background:rgba(33,150,243,0.15);border:2px solid rgba(33,150,243,0.5);border-radius:8px;padding:8px 18px;cursor:pointer;font-size:22px;color:#2196F3;font-weight:bold;transition:all 0.2s;" onmouseover="this.style.background='rgba(33,150,243,0.35)';this.style.transform='scale(1.1)'" onmouseout="this.style.background='rgba(33,150,243,0.15)';this.style.transform='scale(1)'">▶</button>
           </div>
           <div id="planningContent" style="flex:1;overflow-x:auto;overflow-y:auto;border:1px solid var(--border);border-radius:4px;"></div>
         </div>
@@ -892,20 +893,38 @@
             setText("btnBadgeMed", d.cntMed||0);
             setText("btnBadgeAction", d.cntAction||0);
 
-            // 2025 (Deferred)
+            // 2025 (Deferred) — affichage instantané depuis localStorage si dispo
             const l25 = document.getElementById("loadingBox25"), f25=document.getElementById("loadFill25"), p25=document.getElementById("loadPct25");
-            l25.style.display="flex"; let w25=0; const i25 = setInterval(()=>{ if(w25<90)w25+=5; f25.style.width=w25+"%"; p25.textContent=w25+"%"; },100);
+
+            function render2025(d25, d26ref) {
+                document.getElementById("cacheTime").textContent = "Mise en cache: " + (d25.cacheTime || "N/A");
+                document.getElementById("psud2025Badge").innerHTML = `${d25.psud} ${getTrendHtml(d26ref.psud, d25.psud)}`;
+                document.getElementById("sect2025Badge").innerHTML = `${d25.sect} ${getTrendHtml(d26ref.sect, d25.sect)}`;
+                document.getElementById("total2025Badge").innerHTML = `${d25.total} ${getTrendHtml(d26ref.total, d25.total)}`;
+                document.getElementById("hrs2025Badge").innerHTML = `${d25.ast} h ${getTrendHtml(d26ref.ast, d25.ast)}`;
+                for(let k in d25.cisMap) { const row = document.getElementById("cis_"+k); if(row) row.querySelector(".v25").textContent = d25.cisMap[k]; }
+                for(let k in d25.sectMap) { const row = document.getElementById("sect_"+k); if(row) row.querySelector(".v25").textContent = d25.sectMap[k]; }
+            }
+
+            // 1) Essayer affichage instantané depuis localStorage
+            var localCache25 = null;
+            try { localCache25 = JSON.parse(localStorage.getItem('stats2025_cache')); } catch(e){}
+            if (localCache25) {
+                render2025(localCache25, d);
+                l25.style.display="none";
+            }
+
+            // 2) Toujours rafraîchir depuis le serveur en arrière-plan
+            if (!localCache25) { l25.style.display="flex"; }
+            let w25=0; const i25 = setInterval(()=>{ if(w25<90)w25+=5; f25.style.width=w25+"%"; p25.textContent=w25+"%"; },100);
 
             google.script.run.withSuccessHandler(d25 => {
                 clearInterval(i25); f25.style.width="100%"; p25.textContent="100%"; setTimeout(()=>l25.style.display="none",300);
 
-                document.getElementById("cacheTime").textContent = "Mise en cache: " + (d25.cacheTime || "N/A");
-                document.getElementById("psud2025Badge").innerHTML = `${d25.psud} ${getTrendHtml(d.psud, d25.psud)}`;
-                document.getElementById("sect2025Badge").innerHTML = `${d25.sect} ${getTrendHtml(d.sect, d25.sect)}`;
-                document.getElementById("total2025Badge").innerHTML = `${d25.total} ${getTrendHtml(d.total, d25.total)}`;
-                document.getElementById("hrs2025Badge").innerHTML = `${d25.ast} h ${getTrendHtml(d.ast, d25.ast)}`;
-                for(let k in d25.cisMap) { const row = document.getElementById("cis_"+k); if(row) row.querySelector(".v25").textContent = d25.cisMap[k]; }
-                for(let k in d25.sectMap) { const row = document.getElementById("sect_"+k); if(row) row.querySelector(".v25").textContent = d25.sectMap[k]; }
+                // Sauvegarder dans localStorage pour prochain chargement instantané
+                try { localStorage.setItem('stats2025_cache', JSON.stringify(d25)); } catch(e){}
+
+                render2025(d25, d);
 
                 google.script.run.preCacheAllData();
                 let cacheInt = setInterval(() => {
