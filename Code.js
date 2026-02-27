@@ -599,8 +599,10 @@ function getPlanningMois(moisParam) {
   
   if (!sh) return null;
   
-  // A1:Z29
-  const range = sh.getRange("A1:Z29");
+  // Lire toutes les lignes utilisées (nombre de jours variable selon le mois)
+  const lastRow = sh.getLastRow();
+  const lastCol = sh.getLastColumn();
+  const range = sh.getRange(1, 1, lastRow, lastCol);
   const values = range.getValues();
   const displayValues = range.getDisplayValues();
   const backgroundColors = range.getBackgrounds();
