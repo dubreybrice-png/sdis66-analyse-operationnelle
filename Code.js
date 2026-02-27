@@ -585,12 +585,13 @@ function getAstreinteISPP() {
 }
 
 /* --- PLANNING MENSUEL --- */
-function getPlanningMois() {
+function getPlanningMois(moisParam) {
   const MOIS_NOMS = ["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"];
   const today = new Date();
-  const moisIndex = today.getMonth();
+  const moisIndex = (moisParam !== undefined && moisParam !== null) ? moisParam : today.getMonth();
   const moisNom = MOIS_NOMS[moisIndex];
   const todayDay = today.getDate();
+  const todayMonth = today.getMonth();
   
   const ss = SpreadsheetApp.openById(ID_SS_ASTREINTE_DEPT);
   const sheetName = moisNom + " 2026";
@@ -601,6 +602,7 @@ function getPlanningMois() {
   // A1:Z29
   const range = sh.getRange("A1:Z29");
   const values = range.getValues();
+  const displayValues = range.getDisplayValues();
   const backgroundColors = range.getBackgrounds();
   const fontColors = range.getFontColors();
   const fontWeights = range.getFontWeights();
@@ -611,7 +613,7 @@ function getPlanningMois() {
     const dateVal = values[i][1]; // colonne B (index 1)
     if (dateVal) {
       const cellDate = new Date(dateVal);
-      if (cellDate.getDate() === todayDay) {
+      if (cellDate.getDate() === todayDay && moisIndex === todayMonth) {
         // Format JJ/MM/AAAA
         todayInfo.date = String(cellDate.getDate()).padStart(2,"0") + "/" + String(cellDate.getMonth()+1).padStart(2,"0") + "/" + cellDate.getFullYear();
         todayInfo.garde_matin = String(values[i][2]||"");     // C
@@ -630,12 +632,21 @@ function getPlanningMois() {
   for (let i = 0; i < values.length; i++) {
     html += '<tr>';
     for (let j = 0; j < values[i].length; j++) {
-      const val = values[i][j];
       const bg = backgroundColors[i][j];
       const fc = fontColors[i][j];
       const fw = fontWeights[i][j];
       const style = `border:1px solid #333;padding:4px;background:${bg};color:${fc};font-weight:${fw};`;
-      html += `<td style="${style}">${val||''}</td>`;
+      
+      // Colonne B (index 1) : formater les dates en JJ/MM/AAAA
+      let cellText = '';
+      if (j === 1 && i > 0 && values[i][j] instanceof Date) {
+        const d = values[i][j];
+        cellText = String(d.getDate()).padStart(2,'0') + '/' + String(d.getMonth()+1).padStart(2,'0') + '/' + d.getFullYear();
+      } else {
+        cellText = displayValues[i][j] || '';
+      }
+      
+      html += `<td style="${style}">${cellText}</td>`;
     }
     html += '</tr>';
   }
@@ -644,6 +655,7 @@ function getPlanningMois() {
   return {
     html: html,
     mois: moisNom,
+    moisIndex: moisIndex,
     todayInfo: todayInfo
   };
 }

@@ -628,7 +628,11 @@
       <div id="planningModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:1000;align-items:center;justify-content:center;padding:20px;">
         <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;max-width:95vw;max-height:85vh;overflow:hidden;padding:20px;position:relative;display:flex;flex-direction:column;">
           <button onclick="document.getElementById('planningModal').style.display='none'" style="position:absolute;top:10px;right:10px;background:none;border:none;color:var(--text);font-size:24px;cursor:pointer;z-index:10;">✕</button>
-          <h2 id="planningTitle" style="margin-top:0;margin-bottom:10px;"></h2>
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
+            <button id="planningPrev" onclick="navigatePlanning(-1)" style="background:none;border:2px solid var(--border);border-radius:8px;padding:6px 14px;cursor:pointer;font-size:18px;color:var(--text);transition:background 0.2s;" onmouseover="this.style.background='var(--border)'" onmouseout="this.style.background='none'">◀</button>
+            <h2 id="planningTitle" style="margin:0;flex:1;text-align:center;"></h2>
+            <button id="planningNext" onclick="navigatePlanning(1)" style="background:none;border:2px solid var(--border);border-radius:8px;padding:6px 14px;cursor:pointer;font-size:18px;color:var(--text);transition:background 0.2s;" onmouseover="this.style.background='var(--border)'" onmouseout="this.style.background='none'">▶</button>
+          </div>
           <div id="planningContent" style="flex:1;overflow-x:auto;overflow-y:auto;border:1px solid var(--border);border-radius:4px;"></div>
         </div>
       </div>
@@ -2149,16 +2153,41 @@
         document.getElementById("modalDetail").style.display = "flex";
     }
 
+    var currentPlanningMois = new Date().getMonth(); // 0-11
+
     function openPlanningModal() {
+      currentPlanningMois = new Date().getMonth();
+      loadPlanningForMonth(currentPlanningMois);
+    }
+
+    function navigatePlanning(delta) {
+      var newMois = currentPlanningMois + delta;
+      if (newMois < 0) newMois = 0;
+      if (newMois > 11) newMois = 11;
+      currentPlanningMois = newMois;
+      loadPlanningForMonth(currentPlanningMois);
+    }
+
+    function loadPlanningForMonth(moisIndex) {
+      document.getElementById("planningContent").innerHTML = '<div style="text-align:center;padding:40px;color:#999;"><div style="font-size:28px;margin-bottom:8px;">⏳</div>Chargement...</div>';
+      document.getElementById("planningTitle").textContent = "Chargement...";
+      document.getElementById("planningModal").style.display = 'flex';
+      // Désactiver flèches aux limites
+      document.getElementById("planningPrev").disabled = (moisIndex <= 0);
+      document.getElementById("planningPrev").style.opacity = (moisIndex <= 0) ? '0.3' : '1';
+      document.getElementById("planningNext").disabled = (moisIndex >= 11);
+      document.getElementById("planningNext").style.opacity = (moisIndex >= 11) ? '0.3' : '1';
+
       google.script.run.withSuccessHandler(function(data) {
         if (!data || !data.html) {
-          alert("Impossible de charger le planning");
+          document.getElementById("planningContent").innerHTML = '<div style="text-align:center;padding:40px;color:#e74c3c;">⚠️ Onglet introuvable pour ce mois</div>';
+          var MOIS = ["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"];
+          document.getElementById("planningTitle").textContent = "Planning " + MOIS[moisIndex] + " 2026";
           return;
         }
         document.getElementById("planningTitle").textContent = "Planning " + data.mois + " 2026";
         document.getElementById("planningContent").innerHTML = data.html;
-        document.getElementById("planningModal").style.display = 'flex';
-      }).getPlanningMois();
+      }).getPlanningMois(moisIndex);
     }
     
     function loadPlanningPreview() {
