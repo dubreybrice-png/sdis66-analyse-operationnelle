@@ -167,10 +167,10 @@
     .card{ background:#fff; border:1px solid var(--border); border-radius: var(--radius); box-shadow: 0 2px 12px rgba(0,0,0,.06); overflow:hidden; display:flex; flex-direction:column; flex:1; }
     .cardHead{ padding:8px 12px; border-bottom:1px solid var(--border); background:#f5f7fa; flex-shrink:0; }
     
-    .interInfos { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; font-size: 11px; }
+    .interInfos { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; font-size: 12px; }
     .interItem { display:flex; flex-direction:column; }
-    .interLabel { color: var(--muted); font-size:9px; text-transform:uppercase; letter-spacing:0.5px; }
-    .interVal { font-weight:600; color:#2c3e50; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size:11px; }
+    .interLabel { color: var(--muted); font-size:10px; text-transform:uppercase; letter-spacing:0.5px; }
+    .interVal { font-weight:600; color:#2c3e50; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size:12px; }
     .interVal.highlight { color: var(--accent); }
 
     .pdfBox{ flex:1; background: rgba(0,0,0,.2); position:relative; overflow:hidden; }
@@ -181,25 +181,25 @@
     .form::-webkit-scrollbar-track { background: transparent; }
     .form::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
     
-    label{ font-size:10px; color:var(--muted); display:block; margin-bottom:2px; margin-top:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    label{ font-size:11px; color:var(--muted); display:block; margin-bottom:2px; margin-top:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .group{ padding:8px; border-radius: 10px; border:1px solid var(--border); background: rgba(255,255,255,.02); }
-    .groupTitle { font-size:11px; font-weight:800; color:var(--accent); margin-bottom:6px; text-transform:uppercase; letter-spacing:0.5px; border-bottom:1px solid rgba(255,255,255,.05); padding-bottom:2px; }
+    .groupTitle { font-size:12px; font-weight:800; color:var(--accent); margin-bottom:6px; text-transform:uppercase; letter-spacing:0.5px; border-bottom:1px solid rgba(255,255,255,.05); padding-bottom:2px; }
 
-    select, input[type="text"], textarea { padding:4px 6px; border-radius: 6px; border:1px solid var(--border); background: var(--selectBg); color: var(--text); outline:none; width:100%; font-family:inherit; font-size:11px; transition: border-color .2s; }
+    select, input[type="text"], textarea { padding:6px 8px; border-radius: 6px; border:1px solid var(--border); background: var(--selectBg); color: var(--text); outline:none; width:100%; font-family:inherit; font-size:13px; transition: border-color .2s; line-height:1.4; }
     select:focus, input:focus, textarea:focus { border-color: var(--accent); }
     textarea { resize: vertical; min-height: 30px; }
 
-    .cb{ display:flex; align-items:flex-start; gap:4px; padding:3px 5px; border-radius: 4px; border:1px solid rgba(255,255,255,.05); background: rgba(255,255,255,.01); cursor:pointer; user-select:none; font-size:10px; transition: background .2s; line-height:1.2; white-space: normal; word-break: break-word; }
+    .cb{ display:flex; align-items:flex-start; gap:6px; padding:5px 8px; border-radius: 6px; border:1px solid rgba(0,0,0,.08); background: rgba(255,255,255,.4); cursor:pointer; user-select:none; font-size:12px; transition: background .2s; line-height:1.4; white-space: normal; word-break: break-word; }
     .cb:hover { background: rgba(255,255,255,.05); }
     .cb.red { border-color: rgba(255,107,107,.3); color: var(--danger); }
     
     #protoAdultBox, #protoPediaBox { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 4px; }
     
-    input[type="checkbox"]{ width:12px;height:12px; accent-color: var(--accent); cursor:pointer; flex-shrink:0; margin-top:1px; }
+    input[type="checkbox"]{ width:14px;height:14px; accent-color: var(--accent); cursor:pointer; flex-shrink:0; margin-top:2px; }
     input[type="checkbox"].danger-cb { accent-color: var(--danger); }
 
     .actions{ margin-top:auto; padding-top:6px; display:flex; gap:8px; flex-shrink:0; }
-    .btn{ border:1px solid var(--border); background: rgba(255,255,255,.03); color: var(--text); padding:8px; border-radius: 8px; cursor:pointer; font-weight:700; flex:1; font-size:12px; }
+    .btn{ border:1px solid var(--border); background: rgba(255,255,255,.03); color: var(--text); padding:9px; border-radius: 8px; cursor:pointer; font-weight:700; flex:1; font-size:13px; }
     .btn.ok{ border-color: rgba(71,209,140,.45); background: linear-gradient(135deg, rgba(71,209,140,.25), rgba(71,209,140,.10)); color: #8affc1; }
     .btn.warn{ border-color: rgba(255,107,107,.35); background: linear-gradient(135deg, rgba(255,107,107,.16), rgba(255,107,107,.06)); }
 
@@ -209,6 +209,35 @@
 
     .appContainer { display:none; }
     .appContainer.active { display:flex; flex-direction:column; height:100%; }
+
+    /* === Font size scaling — Aa+ button === */
+    .btnTop.font-active { border-color: var(--accent3); color: var(--accent3); background: rgba(33,150,243,.12); }
+
+    /* Level 1: Large */
+    .appContainer.font-large .cb { font-size:14px; padding:6px 10px; }
+    .appContainer.font-large select, .appContainer.font-large input[type="text"], .appContainer.font-large textarea { font-size:15px; padding:7px 10px; }
+    .appContainer.font-large label { font-size:13px; }
+    .appContainer.font-large .groupTitle { font-size:14px; }
+    .appContainer.font-large .interVal { font-size:14px; }
+    .appContainer.font-large .interLabel { font-size:12px; }
+    .appContainer.font-large .interInfos { font-size:14px; }
+    .appContainer.font-large .pill { font-size:13px; }
+    .appContainer.font-large .btn { font-size:15px; padding:10px; }
+    .appContainer.font-large #protoAdultBox, .appContainer.font-large #protoPediaBox { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+    .appContainer.font-large input[type="checkbox"] { width:16px; height:16px; }
+
+    /* Level 2: X-Large */
+    .appContainer.font-xlarge .cb { font-size:16px; padding:8px 12px; }
+    .appContainer.font-xlarge select, .appContainer.font-xlarge input[type="text"], .appContainer.font-xlarge textarea { font-size:17px; padding:9px 12px; }
+    .appContainer.font-xlarge label { font-size:15px; }
+    .appContainer.font-xlarge .groupTitle { font-size:16px; }
+    .appContainer.font-xlarge .interVal { font-size:16px; }
+    .appContainer.font-xlarge .interLabel { font-size:14px; }
+    .appContainer.font-xlarge .interInfos { font-size:16px; }
+    .appContainer.font-xlarge .pill { font-size:15px; }
+    .appContainer.font-xlarge .btn { font-size:17px; padding:12px; }
+    .appContainer.font-xlarge #protoAdultBox, .appContainer.font-xlarge #protoPediaBox { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); }
+    .appContainer.font-xlarge input[type="checkbox"] { width:18px; height:18px; }
     
     /* Flèche scroll clignotante */
     .scroll-arrow { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); width:40px; height:40px; background:linear-gradient(135deg, rgba(110,168,254,.2), rgba(71,209,140,.2)); border:2px solid var(--accent3); border-radius:50%; display:none; align-items:center; justify-content:center; font-size:20px; color:var(--accent3); cursor:pointer; animation:pulse 2s infinite; box-shadow:0 0 20px rgba(79,195,247,0.4); z-index:5000; }
@@ -649,6 +678,7 @@
       </div>
       <div class="rightHead">
         <div class="pill" id="statusPill">Chargement…</div>
+        <button class="btnTop" id="fontSizeBtn" onclick="cycleFontSize()" title="Agrandir le texte">Aa+</button>
         <button class="btnTop" onclick="loadNext(currentAppRow)">Recharger</button>
         <button class="btnTop" onclick="closeAppView()">Accueil</button>
       </div>
@@ -801,6 +831,38 @@
     let currentAppRow = null;
     let isAppSubmitting = false;
     let currentAppRowNumber = null;
+    let fontSizeLevel = 0;
+
+    // === FONT SIZE Aa+ ===
+    function cycleFontSize() {
+      const levels = ['', 'font-large', 'font-xlarge'];
+      const labels = ['Aa+', 'Aa++', 'Aa'];
+      fontSizeLevel = (fontSizeLevel + 1) % levels.length;
+      const container = document.getElementById('appView');
+      container.classList.remove('font-large', 'font-xlarge');
+      if (levels[fontSizeLevel]) container.classList.add(levels[fontSizeLevel]);
+      const btn = document.getElementById('fontSizeBtn');
+      btn.textContent = labels[fontSizeLevel];
+      btn.classList.toggle('font-active', fontSizeLevel > 0);
+      try { localStorage.setItem('appIspFontSize', fontSizeLevel); } catch(e){}
+    }
+    // Restaurer au chargement
+    (function restoreFont(){
+      try {
+        const saved = parseInt(localStorage.getItem('appIspFontSize'));
+        if (saved > 0 && saved <= 2) {
+          fontSizeLevel = saved;
+          const levels = ['', 'font-large', 'font-xlarge'];
+          const labels = ['Aa+', 'Aa++', 'Aa'];
+          document.addEventListener('DOMContentLoaded', () => {
+            const container = document.getElementById('appView');
+            if(container) container.classList.add(levels[fontSizeLevel]);
+            const btn = document.getElementById('fontSizeBtn');
+            if(btn){ btn.textContent = labels[fontSizeLevel]; btn.classList.add('font-active'); }
+          });
+        }
+      } catch(e){}
+    })();
 
     // --- CORE FUNCTIONS ---
     // === TRI GÉNÉRIQUE POUR TOUS LES TABLEAUX ===
