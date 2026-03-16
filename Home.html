@@ -539,7 +539,7 @@
                     </div>
                     
                     <div style="margin-top:20px;padding-top:20px;border-top:1px solid #444;text-align:center;">
-                      <button style="font-size:11px;padding:6px 12px;background:#e0e4ea;border:1px solid #ccd3de;color:#6b7b8d;cursor:pointer;border-radius:4px;" onclick="clearCachesAndReload()">🔄 Vider cache</button>
+                      <button style="font-size:11px;padding:6px 12px;background:#e0e4ea;border:1px solid #ccd3de;color:#6b7b8d;cursor:pointer;border-radius:4px;" onclick="clearCachesAndReload(this)">🔄 Vider cache</button>
                     </div>
                 </div>
                 </div>
@@ -2241,11 +2241,19 @@
       }).getPlanningMois();
     }
     
-    function clearCachesAndReload() {
-      google.script.run.withSuccessHandler(function(msg) {
-        alert(msg);
-        location.reload();
-      }).clearAllCaches();
+    function clearCachesAndReload(btn) {
+      if(!confirm('Vider tous les caches ? La page va se recharger.')) return;
+      if(btn) { btn.disabled = true; btn.textContent = '⏳ Vidage en cours…'; }
+      google.script.run
+        .withSuccessHandler(function(msg) {
+          alert(msg);
+          location.reload();
+        })
+        .withFailureHandler(function(err) {
+          alert('Erreur: ' + (err && err.message ? err.message : err));
+          if(btn) { btn.disabled = false; btn.textContent = '🔄 Vider cache'; }
+        })
+        .clearAllCaches();
     }
     
     // Charger la miniature au démarrage

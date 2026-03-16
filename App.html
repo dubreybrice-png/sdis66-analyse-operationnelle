@@ -8,7 +8,7 @@
     const SCRIPT_URL = "<?= scriptUrl ?>";
   </script>
   <style>
-    :root{ --bg:#0b1220; --card:#101a33; --text:#e8eefc; --muted:#aab6d6; --accent:#6ea8fe; --danger:#ff6b6b; --ok:#47d18c; --border:rgba(255,255,255,.08); --shadow: 0 18px 50px rgba(0,0,0,.35); --radius: 18px; --selectBg:#0e1730; }
+    :root{ --bg:#0b1220; --card:#101a33; --text:#e8eefc; --muted:#bcc8e8; --accent:#6ea8fe; --danger:#ff6b6b; --ok:#47d18c; --border:rgba(255,255,255,.08); --shadow: 0 18px 50px rgba(0,0,0,.35); --radius: 18px; --selectBg:#0e1730; }
     *{ box-sizing:border-box; }
     body{ margin:0; font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; background: radial-gradient(1000px 600px at 20% 10%, rgba(110,168,254,.15), transparent 60%), radial-gradient(900px 700px at 90% 20%, rgba(71,209,140,.1), transparent 55%), var(--bg); color:var(--text); overflow:hidden; /* NO BODY SCROLL */ height: 100vh; }
     
@@ -17,7 +17,7 @@
     .logo{ width:28px;height:28px;border-radius:8px; background: linear-gradient(135deg, rgba(110,168,254,.9), rgba(71,209,140,.85)); box-shadow: var(--shadow); cursor:pointer; }
     h1{ font-size:16px; margin:0; font-weight:700; } 
     .rightHead{ display:flex; align-items:center; gap:8px; }
-    .pill{ font-size:11px; padding:4px 10px; border-radius: 999px; border:1px solid var(--border); color:var(--muted); background: rgba(255,255,255,.03); white-space:nowrap; }
+    .pill{ font-size:12px; padding:4px 10px; border-radius: 999px; border:1px solid var(--border); color:var(--muted); background: rgba(255,255,255,.03); white-space:nowrap; }
     .btnTop{ border:1px solid var(--border); background: rgba(255,255,255,.03); color: var(--text); padding:6px 10px; border-radius: 999px; cursor:pointer; font-weight:600; font-size:11px; transition: background .2s; }
     .btnTop:hover{ background: rgba(255,255,255,.08); }
 
@@ -31,10 +31,10 @@
     .card{ background: linear-gradient(180deg, rgba(16,26,51,.95), rgba(15,24,48,.95)); border:1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); overflow:hidden; display:flex; flex-direction:column; flex:1; }
     .cardHead{ padding:8px 12px; border-bottom:1px solid var(--border); background: rgba(255,255,255,.02); flex-shrink:0; }
     
-    .interInfos { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; font-size: 11px; }
+    .interInfos { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; font-size: 12px; }
     .interItem { display:flex; flex-direction:column; }
-    .interLabel { color: var(--muted); font-size:9px; text-transform:uppercase; letter-spacing:0.5px; }
-    .interVal { font-weight:600; color:#fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size:11px; }
+    .interLabel { color: var(--muted); font-size:10px; text-transform:uppercase; letter-spacing:0.5px; }
+    .interVal { font-weight:600; color:#fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size:12px; }
     .interVal.highlight { color: var(--accent); }
 
     .pdfBox{ flex:1; background: rgba(0,0,0,.2); position:relative; overflow:hidden; }
@@ -46,16 +46,16 @@
     .form::-webkit-scrollbar-track { background: transparent; }
     .form::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
     
-    label{ font-size:10px; color:var(--muted); display:block; margin-bottom:2px; margin-top:4px; }
+    label{ font-size:11px; color:var(--muted); display:block; margin-bottom:2px; margin-top:4px; }
     .group{ padding:8px; border-radius: 10px; border:1px solid var(--border); background: rgba(255,255,255,.02); }
-    .groupTitle { font-size:11px; font-weight:800; color:var(--accent); margin-bottom:6px; text-transform:uppercase; letter-spacing:0.5px; border-bottom:1px solid rgba(255,255,255,.05); padding-bottom:2px; }
+    .groupTitle { font-size:12px; font-weight:800; color:var(--accent); margin-bottom:6px; text-transform:uppercase; letter-spacing:0.5px; border-bottom:1px solid rgba(255,255,255,.05); padding-bottom:2px; }
 
-    select, input[type="text"], textarea { padding:6px 8px; border-radius: 6px; border:1px solid var(--border); background: var(--selectBg); color: var(--text); outline:none; width:100%; font-family:inherit; font-size:12px; transition: border-color .2s; line-height:1.4; }
+    select, input[type="text"], textarea { padding:7px 10px; border-radius: 6px; border:1px solid var(--border); background: var(--selectBg); color: var(--text); outline:none; width:100%; font-family:inherit; font-size:13px; transition: border-color .2s; line-height:1.5; }
     select:focus, input:focus, textarea:focus { border-color: var(--accent); }
     textarea { resize: vertical; min-height: 30px; }
 
     /* CHECKBOX COMPACTE AVEC WRAP */
-    .cb{ display:flex; align-items:flex-start; gap:4px; padding:6px 8px; border-radius: 4px; border:1px solid rgba(255,255,255,.05); background: rgba(255,255,255,.01); cursor:pointer; user-select:none; font-size:12px; transition: background .2s; line-height:1.4; word-wrap: break-word; }
+    .cb{ display:flex; align-items:flex-start; gap:6px; padding:7px 10px; border-radius: 6px; border:1px solid rgba(255,255,255,.06); background: rgba(255,255,255,.02); cursor:pointer; user-select:none; font-size:13px; transition: background .2s; line-height:1.5; word-wrap: break-word; }
     .cb:hover { background: rgba(255,255,255,.05); }
     .cb.red { border-color: rgba(255,107,107,.3); color: var(--danger); }
     
@@ -63,7 +63,7 @@
     input[type="checkbox"].danger-cb { accent-color: var(--danger); }
 
     .actions{ margin-top:auto; padding-top:6px; display:flex; gap:8px; flex-shrink:0; }
-    .btn{ border:1px solid var(--border); background: rgba(255,255,255,.03); color: var(--text); padding:8px; border-radius: 8px; cursor:pointer; font-weight:700; flex:1; font-size:12px; }
+    .btn{ border:1px solid var(--border); background: rgba(255,255,255,.03); color: var(--text); padding:9px; border-radius: 8px; cursor:pointer; font-weight:700; flex:1; font-size:13px; }
     .btn.ok{ border-color: rgba(71,209,140,.45); background: linear-gradient(135deg, rgba(71,209,140,.25), rgba(71,209,140,.10)); color: #8affc1; }
     .btn.warn{ border-color: rgba(255,107,107,.35); background: linear-gradient(135deg, rgba(255,107,107,.16), rgba(255,107,107,.06)); }
 
@@ -77,6 +77,33 @@
 
     .toast{ position: fixed; right: 20px; bottom: 20px; padding: 10px 14px; border-radius: 10px; border:1px solid var(--border); background: rgba(10,16,32,.95); box-shadow: var(--shadow); color: var(--text); font-size: 12px; max-width: 350px; display:none; z-index: 999; }
     .toast.ok{ border-left: 4px solid var(--ok); } .toast.err{ border-left: 4px solid var(--danger); }
+
+    /* Font size scaling — level 1 */
+    body.font-large .cb, body.font-large select, body.font-large input[type="text"], body.font-large textarea { font-size:15px; padding:8px 11px; }
+    body.font-large label { font-size:13px; }
+    body.font-large .groupTitle { font-size:14px; }
+    body.font-large .interVal { font-size:14px; }
+    body.font-large .interLabel { font-size:11px; }
+    body.font-large .pill { font-size:13px; }
+    body.font-large .interInfos { font-size:14px; }
+    body.font-large .btn { font-size:15px; padding:10px; }
+    body.font-large .grid-checks { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
+    body.font-large .grid-selects { gap:8px; }
+
+    /* Font size scaling — level 2 */
+    body.font-xlarge .cb, body.font-xlarge select, body.font-xlarge input[type="text"], body.font-xlarge textarea { font-size:17px; padding:9px 12px; }
+    body.font-xlarge label { font-size:15px; }
+    body.font-xlarge .groupTitle { font-size:16px; }
+    body.font-xlarge .interVal { font-size:16px; }
+    body.font-xlarge .interLabel { font-size:13px; }
+    body.font-xlarge .pill { font-size:15px; }
+    body.font-xlarge .interInfos { font-size:16px; }
+    body.font-xlarge .btn { font-size:17px; padding:12px; }
+    body.font-xlarge .grid-checks { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+    body.font-xlarge .grid-selects { gap:10px; }
+
+    /* Font-size button active indicator */
+    .btnTop.font-active { border-color: var(--accent); color: var(--accent); background: rgba(110,168,254,.12); }
   </style>
 </head>
 <body>
@@ -87,6 +114,7 @@
     </div>
     <div class="rightHead">
       <div class="pill" id="statusPill">Chargement…</div>
+      <button class="btnTop" id="fontSizeBtn" onclick="cycleFontSize()" title="Agrandir le texte">Aa+</button>
       <button class="btnTop" onclick="loadNext(currentRow)">Recharger</button>
       <button class="btnTop" onclick="goHome()">Accueil</button>
     </div>
@@ -185,6 +213,37 @@
   <script>
     let currentRow = null;
     let isSubmitting = false;
+    let fontSizeLevel = 0;
+
+    function cycleFontSize() {
+      const levels = ['', 'font-large', 'font-xlarge'];
+      const labels = ['Aa+', 'Aa++', 'Aa'];
+      fontSizeLevel = (fontSizeLevel + 1) % levels.length;
+      document.body.classList.remove('font-large', 'font-xlarge');
+      if (levels[fontSizeLevel]) document.body.classList.add(levels[fontSizeLevel]);
+      const btn = document.getElementById('fontSizeBtn');
+      btn.textContent = labels[fontSizeLevel];
+      btn.classList.toggle('font-active', fontSizeLevel > 0);
+      // Persister le choix
+      try { localStorage.setItem('appIspFontSize', fontSizeLevel); } catch(e){}
+    }
+
+    // Restaurer le choix de taille au chargement
+    (function restoreFont(){
+      try {
+        const saved = parseInt(localStorage.getItem('appIspFontSize'));
+        if (saved > 0 && saved <= 2) {
+          fontSizeLevel = saved;
+          const levels = ['', 'font-large', 'font-xlarge'];
+          const labels = ['Aa+', 'Aa++', 'Aa'];
+          document.body.classList.add(levels[fontSizeLevel]);
+          document.addEventListener('DOMContentLoaded', ()=>{
+            const btn = document.getElementById('fontSizeBtn');
+            if(btn){ btn.textContent = labels[fontSizeLevel]; btn.classList.add('font-active'); }
+          });
+        }
+      } catch(e){}
+    })();
 
     window.onload = () => loadNext();
     

@@ -487,8 +487,8 @@ function getAdminData(password) {
   
   const monthly = stats.map(s => ({
     nom: s.nom,
-    months: s.mAst.map((a, i) => Math.ceil(a + s.mGarde[i])),
-    total: Math.ceil(s.hAst26 + s.hGarde26)
+    months: s.mAst.map(a => Math.ceil(a)),
+    total: Math.ceil(s.hAst26)
   })).sort((a, b) => b.total - a.total);
   
   const result = { activity: stats, sollicitation: soll, monthly: monthly };
@@ -2521,33 +2521,26 @@ function installCacheTrigger() {
 }
 
 function clearAllCaches() {
-  const cache = CacheService.getScriptCache();
-  cache.removeAll(["admin_data_full_v2", "astreinte_dept_ispp_v3", "cache_status", "history_cache_v2", "historique_temps_travail_v1"]);
-  
-  // Vider TOUS les caches ISP avec tous formats (v3, v4, detail)
-  const allKeys = cache.getAll({});
-  for(let key in allKeys) {
-    if(key.startsWith("isp_v3_") || key.startsWith("isp_v4_") || key.startsWith("isp_detail_")) {
-      cache.remove(key);
-    }
-  }
-  
-  // Vider aussi les caches spreadsheet
   try {
+    // 1) Vider le CacheService (mémoire)
+    const cache = CacheService.getScriptCache();
+    cache.removeAll(["admin_data_full_v2", "astreinte_dept_ispp_v3", "cache_status", "history_cache_v2", "historique_temps_travail_v1"]);
+    
+    // 2) Vider TOUT le spreadsheet cache (toutes les clés)
     const cacheSS = _getCacheSS();
     const cacheSheet = cacheSS.getSheetByName("Cache");
-    if(cacheSheet && cacheSheet.getLastRow() > 1) {
-      const data = cacheSheet.getDataRange().getValues();
-      for(let i = data.length - 1; i >= 1; i--) {
-        const key = String(data[i][0] || "");
-        if(key.startsWith("isp_v3_") || key.startsWith("isp_v4_") || key.startsWith("isp_detail_")) {
-          cacheSheet.deleteRow(i + 1);
-        }
+    if(cacheSheet) {
+      const lastRow = cacheSheet.getLastRow();
+      if(lastRow > 1) {
+        cacheSheet.deleteRows(2, lastRow - 1);
       }
     }
-  } catch(e) { Logger.log("clearAllCaches spreadsheet: " + e); }
-  
-  return "Tous les caches vidés (incluant ISP v3+v4)";
+    
+    return "✅ Tous les caches vidés (CacheService + Spreadsheet). La page va se recharger.";
+  } catch(e) {
+    Logger.log("clearAllCaches error: " + e);
+    return "⚠️ Cache partiellement vidé (erreur: " + e.message + ")";
+  }
 }
 function getDashboardData(){ return getStats2026(); }
 // force push 20260209234130
