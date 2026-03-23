@@ -198,7 +198,7 @@ function getDropdownList_(sheet, colIndex) { const rule = sheet.getRange(2, colI
 function getStats2026() {
   // === CHERCHER CACHE ===
   const _cache26 = CacheService.getScriptCache();
-  const _ck26 = "stats2026_v2";
+  const _ck26 = "stats2026_v3";
   const _c26 = _cache26.get(_ck26);
   if(_c26) return JSON.parse(_c26);
   const _sc26 = sheetCacheGet(_ck26);
@@ -1035,7 +1035,7 @@ function getIspStats(matriculeInput, dobInput, forceRefresh) {
 /* --- CHEFFERIE --- */
 function getChefferieCounts() {
     const cache = CacheService.getScriptCache();
-    const cacheKey = "chefferie_counts_v3";
+    const cacheKey = "chefferie_counts_v4";
     const cached = cache.get(cacheKey);
     if(cached) return JSON.parse(cached);
     const shCachedChef = sheetCacheGet(cacheKey);
@@ -1441,7 +1441,7 @@ function saveAppChefferie(form) {
         shAlex.getRange(row, 14).setValue(true);
         
         // Clear cache
-        CacheService.getScriptCache().remove("chefferie_counts_v3");
+        CacheService.getScriptCache().remove("chefferie_counts_v4");
         
         return { success: true };
     } catch(e) {
@@ -1481,7 +1481,7 @@ function saveMedecinAnalyse(form) {
         shEve.getRange(row, 17).setValue(form.action || "");
         
         // Clear cache
-        CacheService.getScriptCache().remove("chefferie_counts_v3");
+        CacheService.getScriptCache().remove("chefferie_counts_v4");
         
         return { success: true };
     } catch(e) {
@@ -1708,7 +1708,8 @@ function saveCase(form) {
         
         // Clear caches (seulement les caches légers - les lourds seront rafraîchis par le trigger)
         const cache = CacheService.getScriptCache();
-        cache.remove("chefferie_counts_v3");
+        cache.remove("chefferie_counts_v4");
+        cache.remove("stats2026_v3");
         
         // Effacer le cache ISP du matricule concerné
         try {
@@ -2012,7 +2013,7 @@ function saveActionChefferie(form) {
         shEve.getRange(row, 19).setValue(true);
         
         // Clear cache
-        CacheService.getScriptCache().remove("chefferie_counts_v3");
+        CacheService.getScriptCache().remove("chefferie_counts_v4");
         
         return { success: true };
     } catch(e) {
