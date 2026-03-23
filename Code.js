@@ -1,8 +1,8 @@
 /****************************************************
  * SDIS 66 - SDS | WebApp Dashboard
  * CACHE SÉQUENTIEL + FIXES + LOCK SYSTEM + ANTI-DOUBLE-COUNT
- * Version: v1.72 | 2026-02-09
- * Modifications: Popup PDF+données ISP, boutons chefferie, préchargement cache
+ * Version: v1.73 | 2026-03-23
+ * Modifications: Fix compteur chefferie (C_BP_CLOSE ne bloque plus le décompte)
  ****************************************************/
 
 const DASHBOARD_SHEET_NAME = "Dashboard";
@@ -1062,11 +1062,12 @@ function getChefferieCounts() {
         }
         
         // GREEN (isp) = bilans dans APP (bilanKo ou pisuKo) PAS clôturés dans Alex N
+        // Note: on ne filtre PAS sur C_BP_CLOSE car l'ISP clôture toujours BP quand il sauve,
+        // mais la chefferie doit quand même revoir la fiche. La clôture chefferie = colonne N dans Alex.
         for(let i=1; i<dApp.length; i++) {
             const bilanKo = isCheckboxChecked(dApp[i][C_BILAN_KO]);
             const pisuKo = isCheckboxChecked(dApp[i][C_PISU_KO]);
-            const isClosed = isCheckboxChecked(dApp[i][C_BP_CLOSE]);
-            if((bilanKo || pisuKo) && !isClosed) {
+            if((bilanKo || pisuKo)) {
                 const id = String(dApp[i][C_APP_ID]).trim();
                 if(!alexClosedIds.has(id)) isp++;
             }
@@ -1296,9 +1297,8 @@ function getNextAppChefferie() {
     for(let i=1; i<dataApp.length; i++) {
         const bilanKo = isCheckboxChecked(dataApp[i][C_BILAN_KO]);
         const pisuKo = isCheckboxChecked(dataApp[i][C_PISU_KO]);
-        const isClosed = isCheckboxChecked(dataApp[i][C_BP_CLOSE]);
         
-        if((bilanKo || pisuKo) && !isClosed) {
+        if((bilanKo || pisuKo)) {
             const id = String(dataApp[i][C_APP_ID]).trim();
             
             // Chercher dans APP Alex si déjà traité
