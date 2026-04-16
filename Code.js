@@ -2557,7 +2557,8 @@ function getDashboardData(){ return getStats2026(); }
 /**
  * MIGRATION PROTOCOLES — À exécuter UNE SEULE FOIS
  * 1. Renomme les en-têtes des colonnes protocoles dans l'onglet APP (ligne 1, V à AY)
- * 2. Met à jour les noms en Dashboard colonne I (lignes 55-84) et les formules en J
+ * 2. Met à jour les noms en Dashboard colonne I (lignes 55-84)
+ * 3. Écrit les formules COUNTIF dans Dashboard colonne J une par une
  */
 function migrateProtocoles2026() {
   const ss = getSS_();
@@ -2566,7 +2567,6 @@ function migrateProtocoles2026() {
   const shApp = ss.getSheetByName(APP_SHEET_NAME);
   if (!shApp) throw new Error("Onglet APP introuvable");
   
-  // Colonnes V(22) à AY(51) en 1-indexed = C_PROTO_START+1 à C_PROTO_END+1
   const headers = [
     // Adultes (18)
     "VVP (1A)", "ECG (2A)", "Hypoglycémie (3A)", "Choc hémorragique (4A)",
@@ -2580,11 +2580,10 @@ function migrateProtocoles2026() {
     "Intox fumée (12E)", "Convulsion (13E)", "Nouveau Né (14E)", "Hors Protocole (HPE)"
   ];
   
-  // Écrire en ligne 1, colonnes V(22) à AY(51)
   const startCol = C_PROTO_START + 1; // 22
   shApp.getRange(1, startCol, 1, headers.length).setValues([headers]);
   
-  // === 2. Renommer en-têtes colonnes après protocoles (AKIM, SMUR, etc.) ===
+  // Renommer en-têtes colonnes après protocoles
   shApp.getRange(1, C_AKIM + 1).setValue("AKIM");
   shApp.getRange(1, C_SMUR + 1).setValue("SMUR");
   shApp.getRange(1, C_CCMU + 1).setValue("CCMU");
@@ -2592,20 +2591,16 @@ function migrateProtocoles2026() {
   shApp.getRange(1, C_SOUSAN + 1).setValue("SOUSAN");
   shApp.getRange(1, C_NBVICTIMES + 1).setValue("NB VICTIMES");
   
-  // === 3. Dashboard : Mettre à jour colonne I (noms) et J (formules COUNTIF) ===
+  // === 2. Dashboard : colonne I (noms) ===
   const dash = ss.getSheetByName(DASHBOARD_SHEET_NAME);
   if (!dash) throw new Error("Onglet Dashboard introuvable");
   
-  // Colonnes APP en lettre pour les formules NB.SI
-  // V=col 22, W=23, X=24... AY=51
   const colLetters = [
     "V","W","X","Y","Z","AA","AB","AC","AD","AE","AF","AG","AH","AI","AJ","AK","AL","AM",
     "AN","AO","AP","AQ","AR","AS","AT","AU","AV","AW","AX","AY"
   ];
   
-  // Noms pour Dashboard I55:I84
   const dashNames = [
-    // Adultes (18)
     "Nbr protocole VVP (1A)",
     "Nbr protocole ECG (2A)",
     "Nbr protocole Hypoglycémie (3A)",
@@ -2624,7 +2619,6 @@ function migrateProtocoles2026() {
     "Nbr protocole Coup chaleur (16A)",
     "Nbr protocole Fracture (17A)",
     "Nbr protocole Adulte hors protocole",
-    // Pédiatriques (12)
     "Nbr protocole VVP (1E)",
     "Nbr protocole ECG (2E)",
     "Nbr protocole Hypoglycémie (3E)",
@@ -2640,19 +2634,35 @@ function migrateProtocoles2026() {
   ];
   
   // Écrire noms en I55:I84
-  const namesCol = [];
-  for (let i = 0; i < dashNames.length; i++) {
-    namesCol.push([dashNames[i]]);
-  }
-  dash.getRange(55, 9, dashNames.length, 1).setValues(namesCol); // I = colonne 9
+  const namesCol = dashNames.map(n => [n]);
+  dash.getRange(55, 9, dashNames.length, 1).setValues(namesCol);
   
-  // Écrire formules COUNTIF en J55:J84 (Apps Script utilise les noms anglais)
-  const formulas = [];
+  // === 3. Formules J55:J84 — une par une avec setFormula ===
   for (let i = 0; i < colLetters.length; i++) {
-    formulas.push(["=COUNTIF(APP!" + colLetters[i] + ":" + colLetters[i] + ",TRUE)"]);
+    dash.getRange(55 + i, 10).setFormula("=COUNTIF(APP!" + colLetters[i] + ":" + colLetters[i] + ",TRUE)");
   }
-  dash.getRange(55, 10, formulas.length, 1).setFormulas(formulas); // J = colonne 10
   
-  return "✅ Migration protocoles terminée ! En-têtes APP + Dashboard mis à jour.";
+  return "✅ Migration terminée ! En-têtes APP + Dashboard I + formules J mis à jour.";
 }
-// force push 20260417
+
+/**
+ * CORRECTION URGENTE — Si les formules J du Dashboard sont en #error,
+ * exécuter cette fonction qui écrit les formules une par une.
+ */
+function fixDashboardFormulas() {
+  const ss = getSS_();
+  const dash = ss.getSheetByName(DASHBOARD_SHEET_NAME);
+  if (!dash) throw new Error("Onglet Dashboard introuvable");
+  
+  const colLetters = [
+    "V","W","X","Y","Z","AA","AB","AC","AD","AE","AF","AG","AH","AI","AJ","AK","AL","AM",
+    "AN","AO","AP","AQ","AR","AS","AT","AU","AV","AW","AX","AY"
+  ];
+  
+  for (let i = 0; i < colLetters.length; i++) {
+    dash.getRange(55 + i, 10).setFormula("=COUNTIF(APP!" + colLetters[i] + ":" + colLetters[i] + ",TRUE)");
+  }
+  
+  return "✅ Formules Dashboard J55:J84 corrigées.";
+}
+// force push 20260417v2
