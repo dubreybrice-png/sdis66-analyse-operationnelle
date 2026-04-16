@@ -1557,10 +1557,10 @@ function getNextCase(specificRow) {
         29: "Anaphylaxie (9A)", 30: "Asthme/BPCO (10A)", 31: "OAP (11A)", 32: "Intox fumée (12A)",
         33: "Convulsion (13A)", 34: "Accouchement (14A)", 35: "Dlr Tho (15A)", 36: "Coup chaleur (16A)",
         37: "Fracture (17A)", 38: "Hors Protocole (HPA)",
-        // Pédiatriques (1E à 11E + HPE)
-        39: "VVP (1E)", 40: "ECG (2E)", 41: "Hypoglycémie (3E)", 42: "Brulure (4E)",
-        43: "Douleur aigue (5E)", 44: "ACR (6E)", 45: "Anaphylaxie (7E)", 46: "Asthme/BPCO (8E)",
-        47: "Intox fumée (9E)", 48: "Convulsion (10E)", 49: "Nouveau Né (11E)", 50: "Hors Protocole (HPE)"
+        // Pédiatriques — numéros alignés sur les adultes
+        39: "VVP (1E)", 40: "ECG (2E)", 41: "Hypoglycémie (3E)", 42: "Brulure (5E)",
+        43: "Douleur aigue (6E)", 44: "ACR (8E)", 45: "Anaphylaxie (9E)", 46: "Asthme/BPCO (10E)",
+        47: "Intox fumée (12E)", 48: "Convulsion (13E)", 49: "Nouveau Né (14E)", 50: "Hors Protocole (HPE)"
     };
     
     // Construire la liste des protocoles depuis colonnes V à AW
@@ -2574,10 +2574,10 @@ function migrateProtocoles2026() {
     "Anaphylaxie (9A)", "Asthme/BPCO (10A)", "OAP (11A)", "Intox fumée (12A)",
     "Convulsion (13A)", "Accouchement (14A)", "Dlr Tho (15A)", "Coup chaleur (16A)",
     "Fracture (17A)", "Hors Protocole (HPA)",
-    // Pédiatriques (12)
-    "VVP (1E)", "ECG (2E)", "Hypoglycémie (3E)", "Brulure (4E)",
-    "Douleur aigue (5E)", "ACR (6E)", "Anaphylaxie (7E)", "Asthme/BPCO (8E)",
-    "Intox fumée (9E)", "Convulsion (10E)", "Nouveau Né (11E)", "Hors Protocole (HPE)"
+    // Pédiatriques (12) — numéros alignés sur les adultes
+    "VVP (1E)", "ECG (2E)", "Hypoglycémie (3E)", "Brulure (5E)",
+    "Douleur aigue (6E)", "ACR (8E)", "Anaphylaxie (9E)", "Asthme/BPCO (10E)",
+    "Intox fumée (12E)", "Convulsion (13E)", "Nouveau Né (14E)", "Hors Protocole (HPE)"
   ];
   
   // Écrire en ligne 1, colonnes V(22) à AY(51)
@@ -2625,17 +2625,17 @@ function migrateProtocoles2026() {
     "Nbr protocole Fracture (17A)",
     "Nbr protocole Adulte hors protocole",
     // Pédiatriques (12)
-    "Nbr protocole VVP Ped'",
-    "Nbr protocole ECG Ped'",
-    "Nbr protocole Hypoglycémie Ped'",
-    "Nbr protocole Brulure Ped'",
-    "Nbr protocole Douleur aigue Ped'",
-    "Nbr protocole ACR Ped'",
-    "Nbr protocole Anaphylaxie Ped'",
-    "Nbr protocole Asthme/BPCO Ped'",
-    "Nbr protocole Intox fumée Ped'",
-    "Nbr protocole Convulsion Ped'",
-    "Nbr protocole Nouveau Né",
+    "Nbr protocole VVP (1E)",
+    "Nbr protocole ECG (2E)",
+    "Nbr protocole Hypoglycémie (3E)",
+    "Nbr protocole Brulure (5E)",
+    "Nbr protocole Douleur aigue (6E)",
+    "Nbr protocole ACR (8E)",
+    "Nbr protocole Anaphylaxie (9E)",
+    "Nbr protocole Asthme/BPCO (10E)",
+    "Nbr protocole Intox fumée (12E)",
+    "Nbr protocole Convulsion (13E)",
+    "Nbr protocole Nouveau Né (14E)",
     "Nbr protocole Pédiatrique hors protocole"
   ];
   
@@ -2646,10 +2646,10 @@ function migrateProtocoles2026() {
   }
   dash.getRange(55, 9, dashNames.length, 1).setValues(namesCol); // I = colonne 9
   
-  // Écrire formules NB.SI en J55:J84
+  // Écrire formules COUNTIF en J55:J84 (Apps Script utilise les noms anglais)
   const formulas = [];
   for (let i = 0; i < colLetters.length; i++) {
-    formulas.push(["=NB.SI(APP!" + colLetters[i] + ":" + colLetters[i] + ";VRAI)"]);
+    formulas.push(["=COUNTIF(APP!" + colLetters[i] + ":" + colLetters[i] + ",TRUE)"]);
   }
   dash.getRange(55, 10, formulas.length, 1).setFormulas(formulas); // J = colonne 10
   
