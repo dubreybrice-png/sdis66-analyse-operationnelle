@@ -43,27 +43,27 @@ const C_APP_NOM = 9;
 const C_APP_DATE = 13;  
 const C_ISP_ANALYSE = 20; 
 const C_PROTO_START = 21;  // V = 21 (0-indexed)
-const C_PROTO_END = 48;    // AW = 48 (0-indexed)
-const C_BG_EXAM = 58; 
-const C_BH_ABS = 59;  
-const C_AKIM = 49;         // AX (0-indexed = 49, Google = 50)
-const C_SMUR = 50;         // AY (0-indexed = 50, Google = 51)
-const C_CCMU = 51;         // AZ (0-indexed = 51, Google = 52)
-const C_DEVENIR = 52;      // BA (0-indexed = 52, Google = 53)
-const C_SOUSAN = 53;       // BB (0-indexed = 53, Google = 54)
-const C_NBVICTIMES = 54;   // BC (0-indexed = 54, Google = 55)
-const C_BILAN_OK = 60; 
-const C_BILAN_KO = 61; 
-const C_PISU_OK = 62;  
-const C_PISU_KO = 63;  
-const C_BM_SURV_TRANSPORT = 64; // BM: Surveillance transport (checkbox)
-const C_TXTBILAN_KO = 65;   // BN: Motif bilan incomplet (texte)
-const C_TXTPISU_KO = 66;    // BO: Motif pisu pas ok (texte)
-const C_BP_CLOSE = 67;      // BP: Case clôturée (ne plus afficher dans APP)
-const C_BQ_PUI_COMMANDEE = 68; // BQ: PUI commandée (checkbox)
-const C_BS_PROBLEM = 70; // Signaler problème à Brice (checkbox)
-const C_BT_PROBLEM_TXT = 71; // Texte du problème pour Brice
-const C_BU_LOCK = 72; // Timestamp de verrouillage pour éviter doublons     
+const C_PROTO_END = 50;    // AY = 50 (0-indexed) — 30 protocoles (18 adultes + 12 pédiatriques)
+const C_AKIM = 51;         // AZ (0-indexed = 51, Google = 52)
+const C_SMUR = 52;         // BA (0-indexed = 52, Google = 53)
+const C_CCMU = 53;         // BB (0-indexed = 53, Google = 54)
+const C_DEVENIR = 54;      // BC (0-indexed = 54, Google = 55)
+const C_SOUSAN = 55;       // BD (0-indexed = 55, Google = 56)
+const C_NBVICTIMES = 56;   // BE (0-indexed = 56, Google = 57)
+const C_BG_EXAM = 60; 
+const C_BH_ABS = 61;  
+const C_BILAN_OK = 62; 
+const C_BILAN_KO = 63; 
+const C_PISU_OK = 64;  
+const C_PISU_KO = 65;  
+const C_BM_SURV_TRANSPORT = 66; // BM: Surveillance transport (checkbox)
+const C_TXTBILAN_KO = 67;   // BN: Motif bilan incomplet (texte)
+const C_TXTPISU_KO = 68;    // BO: Motif pisu pas ok (texte)
+const C_BP_CLOSE = 69;      // BP: Case clôturée (ne plus afficher dans APP)
+const C_BQ_PUI_COMMANDEE = 70; // BQ: PUI commandée (checkbox)
+const C_BS_PROBLEM = 72; // Signaler problème à Brice (checkbox)
+const C_BT_PROBLEM_TXT = 73; // Texte du problème pour Brice
+const C_BU_LOCK = 74; // Timestamp de verrouillage pour éviter doublons     
 
 // === HELPER FUNCTIONS ===
 
@@ -1544,14 +1544,23 @@ function getNextCase(specificRow) {
     
     // Récupérer les correspondances de protocoles depuis le fichier externe
     // Mapping des protocoles (colonne 0-indexed => label)
+    // === MIGRATION: Ancien système (col 21-48) → Nouveau système (col 21-50) ===
+    // Les anciennes fiches utilisent l'ancien mapping. Pour compter correctement:
+    // - Col 21 = VVP adulte (inchangé)
+    // - Col 22 = ancien: Hypoglycémie, nouveau: ECG
+    // - etc. Les anciennes coches restent dans les anciennes colonnes.
+    // Le nouveau mapping s'applique aux nouvelles fiches.
     const PROTOCOLS_MAP = {
-        21: "VVP (1A)", 22: "Hypoglycémie (2A)", 23: "Détr. Circu (3A)", 24: "Brulures (4A)",
-        25: "Dlr Aigue (5A)", 26: "Penthrox (5A2)", 27: "Dlr Iade (5A3)", 28: "ACR (6A)",
-        29: "Allergie (7A)", 30: "DRA (8A)", 31: "Intox Fumées (9A)", 32: "Convulsions (10A)",
-        33: "Accouchement (11A)", 34: "Dlr Tho (12A)", 35: "Coup chaleur (13A)", 36: "Fracture fem'/bassin (14A)",
-        37: "Hors Protocole (HPA)", 38: "VVP (1E)", 39: "Hypoglycémie (2E)", 40: "Brulures (4E)",
-        41: "Dlr Aigue (5E)", 42: "ACR (6E)", 43: "Allergie (7E)", 44: "DRA (8E)",
-        45: "Intox Fumées (9E)", 46: "Convulsions (10E)", 47: "Nouveau Né (11E)", 48: "Hors Protocole (HPE)"
+        // Adultes (1A à 17A + HPA)
+        21: "VVP (1A)", 22: "ECG (2A)", 23: "Hypoglycémie (3A)", 24: "Choc hémorragique (4A)",
+        25: "Brulure (5A)", 26: "Douleur aigue (6A)", 27: "Analgésie procédurale (7A)", 28: "ACR (8A)",
+        29: "Anaphylaxie (9A)", 30: "Asthme/BPCO (10A)", 31: "OAP (11A)", 32: "Intox fumée (12A)",
+        33: "Convulsion (13A)", 34: "Accouchement (14A)", 35: "Dlr Tho (15A)", 36: "Coup chaleur (16A)",
+        37: "Fracture (17A)", 38: "Hors Protocole (HPA)",
+        // Pédiatriques (1E à 11E + HPE)
+        39: "VVP (1E)", 40: "ECG (2E)", 41: "Hypoglycémie (3E)", 42: "Brulure (4E)",
+        43: "Douleur aigue (5E)", 44: "ACR (6E)", 45: "Anaphylaxie (7E)", 46: "Asthme/BPCO (8E)",
+        47: "Intox fumée (9E)", 48: "Convulsion (10E)", 49: "Nouveau Né (11E)", 50: "Hors Protocole (HPE)"
     };
     
     // Construire la liste des protocoles depuis colonnes V à AW
@@ -1570,8 +1579,8 @@ function getNextCase(specificRow) {
     }
     
     // Séparer adultes (V-AL = 21-37) et pédiatriques (AM-AW = 38-48)
-    const protoAdult = protoList.filter(p => p.colIdx <= 37);
-    const protoPedia = protoList.filter(p => p.colIdx >= 38);
+    const protoAdult = protoList.filter(p => p.colIdx <= 38);
+    const protoPedia = protoList.filter(p => p.colIdx >= 39);
     
     // Récupérer les critères et résultats
     const info = {
@@ -1584,12 +1593,12 @@ function getNextCase(specificRow) {
     };
     
     const criteres = {
-        ax: { label: "AKIM", opts: getDropdownList_(shApp, 49), val: row[49] },
-        ay: { label: "SMUR", opts: getDropdownList_(shApp, 50), val: row[50] },
-        az: { label: "CCMU", opts: getDropdownList_(shApp, 51), val: row[51] },
-        ba: { label: "DEVENIR", opts: getDropdownList_(shApp, 52), val: row[52] },
-        bb: { label: "SOUSAN", opts: getDropdownList_(shApp, 53), val: row[53] },
-        bc: { label: "NB VICTIMES", opts: [], val: row[54] },
+        ax: { label: "AKIM", opts: getDropdownList_(shApp, C_AKIM), val: row[C_AKIM] },
+        ay: { label: "SMUR", opts: getDropdownList_(shApp, C_SMUR), val: row[C_SMUR] },
+        az: { label: "CCMU", opts: getDropdownList_(shApp, C_CCMU), val: row[C_CCMU] },
+        ba: { label: "DEVENIR", opts: getDropdownList_(shApp, C_DEVENIR), val: row[C_DEVENIR] },
+        bb: { label: "SOUSAN", opts: getDropdownList_(shApp, C_SOUSAN), val: row[C_SOUSAN] },
+        bc: { label: "NB VICTIMES", opts: [], val: row[C_NBVICTIMES] },
         bg: { label: "Examen clinique", opts: getDropdownList_(shApp, C_BG_EXAM), val: row[C_BG_EXAM] }
     };
     
@@ -2544,4 +2553,106 @@ function clearAllCaches() {
   }
 }
 function getDashboardData(){ return getStats2026(); }
-// force push 20260209234130
+
+/**
+ * MIGRATION PROTOCOLES — À exécuter UNE SEULE FOIS
+ * 1. Renomme les en-têtes des colonnes protocoles dans l'onglet APP (ligne 1, V à AY)
+ * 2. Met à jour les noms en Dashboard colonne I (lignes 55-84) et les formules en J
+ */
+function migrateProtocoles2026() {
+  const ss = getSS_();
+  
+  // === 1. Renommer en-têtes APP (ligne 1) ===
+  const shApp = ss.getSheetByName(APP_SHEET_NAME);
+  if (!shApp) throw new Error("Onglet APP introuvable");
+  
+  // Colonnes V(22) à AY(51) en 1-indexed = C_PROTO_START+1 à C_PROTO_END+1
+  const headers = [
+    // Adultes (18)
+    "VVP (1A)", "ECG (2A)", "Hypoglycémie (3A)", "Choc hémorragique (4A)",
+    "Brulure (5A)", "Douleur aigue (6A)", "Analgésie procédurale (7A)", "ACR (8A)",
+    "Anaphylaxie (9A)", "Asthme/BPCO (10A)", "OAP (11A)", "Intox fumée (12A)",
+    "Convulsion (13A)", "Accouchement (14A)", "Dlr Tho (15A)", "Coup chaleur (16A)",
+    "Fracture (17A)", "Hors Protocole (HPA)",
+    // Pédiatriques (12)
+    "VVP (1E)", "ECG (2E)", "Hypoglycémie (3E)", "Brulure (4E)",
+    "Douleur aigue (5E)", "ACR (6E)", "Anaphylaxie (7E)", "Asthme/BPCO (8E)",
+    "Intox fumée (9E)", "Convulsion (10E)", "Nouveau Né (11E)", "Hors Protocole (HPE)"
+  ];
+  
+  // Écrire en ligne 1, colonnes V(22) à AY(51)
+  const startCol = C_PROTO_START + 1; // 22
+  shApp.getRange(1, startCol, 1, headers.length).setValues([headers]);
+  
+  // === 2. Renommer en-têtes colonnes après protocoles (AKIM, SMUR, etc.) ===
+  shApp.getRange(1, C_AKIM + 1).setValue("AKIM");
+  shApp.getRange(1, C_SMUR + 1).setValue("SMUR");
+  shApp.getRange(1, C_CCMU + 1).setValue("CCMU");
+  shApp.getRange(1, C_DEVENIR + 1).setValue("DEVENIR");
+  shApp.getRange(1, C_SOUSAN + 1).setValue("SOUSAN");
+  shApp.getRange(1, C_NBVICTIMES + 1).setValue("NB VICTIMES");
+  
+  // === 3. Dashboard : Mettre à jour colonne I (noms) et J (formules COUNTIF) ===
+  const dash = ss.getSheetByName(DASHBOARD_SHEET_NAME);
+  if (!dash) throw new Error("Onglet Dashboard introuvable");
+  
+  // Colonnes APP en lettre pour les formules NB.SI
+  // V=col 22, W=23, X=24... AY=51
+  const colLetters = [
+    "V","W","X","Y","Z","AA","AB","AC","AD","AE","AF","AG","AH","AI","AJ","AK","AL","AM",
+    "AN","AO","AP","AQ","AR","AS","AT","AU","AV","AW","AX","AY"
+  ];
+  
+  // Noms pour Dashboard I55:I84
+  const dashNames = [
+    // Adultes (18)
+    "Nbr protocole VVP (1A)",
+    "Nbr protocole ECG (2A)",
+    "Nbr protocole Hypoglycémie (3A)",
+    "Nbr protocole Choc hémorragique (4A)",
+    "Nbr protocole Brulure (5A)",
+    "Nbr protocole Douleur aigue (6A)",
+    "Nbr protocole Analgésie procédurale (7A)",
+    "Nbr protocole ACR (8A)",
+    "Nbr protocole Anaphylaxie (9A)",
+    "Nbr protocole Asthme/BPCO (10A)",
+    "Nbr protocole OAP (11A)",
+    "Nbr protocole Intox fumée (12A)",
+    "Nbr protocole Convulsion (13A)",
+    "Nbr protocole Accouchement (14A)",
+    "Nbr protocole Dlr Tho (15A)",
+    "Nbr protocole Coup chaleur (16A)",
+    "Nbr protocole Fracture (17A)",
+    "Nbr protocole Adulte hors protocole",
+    // Pédiatriques (12)
+    "Nbr protocole VVP Ped'",
+    "Nbr protocole ECG Ped'",
+    "Nbr protocole Hypoglycémie Ped'",
+    "Nbr protocole Brulure Ped'",
+    "Nbr protocole Douleur aigue Ped'",
+    "Nbr protocole ACR Ped'",
+    "Nbr protocole Anaphylaxie Ped'",
+    "Nbr protocole Asthme/BPCO Ped'",
+    "Nbr protocole Intox fumée Ped'",
+    "Nbr protocole Convulsion Ped'",
+    "Nbr protocole Nouveau Né",
+    "Nbr protocole Pédiatrique hors protocole"
+  ];
+  
+  // Écrire noms en I55:I84
+  const namesCol = [];
+  for (let i = 0; i < dashNames.length; i++) {
+    namesCol.push([dashNames[i]]);
+  }
+  dash.getRange(55, 9, dashNames.length, 1).setValues(namesCol); // I = colonne 9
+  
+  // Écrire formules NB.SI en J55:J84
+  const formulas = [];
+  for (let i = 0; i < colLetters.length; i++) {
+    formulas.push(["=NB.SI(APP!" + colLetters[i] + ":" + colLetters[i] + ";VRAI)"]);
+  }
+  dash.getRange(55, 10, formulas.length, 1).setFormulas(formulas); // J = colonne 10
+  
+  return "✅ Migration protocoles terminée ! En-têtes APP + Dashboard mis à jour.";
+}
+// force push 20260417

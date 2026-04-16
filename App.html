@@ -153,6 +153,10 @@
                     <label style="margin:0;">ISP Analyse :</label>
                     <select id="ispSelect" style="flex:1;"><option value="">Chargement...</option></select>
                 </div>
+                <div id="ispMismatchWarning" style="display:none; margin-top:6px; padding:10px; background:rgba(255,107,107,.15); border:2px solid var(--danger); border-radius:8px; color:var(--danger); font-weight:800; font-size:14px; text-align:center; line-height:1.4;">
+                    ⚠️ ATTENTION RISQUE D'ERREUR SUR L'ISP CONCERNÉ<br>
+                    <span style="font-size:12px; font-weight:600;">SI C'EST LE CAS, NE PAS COTER — SIGNALER PROBLÈME EN BAS</span>
+                </div>
             </div>
 
             <div class="group">
@@ -304,6 +308,22 @@
     function renderForm(schema, ispList) {
        // ISP List
        fillSelect("ispSelect", ispList, schema.ispVal);
+       
+       // Vérification ISP: comparer le nom de l'infirmier sur la fiche avec l'ISP analyse sélectionné
+       function checkIspMismatch() {
+           const infName = document.getElementById("iInf").textContent.trim().toLowerCase();
+           const selectedIsp = document.getElementById("ispSelect").value.trim().toLowerCase();
+           const warning = document.getElementById("ispMismatchWarning");
+           if(selectedIsp && infName && infName !== "—") {
+               // Comparer: si le nom de l'ISP sélectionné ne contient pas le nom de l'infirmier (ou inversement)
+               const match = selectedIsp.includes(infName) || infName.includes(selectedIsp) || selectedIsp === infName;
+               warning.style.display = match ? "none" : "block";
+           } else {
+               warning.style.display = "none";
+           }
+       }
+       document.getElementById("ispSelect").addEventListener("change", checkIspMismatch);
+       checkIspMismatch();
 
        // Checkbox Helpers
        const mkCb = (boxId, items) => {
