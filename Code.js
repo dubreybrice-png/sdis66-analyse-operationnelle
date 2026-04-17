@@ -2556,9 +2556,32 @@ function getDashboardData(){ return getStats2026(); }
 
 /**
  * MIGRATION PROTOCOLES — À exécuter UNE SEULE FOIS
- * 1. Renomme les en-têtes des colonnes protocoles dans l'onglet APP (ligne 1, V à AY)
- * 2. Met à jour les noms en Dashboard colonne I (lignes 55-84)
- * 3. Écrit les formules COUNTIF dans Dashboard colonne J une par une
+ * 
+ * Problème : les lignes 2-271 ont été analysées avec l'ancien système de protocoles.
+ * Les cases cochées sont dans les anciennes colonnes (V-AW) avec l'ancien mapping.
+ * Le nouveau système utilise V-AY (30 colonnes) avec un mapping différent.
+ * 
+ * Solution : pour chaque nouveau protocole dans Dashboard J, on calcule :
+ *   = [nombre de TRUE dans l'ancienne colonne équivalente, lignes 2-271]
+ *     + COUNTIF(APP!<nouvelle_col>272:<nouvelle_col>;TRUE)
+ * 
+ * Mapping ancien → nouveau :
+ * ADULTES:
+ *   V=VVP → V(VVP)                    | AC=ACR → AC(ACR)         | AI=DlrTho → AJ(DlrTho)
+ *   W=Hypo → X(Hypo)                  | AD=Allergie → AD(Anaph)  | AJ=CoupChaleur → AK
+ *   X=DétrCircu → Y(ChocHémo)         | AE=DRA → AE(Asthme)     | AK=Fracture → AL
+ *   Y=Brulure → Z(Brulure)            | AF=IntoxFum → AG(Intox)  | AL=HPA → AM(HPA)
+ *   Z=DlrAigue → AA(DlrAigue)         | AG=Convul → AH(Convul)
+ *   AA=Penthrox → AB(AnalgésieProcéd)  | AH=Accouch → AI(Accouch)
+ *   AB=DlrIade → AB(AnalgésieProcéd)   |
+ * 
+ * PÉDIATRIQUES:
+ *   AM=VVP → AN    | AO=Brulure → AQ  | AQ=ACR → AS       | AS=DRA → AU     | AU=Convul → AW
+ *   AN=Hypo → AP   | AP=Dlr → AR       | AR=Allergie → AT   | AT=IntoxFum → AV | AV=NvxNé → AX
+ *                                                                                 | AW=HPE → AY
+ * 
+ * Nouveaux protocoles sans équivalent ancien (compteur ancien = 0) :
+ *   W=ECG(2A), AF=OAP(11A), AO=ECG(2E)
  */
 function migrateProtocoles2026() {
   const ss = getSS_();
@@ -2568,22 +2591,19 @@ function migrateProtocoles2026() {
   if (!shApp) throw new Error("Onglet APP introuvable");
   
   const headers = [
-    // Adultes (18)
     "VVP (1A)", "ECG (2A)", "Hypoglycémie (3A)", "Choc hémorragique (4A)",
     "Brulure (5A)", "Douleur aigue (6A)", "Analgésie procédurale (7A)", "ACR (8A)",
     "Anaphylaxie (9A)", "Asthme/BPCO (10A)", "OAP (11A)", "Intox fumée (12A)",
     "Convulsion (13A)", "Accouchement (14A)", "Dlr Tho (15A)", "Coup chaleur (16A)",
     "Fracture (17A)", "Hors Protocole (HPA)",
-    // Pédiatriques (12) — numéros alignés sur les adultes
     "VVP (1E)", "ECG (2E)", "Hypoglycémie (3E)", "Brulure (5E)",
     "Douleur aigue (6E)", "ACR (8E)", "Anaphylaxie (9E)", "Asthme/BPCO (10E)",
     "Intox fumée (12E)", "Convulsion (13E)", "Nouveau Né (14E)", "Hors Protocole (HPE)"
   ];
   
-  const startCol = C_PROTO_START + 1; // 22
+  const startCol = C_PROTO_START + 1;
   shApp.getRange(1, startCol, 1, headers.length).setValues([headers]);
   
-  // Renommer en-têtes colonnes après protocoles
   shApp.getRange(1, C_AKIM + 1).setValue("AKIM");
   shApp.getRange(1, C_SMUR + 1).setValue("SMUR");
   shApp.getRange(1, C_CCMU + 1).setValue("CCMU");
@@ -2591,78 +2611,291 @@ function migrateProtocoles2026() {
   shApp.getRange(1, C_SOUSAN + 1).setValue("SOUSAN");
   shApp.getRange(1, C_NBVICTIMES + 1).setValue("NB VICTIMES");
   
-  // === 2. Dashboard : colonne I (noms) ===
-  const dash = ss.getSheetByName(DASHBOARD_SHEET_NAME);
-  if (!dash) throw new Error("Onglet Dashboard introuvable");
+  // === 2. Compter les TRUE dans les anciennes colonnes (lignes 2-271) ===
+  // Anciennes colonnes V(col22) à AW(col49) = 28 colonnes
+  const OLD_LAST_ROW = 271;
+  const oldRange = shApp.getRange(2, 22, OLD_LAST_ROW - 1, 28); // V=22 à AW=49, 28 cols
+  const oldData = oldRange.getValues();
   
-  const colLetters = [
+  // Compter TRUE par colonne (index 0-27 = V-AW)
+  const oldCounts = new Array(28).fill(0);
+  for (let r = 0; r < oldData.length; r++) {
+    for (let c = 0; c < 28; c++) {
+      if (isCheckboxChecked(oldData[r][c])) oldCounts[c]++;
+    }
+  }
+  // oldCounts[0]=V, [1]=W, [2]=X... [27]=AW
+  
+  // === 3. Mapper ancien → nouveau ===
+  // Nouveau : 30 colonnes (V=0 à AY=29)
+  // Pour chaque nouveau protocole : combien de l'ancien ?
+  const newColLetters = [
     "V","W","X","Y","Z","AA","AB","AC","AD","AE","AF","AG","AH","AI","AJ","AK","AL","AM",
     "AN","AO","AP","AQ","AR","AS","AT","AU","AV","AW","AX","AY"
   ];
   
-  const dashNames = [
-    "Nbr protocole VVP (1A)",
-    "Nbr protocole ECG (2A)",
-    "Nbr protocole Hypoglycémie (3A)",
-    "Nbr protocole Choc hémorragique (4A)",
-    "Nbr protocole Brulure (5A)",
-    "Nbr protocole Douleur aigue (6A)",
-    "Nbr protocole Analgésie procédurale (7A)",
-    "Nbr protocole ACR (8A)",
-    "Nbr protocole Anaphylaxie (9A)",
-    "Nbr protocole Asthme/BPCO (10A)",
-    "Nbr protocole OAP (11A)",
-    "Nbr protocole Intox fumée (12A)",
-    "Nbr protocole Convulsion (13A)",
-    "Nbr protocole Accouchement (14A)",
-    "Nbr protocole Dlr Tho (15A)",
-    "Nbr protocole Coup chaleur (16A)",
-    "Nbr protocole Fracture (17A)",
-    "Nbr protocole Adulte hors protocole",
-    "Nbr protocole VVP (1E)",
-    "Nbr protocole ECG (2E)",
-    "Nbr protocole Hypoglycémie (3E)",
-    "Nbr protocole Brulure (5E)",
-    "Nbr protocole Douleur aigue (6E)",
-    "Nbr protocole ACR (8E)",
-    "Nbr protocole Anaphylaxie (9E)",
-    "Nbr protocole Asthme/BPCO (10E)",
-    "Nbr protocole Intox fumée (12E)",
-    "Nbr protocole Convulsion (13E)",
-    "Nbr protocole Nouveau Né (14E)",
-    "Nbr protocole Pédiatrique hors protocole"
+  // Index dans oldCounts : V=0, W=1, X=2, Y=3, Z=4, AA=5, AB=6, AC=7, AD=8, AE=9,
+  //                        AF=10, AG=11, AH=12, AI=13, AJ=14, AK=15, AL=16,
+  //                        AM=17, AN=18, AO=19, AP=20, AQ=21, AR=22, AS=23,
+  //                        AT=24, AU=25, AV=26, AW=27
+  
+  const oldCountForNew = [
+    // Adultes (18)
+    oldCounts[0],                    // V: VVP(1A) ← old V(VVP)
+    0,                               // W: ECG(2A) ← NOUVEAU, pas d'ancien
+    oldCounts[1],                    // X: Hypoglycémie(3A) ← old W(Hypo)
+    oldCounts[2],                    // Y: Choc hémorragique(4A) ← old X(DétrCircu)
+    oldCounts[3],                    // Z: Brulure(5A) ← old Y(Brulure)
+    oldCounts[4],                    // AA: Douleur aigue(6A) ← old Z(DlrAigue)
+    oldCounts[5] + oldCounts[6],     // AB: Analgésie procédurale(7A) ← old AA(Penthrox) + AB(DlrIade)
+    oldCounts[7],                    // AC: ACR(8A) ← old AC(ACR)
+    oldCounts[8],                    // AD: Anaphylaxie(9A) ← old AD(Allergie)
+    oldCounts[9],                    // AE: Asthme/BPCO(10A) ← old AE(DRA)
+    0,                               // AF: OAP(11A) ← NOUVEAU, pas d'ancien
+    oldCounts[10],                   // AG: Intox fumée(12A) ← old AF(IntoxFumées)
+    oldCounts[11],                   // AH: Convulsion(13A) ← old AG(Convulsion)
+    oldCounts[12],                   // AI: Accouchement(14A) ← old AH(Accouchement)
+    oldCounts[13],                   // AJ: Dlr Tho(15A) ← old AI(DlrTho)
+    oldCounts[14],                   // AK: Coup chaleur(16A) ← old AJ(CoupChaleur)
+    oldCounts[15],                   // AL: Fracture(17A) ← old AK(Fracture)
+    oldCounts[16],                   // AM: HPA ← old AL(HPA)
+    // Pédiatriques (12)
+    oldCounts[17],                   // AN: VVP(1E) ← old AM(VVP enfant)
+    0,                               // AO: ECG(2E) ← NOUVEAU
+    oldCounts[18],                   // AP: Hypoglycémie(3E) ← old AN(Hypo)
+    oldCounts[19],                   // AQ: Brulure(5E) ← old AO(Brulure)
+    oldCounts[20],                   // AR: Douleur aigue(6E) ← old AP(Douleur)
+    oldCounts[21],                   // AS: ACR(8E) ← old AQ(ACR)
+    oldCounts[22],                   // AT: Anaphylaxie(9E) ← old AR(Allergie)
+    oldCounts[23],                   // AU: Asthme/BPCO(10E) ← old AS(DRA)
+    oldCounts[24],                   // AV: Intox fumée(12E) ← old AT(IntoxFumée)
+    oldCounts[25],                   // AW: Convulsion(13E) ← old AU(Convulsion)
+    oldCounts[26],                   // AX: Nouveau Né(14E) ← old AV(NvxNé)
+    oldCounts[27]                    // AY: HPE ← old AW(HPE)
   ];
   
-  // Écrire noms en I55:I84
-  const namesCol = dashNames.map(n => [n]);
-  dash.getRange(55, 9, dashNames.length, 1).setValues(namesCol);
+  // === 4. Dashboard : noms I55:I84 + formules J55:J84 ===
+  const dash = ss.getSheetByName(DASHBOARD_SHEET_NAME);
+  if (!dash) throw new Error("Onglet Dashboard introuvable");
   
-  // === 3. Formules J55:J84 — une par une avec setFormula ===
-  for (let i = 0; i < colLetters.length; i++) {
-    dash.getRange(55 + i, 10).setFormula("=COUNTIF(APP!" + colLetters[i] + ":" + colLetters[i] + ",TRUE)");
+  const dashNames = [
+    "Nbr protocole VVP (1A)", "Nbr protocole ECG (2A)", "Nbr protocole Hypoglycémie (3A)",
+    "Nbr protocole Choc hémorragique (4A)", "Nbr protocole Brulure (5A)", "Nbr protocole Douleur aigue (6A)",
+    "Nbr protocole Analgésie procédurale (7A)", "Nbr protocole ACR (8A)", "Nbr protocole Anaphylaxie (9A)",
+    "Nbr protocole Asthme/BPCO (10A)", "Nbr protocole OAP (11A)", "Nbr protocole Intox fumée (12A)",
+    "Nbr protocole Convulsion (13A)", "Nbr protocole Accouchement (14A)", "Nbr protocole Dlr Tho (15A)",
+    "Nbr protocole Coup chaleur (16A)", "Nbr protocole Fracture (17A)", "Nbr protocole Adulte hors protocole",
+    "Nbr protocole VVP (1E)", "Nbr protocole ECG (2E)", "Nbr protocole Hypoglycémie (3E)",
+    "Nbr protocole Brulure (5E)", "Nbr protocole Douleur aigue (6E)", "Nbr protocole ACR (8E)",
+    "Nbr protocole Anaphylaxie (9E)", "Nbr protocole Asthme/BPCO (10E)", "Nbr protocole Intox fumée (12E)",
+    "Nbr protocole Convulsion (13E)", "Nbr protocole Nouveau Né (14E)", "Nbr protocole Pédiatrique hors protocole"
+  ];
+  
+  // Écrire noms
+  dash.getRange(55, 9, dashNames.length, 1).setValues(dashNames.map(n => [n]));
+  
+  // Écrire formules : = oldCount + COUNTIF(APP!col272:col;TRUE)
+  for (let i = 0; i < newColLetters.length; i++) {
+    const col = newColLetters[i];
+    const old = oldCountForNew[i];
+    const formula = "=" + old + "+COUNTIF(APP!" + col + "272:" + col + ";TRUE)";
+    dash.getRange(55 + i, 10).setFormula(formula);
   }
   
-  return "✅ Migration terminée ! En-têtes APP + Dashboard I + formules J mis à jour.";
+  Logger.log("Migration terminée. Ancien comptage intégré pour lignes 2-271.");
+  return "✅ Migration terminée ! Compteurs anciens intégrés + COUNTIF pour nouvelles fiches.";
 }
 
 /**
- * CORRECTION URGENTE — Si les formules J du Dashboard sont en #error,
- * exécuter cette fonction qui écrit les formules une par une.
+ * CORRECTION URGENTE — corrige les formules Dashboard J55:J84
  */
 function fixDashboardFormulas() {
+  // Relance simplement la migration complète
+  return migrateProtocoles2026();
+}
+
+/**
+ * RAPPORT HEBDOMADAIRE — Envoyé chaque dimanche à 23h59
+ * Résumé de la semaine + total
+ */
+function sendWeeklyReport() {
   const ss = getSS_();
-  const dash = ss.getSheetByName(DASHBOARD_SHEET_NAME);
-  if (!dash) throw new Error("Onglet Dashboard introuvable");
+  const shApp = ss.getSheetByName(APP_SHEET_NAME);
+  const shAlex = ss.getSheetByName("APP Alex");
+  const shEve = ss.getSheetByName("APP Eve");
   
-  const colLetters = [
-    "V","W","X","Y","Z","AA","AB","AC","AD","AE","AF","AG","AH","AI","AJ","AK","AL","AM",
-    "AN","AO","AP","AQ","AR","AS","AT","AU","AV","AW","AX","AY"
-  ];
+  if (!shApp) return;
   
-  for (let i = 0; i < colLetters.length; i++) {
-    dash.getRange(55 + i, 10).setFormula("=COUNTIF(APP!" + colLetters[i] + ":" + colLetters[i] + ",TRUE)");
+  const now = new Date();
+  // Début de la semaine = lundi 00:00
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+  monday.setHours(0, 0, 0, 0);
+  
+  const appData = shApp.getDataRange().getValues();
+  const alexData = shAlex ? shAlex.getDataRange().getValues() : [];
+  const eveData = shEve ? shEve.getDataRange().getValues() : [];
+  
+  // === Index APP Alex ===
+  const alexById = {};
+  const alexClosedIds = new Set();
+  const alexGraves = new Set();
+  const alexLegeresBilan = new Set();
+  const alexLegeresPisu = new Set();
+  const alexOkBilan = new Set(); // H coché
+  const alexOkPisu = new Set();  // I coché
+  
+  for (let i = 1; i < alexData.length; i++) {
+    const id = String(alexData[i][0]).trim();
+    if (!id || alexById[id]) continue;
+    alexById[id] = true;
+    if (isCheckboxChecked(alexData[i][13])) alexClosedIds.add(id);  // N = clôturé chefferie
+    if (isCheckboxChecked(alexData[i][11])) alexGraves.add(id);      // L = erreur grave
+    if (isCheckboxChecked(alexData[i][9]))  alexLegeresBilan.add(id); // J = erreur bilan légère
+    if (isCheckboxChecked(alexData[i][10])) alexLegeresPisu.add(id);  // K = erreur pisu légère
+    if (isCheckboxChecked(alexData[i][7]))  alexOkBilan.add(id);      // H = remis bilan OK
+    if (isCheckboxChecked(alexData[i][8]))  alexOkPisu.add(id);       // I = remis pisu OK
   }
   
-  return "✅ Formules Dashboard J55:J84 corrigées.";
+  // === Index APP Eve ===
+  const eveDoneIds = new Set();
+  const eveRemainingIds = new Set();
+  for (let i = 1; i < eveData.length; i++) {
+    const id = String(eveData[i][0]).trim();
+    if (!id) continue;
+    const hasAnalyse = !!eveData[i][14]; // O
+    const isClosed = isCheckboxChecked(eveData[i][18]); // S
+    if (isClosed || hasAnalyse) eveDoneIds.add(id);
+    else eveRemainingIds.add(id);
+  }
+  
+  // === Compteurs APP par ISP ===
+  let totalAppIsp = 0, weekAppIsp = 0;
+  let totalRemaining = 0;
+  let totalErrPisu = 0, weekErrPisu = 0;
+  let totalErrBilan = 0, weekErrBilan = 0;
+  
+  for (let i = 1; i < appData.length; i++) {
+    const id = String(appData[i][C_APP_ID]).trim();
+    const pdf = String(appData[i][C_APP_PDF]).trim();
+    if (!pdf || pdf === "#N/A" || pdf.includes("#N/A")) continue;
+    
+    const isClosed = isCheckboxChecked(appData[i][C_BP_CLOSE]);
+    const dateVal = appData[i][C_APP_DATE];
+    const d = coerceToDateTime_(dateVal);
+    const isThisWeek = d && d >= monday && d <= now;
+    
+    const bilanKo = isCheckboxChecked(appData[i][C_BILAN_KO]);
+    const pisuKo = isCheckboxChecked(appData[i][C_PISU_KO]);
+    
+    if (isClosed) {
+      totalAppIsp++;
+      if (isThisWeek) weekAppIsp++;
+    } else {
+      totalRemaining++;
+    }
+    
+    if (bilanKo) { totalErrBilan++; if (isThisWeek) weekErrBilan++; }
+    if (pisuKo) { totalErrPisu++; if (isThisWeek) weekErrPisu++; }
+  }
+  
+  // === Compteurs Chefferie ISP ===
+  let totalChefIsp = 0, totalChefIspRemaining = 0;
+  let weekChefIsp = 0;
+  let totalGraves = 0, totalLegeres = 0;
+  
+  for (let i = 1; i < appData.length; i++) {
+    const id = String(appData[i][C_APP_ID]).trim();
+    const bilanKo = isCheckboxChecked(appData[i][C_BILAN_KO]);
+    const pisuKo = isCheckboxChecked(appData[i][C_PISU_KO]);
+    
+    if (bilanKo || pisuKo) {
+      if (alexClosedIds.has(id)) {
+        totalChefIsp++;
+      } else {
+        totalChefIspRemaining++;
+      }
+    }
+  }
+  
+  totalGraves = alexGraves.size;
+  totalLegeres = alexLegeresBilan.size + alexLegeresPisu.size;
+  const totalRemisOk = alexOkBilan.size + alexOkPisu.size;
+  
+  // === Compteurs Médecin Cheffe ===
+  let totalMedDone = eveDoneIds.size;
+  let totalMedRemaining = 0;
+  // Remaining = erreurs graves pas encore dans Eve ou pas traitées
+  for (const id of alexGraves) {
+    if (!eveDoneIds.has(id)) totalMedRemaining++;
+  }
+  
+  // === Construire le mail ===
+  const dateStr = now.toLocaleDateString("fr-FR");
+  const weekStr = monday.toLocaleDateString("fr-FR") + " – " + dateStr;
+  
+  const scriptUrl = ScriptApp.getService().getUrl();
+  
+  const body = `
+Rapport hebdomadaire SDS Analyse Opérationnelle
+================================================
+Semaine du ${weekStr}
+
+--- APP par ISP ---
+  Fiches analysées cette semaine :  ${weekAppIsp}
+  Total fiches analysées :          ${totalAppIsp}
+  Fiches restantes à analyser :     ${totalRemaining}
+  
+  Erreurs bilan cette semaine :     ${weekErrBilan}
+  Erreurs bilan total :             ${totalErrBilan}
+  Erreurs pisu cette semaine :      ${weekErrPisu}  
+  Erreurs pisu total :              ${totalErrPisu}
+
+--- APP Chefferie ISP ---
+  Fiches analysées en chefferie :   ${totalChefIsp}
+  Fiches restantes chefferie :      ${totalChefIspRemaining}
+  Dont erreurs graves :             ${totalGraves}
+  Dont erreurs légères :            ${totalLegeres}
+  Remis en bilan/pisu OK :          ${totalRemisOk}
+
+--- Analyse Médecin Cheffe ---
+  Analyses effectuées :             ${totalMedDone}
+  Fiches restantes à analyser :     ${totalMedRemaining}
+
+Accéder à l'application : ${scriptUrl}
+
+— Mail automatique SDS Analyse Opérationnelle
+`.trim();
+  
+  // Envoyer au propriétaire du script
+  const ownerEmail = Session.getEffectiveUser().getEmail();
+  GmailApp.sendEmail(
+    ownerEmail,
+    "📊 Rapport hebdo SDS – semaine du " + weekStr,
+    body
+  );
+  
+  Logger.log("Rapport hebdo envoyé à " + ownerEmail);
 }
-// force push 20260417v2
+
+/**
+ * Installer le trigger hebdomadaire (dimanche 23h)
+ */
+function installWeeklyReportTrigger() {
+  const triggers = ScriptApp.getProjectTriggers();
+  triggers.forEach(t => {
+    if (t.getHandlerFunction() === "sendWeeklyReport") {
+      ScriptApp.deleteTrigger(t);
+    }
+  });
+  
+  ScriptApp.newTrigger("sendWeeklyReport")
+    .timeBased()
+    .onWeekDay(ScriptApp.WeekDay.SUNDAY)
+    .atHour(23)
+    .nearMinute(55)
+    .create();
+  
+  return "✅ Trigger rapport hebdo installé (dimanche ~23h55)";
+}
+// force push 20260417v3
