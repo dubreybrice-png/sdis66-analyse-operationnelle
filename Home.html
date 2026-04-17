@@ -8,34 +8,14 @@
   
   // Mapping des protocoles: colonne Excel (0-indexed) => label
   const PROTOCOLS_MAP = {
-    22: "VVP (1A)",
-    23: "Hypoglycémie (2A)",
-    24: "Détr. Circu (3A)",
-    25: "Brulures (4A)",
-    26: "Dlr Aigue (5A)",
-    27: "Penthrox (5A2)",
-    28: "Dlr Iade (5A3)",
-    29: "ACR (6A)",
-    30: "Allergie (7A)",
-    31: "DRA (8A)",
-    32: "Intox Fumées (9A)",
-    33: "Convulsions (10A)",
-    34: "Accouchement (11A)",
-    35: "Dlr Tho (12A)",
-    36: "Coup chaleur (13A)",
-    37: "Fracture fem'/bassin (14A)",
-    38: "Hors Protocole (HPA)",
-    39: "VVP (1E)",
-    40: "Hypoglycémie (2E)",
-    41: "Brulures (4E)",
-    42: "Dlr Aigue (5E)",
-    43: "ACR (6E)",
-    44: "Allergie (7E)",
-    45: "DRA (8E)",
-    46: "Intox Fumées (9E)",
-    47: "Convulsions (10E)",
-    48: "Nouveau Né (11E)",
-    49: "Hors Protocole (HPE)"
+    21: "VVP (1A)", 22: "ECG (2A)", 23: "Hypoglycémie (3A)", 24: "Choc hémorragique (4A)",
+    25: "Brulure (5A)", 26: "Douleur aigue (6A)", 27: "Analgésie procédurale (7A)", 28: "ACR (8A)",
+    29: "Anaphylaxie (9A)", 30: "Asthme/BPCO (10A)", 31: "OAP (11A)", 32: "Intox fumée (12A)",
+    33: "Convulsion (13A)", 34: "Accouchement (14A)", 35: "Dlr Tho (15A)", 36: "Coup chaleur (16A)",
+    37: "Fracture (17A)", 38: "Hors Protocole (HPA)",
+    39: "VVP (1E)", 40: "ECG (2E)", 41: "Hypoglycémie (3E)", 42: "Brulure (5E)",
+    43: "Douleur aigue (6E)", 44: "ACR (8E)", 45: "Anaphylaxie (9E)", 46: "Asthme/BPCO (10E)",
+    47: "Intox fumée (12E)", 48: "Convulsion (13E)", 49: "Nouveau Né (14E)", 50: "Hors Protocole (HPE)"
   };</script>
   <style>
     :root{ --bg0:#e8ecf3; --bg1:#dfe4ed; --text:#2c3e50; --muted:#6b7b8d; --border:rgba(0,0,0,.1); --accent3:#2196F3; --ok:#27ae60; --radius:18px; --red:#e74c3c; --orange:#e67e22; --accent:#3498db; --danger:#e74c3c; --selectBg:#d5dce8; }
@@ -395,6 +375,35 @@
             <div><div style="font-size:11px;color:var(--muted)">Astreintes / Dispo 2026</div><div style="font-size:24px;font-weight:bold" id="hrs2026">...</div><div style="font-size:9px;color:var(--muted);margin-top:4px;">Comparaison du 1er janvier au <span id="cutoffCompAst">...</span></div></div>
             <div><div style="font-size:11px;color:var(--muted)">Total 2025</div><div class="badge" id="hrs2025Badge">...</div></div>
         </div></div>
+
+        <!-- Tuile Qualité Bilan / PISU -->
+        <div style="display:flex;gap:15px;margin-bottom:20px;flex-wrap:wrap;">
+          <div class="panel" style="flex:1;min-width:220px;"><div class="panelBody" style="text-align:center;">
+            <div style="font-size:11px;color:var(--muted);margin-bottom:6px">Qualité des bilans</div>
+            <div style="display:flex;justify-content:center;gap:30px;">
+              <div><div style="font-size:9px;color:var(--muted)">Bilan OK</div><div style="font-size:28px;font-weight:900;color:var(--ok)" id="tileBilanOk">...</div></div>
+              <div><div style="font-size:9px;color:var(--muted)">PISU OK</div><div style="font-size:28px;font-weight:900;color:var(--accent3)" id="tilePisuOk">...</div></div>
+            </div>
+          </div></div>
+
+          <!-- Tuile Top 5 Motifs -->
+          <div class="panel" style="flex:1;min-width:280px;"><div class="panelBody">
+            <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Top 5 — Motifs de départ</div>
+            <div id="tileMotifs" style="font-size:12px;">...</div>
+          </div></div>
+
+          <!-- Tuile PISU / Protocoles -->
+          <div class="panel" style="flex:1.5;min-width:340px;"><div class="panelBody">
+            <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:8px;">
+              <div style="font-size:11px;color:var(--muted)">PISU réalisés</div>
+              <div style="font-size:24px;font-weight:900;color:var(--accent3)" id="tileNbPisu">...</div>
+            </div>
+            <div style="display:flex;gap:20px;">
+              <div style="flex:1"><div style="font-size:10px;color:var(--muted);margin-bottom:4px;font-weight:600">🧑 Top protocoles adulte</div><div id="tileProtoAdulte" style="font-size:11px;">...</div></div>
+              <div style="flex:1"><div style="font-size:10px;color:var(--muted);margin-bottom:4px;font-weight:600">👶 Top protocoles enfant</div><div id="tileProtoEnfant" style="font-size:11px;">...</div></div>
+            </div>
+          </div></div>
+        </div>
 
         <div style="display:flex;gap:20px;margin-bottom:20px;flex-wrap:wrap;">
             <div class="panel"><div class="panelHead">Sorties par CIS</div><div class="panelScrollWrapper"><table id="tableCis" class="compact"><thead><tr><th onclick="sortTable('tableCis',0)" style="cursor:pointer">CIS <span class="sort-icon">↕</span></th><th onclick="sortTable('tableCis',1)" class="num" style="cursor:pointer">2026 <span class="sort-icon">↕</span></th><th onclick="sortTable('tableCis',2)" class="num" style="cursor:pointer">2025 (Date) <span class="sort-icon">↕</span></th><th onclick="sortTable('tableCis',3)" class="num" style="cursor:pointer">2025 (Total) <span class="sort-icon">↕</span></th></tr></thead><tbody></tbody></table></div></div>
@@ -944,6 +953,19 @@
             setText("psud2026", d.psud); setText("total2026", d.total);
             setText("secteur2026", d.sect); setText("hrs2026", d.ast+" h");
             
+            // Tuiles qualité + motifs + protocoles
+            setText("tileBilanOk", d.bilanOkPct || "—");
+            setText("tilePisuOk", d.pisuOkPct || "—");
+            setText("tileNbPisu", d.nbPisu || "0");
+            if (d.topMotifs && d.topMotifs.length) {
+              document.getElementById("tileMotifs").innerHTML = d.topMotifs.map((m,i) => 
+                `<div style="display:flex;justify-content:space-between;padding:2px 0;${i<d.topMotifs.length-1?'border-bottom:1px solid var(--border)':''}"><span>${m.name}</span><b>${m.pct}</b></div>`
+              ).join('');
+            }
+            const renderProtos = (list) => list.map((p,i) => `<div style="display:flex;justify-content:space-between;padding:2px 0;${i<list.length-1?'border-bottom:1px solid var(--border)':''}"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:180px" title="${p.name}">${p.name}</span><b>${p.pct}</b></div>`).join('');
+            if (d.protoAdulte && d.protoAdulte.length) document.getElementById("tileProtoAdulte").innerHTML = renderProtos(d.protoAdulte);
+            if (d.protoEnfant && d.protoEnfant.length) document.getElementById("tileProtoEnfant").innerHTML = renderProtos(d.protoEnfant);
+
             document.querySelector("#tableCis tbody").innerHTML = (d.cis||[]).map(x=>`<tr id="cis_${x.name}"><td>${x.name}</td><td class="num">${x.v26}</td><td class="num v25">...</td><td class="num" style="color:gray">${x.v25tot}</td></tr>`).join('');
             document.querySelector("#tableSect tbody").innerHTML = (d.secteurs||[]).map(x=>`<tr id="sect_${x.name}"><td>${x.name}</td><td class="num">${x.v26}</td><td class="num v25">...</td><td class="num" style="color:gray">${x.v25tot}</td></tr>`).join('');
             

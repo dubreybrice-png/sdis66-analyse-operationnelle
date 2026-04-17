@@ -198,7 +198,7 @@ function getDropdownList_(sheet, colIndex) { const rule = sheet.getRange(2, colI
 function getStats2026() {
   // === CHERCHER CACHE ===
   const _cache26 = CacheService.getScriptCache();
-  const _ck26 = "stats2026_v3";
+  const _ck26 = "stats2026_v4";
   const _c26 = _cache26.get(_ck26);
   if(_c26) return JSON.parse(_c26);
   const _sc26 = sheetCacheGet(_ck26);
@@ -238,12 +238,47 @@ function getStats2026() {
   let counts = { isp: 0, med: 0 };
   try { counts = getChefferieCounts(); } catch(e) { console.log('getChefferieCounts error: ' + e); }
 
+  // === Tuiles supplémentaires ===
+  // Bilan OK % (J30) et PISU OK % (J33)
+  const bilanOkPct = dash.getRange("J30").getDisplayValue();
+  const pisuOkPct = dash.getRange("J33").getDisplayValue();
+
+  // Top 5 motifs de départ (N31+ noms, P31+ %)
+  const motifsNames = dash.getRange("N31:N45").getDisplayValues().flat();
+  const motifsPct = dash.getRange("P31:P45").getDisplayValues().flat();
+  const topMotifs = [];
+  for (let m = 0; m < motifsNames.length && topMotifs.length < 5; m++) {
+    if (motifsNames[m] && String(motifsNames[m]).trim()) {
+      topMotifs.push({ name: motifsNames[m], pct: motifsPct[m] || "0%" });
+    }
+  }
+
+  // PISU réalisés (J53) + top protocoles adulte (I55:K71) + enfant (I72:K84)
+  const nbPisu = dash.getRange("J53").getDisplayValue();
+  const protoNames = dash.getRange("I55:I84").getDisplayValues().flat();
+  const protoRates = dash.getRange("K55:K84").getDisplayValues().flat();
+  const protoAdulte = [];
+  const protoEnfant = [];
+  for (let p = 0; p < protoNames.length; p++) {
+    if (!protoNames[p] || !String(protoNames[p]).trim()) continue;
+    const entry = { name: protoNames[p].replace(/^Nbr protocole\s*/i, ""), pct: protoRates[p] || "0%" };
+    if (p <= 16) protoAdulte.push(entry); // rows 55-71 = adult (index 0-16)
+    else if (p >= 17) protoEnfant.push(entry); // rows 72-84 = enfant (index 17+)
+  }
+  // Trier par taux décroissant
+  const parseRate = s => parseFloat(String(s).replace("%","").replace(",",".")) || 0;
+  protoAdulte.sort((a,b) => parseRate(b.pct) - parseRate(a.pct));
+  protoEnfant.sort((a,b) => parseRate(b.pct) - parseRate(a.pct));
+
   const _result26 = {
     date: formatDateFR_(lastDate),
     psud: psud2026, total: total2026, sect: secteur2026, ast: astreintes2026,
     cis: cisNames.map((n, i) => ({ name:n, v26:Number(cisCounts2026[i])||0, v25:Number(cisCounts2025ytd[i])||0, v25tot:Number(cisTotals2025[i])||0 })),
     secteurs: sectNames.map((n, i) => ({ name:n, v26:Number(sectCounts2026[i])||0, v25:Number(sectCounts2025ytd[i])||0, v25tot:Number(sectTotals2025[i])||0 })),
-    cntApp: countApp, cntIspG: counts.isp, cntMed: counts.med, cntAction: counts.action
+    cntApp: countApp, cntIspG: counts.isp, cntMed: counts.med, cntAction: counts.action,
+    bilanOkPct: bilanOkPct, pisuOkPct: pisuOkPct,
+    topMotifs: topMotifs, nbPisu: nbPisu,
+    protoAdulte: protoAdulte.slice(0, 5), protoEnfant: protoEnfant.slice(0, 5)
   };
   // === ÉCRIRE CACHE ===
   try { _cache26.put(_ck26, JSON.stringify(_result26), 7200); sheetCachePut(_ck26, _result26, 7200); } catch(e){}
@@ -2572,7 +2607,7 @@ function getDashboardData(){ return getStats2026(); }
  *   X=DétrCircu → Y(ChocHémo)         | AE=DRA → AE(Asthme)     | AK=Fracture → AL
  *   Y=Brulure → Z(Brulure)            | AF=IntoxFum → AG(Intox)  | AL=HPA → AM(HPA)
  *   Z=DlrAigue → AA(DlrAigue)         | AG=Convul → AH(Convul)
- *   AA=Penthrox → AB(AnalgésieProcéd)  | AH=Accouch → AI(Accouch)
+ *   AA=Penthrox → AA(DlrAigue)         | AH=Accouch → AI(Accouch)
  *   AB=DlrIade → AB(AnalgésieProcéd)   |
  * 
  * PÉDIATRIQUES:
@@ -2646,8 +2681,8 @@ function migrateProtocoles2026() {
     oldCounts[1],                    // X: Hypoglycémie(3A) ← old W(Hypo)
     oldCounts[2],                    // Y: Choc hémorragique(4A) ← old X(DétrCircu)
     oldCounts[3],                    // Z: Brulure(5A) ← old Y(Brulure)
-    oldCounts[4],                    // AA: Douleur aigue(6A) ← old Z(DlrAigue)
-    oldCounts[5] + oldCounts[6],     // AB: Analgésie procédurale(7A) ← old AA(Penthrox) + AB(DlrIade)
+    oldCounts[4] + oldCounts[5],     // AA: Douleur aigue(6A) ← old Z(DlrAigue) + AA(Penthrox)
+    oldCounts[6],                    // AB: Analgésie procédurale(7A) ← old AB(DlrIade)
     oldCounts[7],                    // AC: ACR(8A) ← old AC(ACR)
     oldCounts[8],                    // AD: Anaphylaxie(9A) ← old AD(Allergie)
     oldCounts[9],                    // AE: Asthme/BPCO(10A) ← old AE(DRA)
