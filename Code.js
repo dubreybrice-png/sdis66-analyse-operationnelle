@@ -2591,7 +2591,7 @@ function clearAllCaches() {
   try {
     // 1) Vider le CacheService (mémoire)
     const cache = CacheService.getScriptCache();
-    cache.removeAll(["admin_data_full_v2", "astreinte_dept_ispp_v3", "cache_status", "history_cache_v2", "historique_temps_travail_v1"]);
+    cache.removeAll(["admin_data_full_v2", "astreinte_dept_ispp_v3", "cache_status", "history_cache_v2", "historique_temps_travail_v1", "stats2026_v4", "stats2025_vStable", "chefferie_counts_v4"]);
     
     // 2) Vider TOUT le spreadsheet cache (toutes les clés)
     const cacheSS = _getCacheSS();
