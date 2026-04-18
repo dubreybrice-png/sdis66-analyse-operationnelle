@@ -1913,8 +1913,11 @@
                         <div class="panelHead">Action Réalisée</div>
                         <div class="panelBody">
                             <textarea id="txtActionFaite" style="width:100%; min-height:100px;" placeholder="Décrivez l'action réalisée...">${info.actionFaite || ''}</textarea>
-                            <div style="margin-top:20px;">
-                                <button class="btn ok" style="width:100%;" onclick="saveAndNextAction()">💾 Clôturer et Suivant</button>
+                            ${data.bilanKo ? '<div style="margin-top:10px;"><label style="cursor:pointer;"><input type="checkbox" id="chkPasserBilanOk"> ✅ Passer en Bilan OK</label></div>' : ''}
+                            ${data.pisuKo ? '<div style="margin-top:6px;"><label style="cursor:pointer;"><input type="checkbox" id="chkPasserPisuOk"> ✅ Passer en PISU OK</label></div>' : ''}
+                            <div style="margin-top:20px; display:flex; gap:10px;">
+                                <button class="btn ok" style="flex:1;" onclick="saveAndNextAction()">💾 Clôturer et Suivant</button>
+                                <button class="btn" style="flex:1; background:var(--bg3); color:var(--text); border:1px solid var(--border);" onclick="skipToNextAction()">⏭️ Voir suivant</button>
                             </div>
                         </div>
                     </div>
@@ -1926,7 +1929,10 @@
     function saveAndNextAction() {
         const form = {
             rowEve: currentChefData.rowEve,
-            actionFaite: document.getElementById('txtActionFaite').value
+            rowApp: currentChefData.rowApp || -1,
+            actionFaite: document.getElementById('txtActionFaite').value,
+            passerBilanOk: document.getElementById('chkPasserBilanOk') ? document.getElementById('chkPasserBilanOk').checked : false,
+            passerPisuOk: document.getElementById('chkPasserPisuOk') ? document.getElementById('chkPasserPisuOk').checked : false
         };
         
         if(!form.actionFaite) { toast("Veuillez décrire l'action réalisée"); return; }
@@ -1946,6 +1952,24 @@
             toast("Erreur: " + e.message, "err");
             loadActionChefferie();
         }).saveActionChefferie(form);
+    }
+    
+    var chefSkipRows = [];
+    
+    function skipToNextAction() {
+        if(currentChefData && currentChefData.rowEve) {
+            chefSkipRows.push(currentChefData.rowEve);
+        }
+        const div = document.getElementById('chefActionContent');
+        div.innerHTML = '<div style="text-align:center;padding:40px;color:gray;">Chargement...</div>';
+        google.script.run.withSuccessHandler(res => {
+            if(!res.found) {
+                div.innerHTML = `<div style="text-align:center;padding:40px;color:var(--accent3);">${res.message}</div>`;
+                return;
+            }
+            currentChefData = res;
+            renderActionChefferie(res);
+        }).getNextActionChefferie(chefSkipRows);
     }
     
     function refreshChefferieBadges() {

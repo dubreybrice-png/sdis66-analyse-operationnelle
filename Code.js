@@ -1976,13 +1976,14 @@ function getIspDetailsAdmin(mat) {
  * Récupérer la prochaine fiche à traiter dans "Actions finales"
  * Critères: Dans APP Eve, O ou Q rempli, S (col 19) pas coché
  */
-function getNextActionChefferie() {
+function getNextActionChefferie(skipRows) {
     const ss = getSS_();
     const shEve = ss.getSheetByName("APP Eve");
     const shAlex = ss.getSheetByName("APP Alex");
     const shApp = ss.getSheetByName(APP_SHEET_NAME);
     if(!shEve) return { found: false, message: "Onglet APP Eve introuvable" };
     
+    const skip = Array.isArray(skipRows) ? skipRows : [];
     const dataEve = shEve.getDataRange().getValues();
     const dataAlex = shAlex ? shAlex.getDataRange().getValues() : [];
     const dataApp = shApp ? shApp.getDataRange().getValues() : [];
@@ -1993,13 +1994,16 @@ function getNextActionChefferie() {
         const isClosed = isCheckboxChecked(dataEve[i][18]); // S
         
         if((hasAnalyse || hasAction) && !isClosed) {
+            if(skip.indexOf(i+1) >= 0) continue;
             const id = String(dataEve[i][0]).trim();
             
             // Chercher infos dans APP
             let appInfo = null;
+            let appRowIdx = -1;
             for(let j=1; j<dataApp.length; j++) {
                 if(String(dataApp[j][C_APP_ID]).trim() === id) {
                     appInfo = dataApp[j];
+                    appRowIdx = j;
                     break;
                 }
             }
@@ -2019,6 +2023,9 @@ function getNextActionChefferie() {
             return {
                 found: true,
                 rowEve: i+1,
+                rowApp: appRowIdx >= 0 ? appRowIdx+1 : -1,
+                bilanKo: appInfo ? isCheckboxChecked(appInfo[C_BILAN_KO]) : false,
+                pisuKo: appInfo ? isCheckboxChecked(appInfo[C_PISU_KO]) : false,
                 info: {
                     interId: id,
                     date: appInfo ? formatDateHeureFR_(appInfo[C_APP_DATE]) : "",
@@ -2055,6 +2062,21 @@ function saveActionChefferie(form) {
         
         // Clôturer (colonne S = 19)
         shEve.getRange(row, 19).setValue(true);
+        
+        // Passer en Bilan OK / Pisu OK si demandé
+        if(form.rowApp && form.rowApp >= 2) {
+            const shApp = ss.getSheetByName(APP_SHEET_NAME);
+            if(shApp) {
+                if(form.passerBilanOk) {
+                    shApp.getRange(form.rowApp, C_BILAN_OK+1).setValue(true);
+                    shApp.getRange(form.rowApp, C_BILAN_KO+1).setValue(false);
+                }
+                if(form.passerPisuOk) {
+                    shApp.getRange(form.rowApp, C_PISU_OK+1).setValue(true);
+                    shApp.getRange(form.rowApp, C_PISU_KO+1).setValue(false);
+                }
+            }
+        }
         
         // Clear cache
         CacheService.getScriptCache().remove("chefferie_counts_v4");
@@ -2865,6 +2887,30 @@ function sendWeeklyReport() {
     if (!eveDoneIds.has(id)) totalMedRemaining++;
   }
   
+  // === Compteurs Réaliser actions chefferie ===
+  let totalActionsDone = 0, weekActionsDone = 0, totalActionsRemaining = 0;
+  for (let i = 1; i < eveData.length; i++) {
+    const hasAnalyse = !!eveData[i][14]; // O
+    const hasAction = !!eveData[i][16];  // Q
+    const isClosed = isCheckboxChecked(eveData[i][18]); // S
+    if (hasAnalyse || hasAction) {
+      if (isClosed) {
+        totalActionsDone++;
+        // Vérifier si fait cette semaine (basé sur la date de l'intervention dans APP)
+        const id = String(eveData[i][0]).trim();
+        for (let j = 1; j < appData.length; j++) {
+          if (String(appData[j][C_APP_ID]).trim() === id) {
+            const d = coerceToDateTime_(appData[j][C_APP_DATE]);
+            if (d && d >= monday && d <= now) weekActionsDone++;
+            break;
+          }
+        }
+      } else {
+        totalActionsRemaining++;
+      }
+    }
+  }
+  
   // === Construire le mail ===
   const dateStr = now.toLocaleDateString("fr-FR");
   const weekStr = monday.toLocaleDateString("fr-FR") + " – " + dateStr;
@@ -2878,43 +2924,48 @@ Semaine du ${weekStr}
 
 --- APP par ISP ---
   Fiches analysées cette semaine :  ${weekAppIsp}
-  Total fiches analysées :          ${totalAppIsp}
+  Total fiches analysées (depuis 01/01/2026) : ${totalAppIsp}
   Fiches restantes à analyser :     ${totalRemaining}
   
-  Erreurs bilan cette semaine :     ${weekErrBilan}
-  Erreurs bilan total :             ${totalErrBilan}
-  Erreurs pisu cette semaine :      ${weekErrPisu}  
-  Erreurs pisu total :              ${totalErrPisu}
+  Sur ${totalAppIsp} APP par ISP :
+    - ${totalErrBilan} ont eu Bilan pas OK (dont ${weekErrBilan} cette semaine)
+    - ${totalErrPisu} ont eu PISU pas OK (dont ${weekErrPisu} cette semaine)
 
 --- APP Chefferie ISP ---
   Fiches analysées en chefferie :   ${totalChefIsp}
   Fiches restantes chefferie :      ${totalChefIspRemaining}
-  Dont erreurs graves :             ${totalGraves}
-  Dont erreurs légères :            ${totalLegeres}
-  Remis en bilan/pisu OK :          ${totalRemisOk}
+  Après ${totalChefIsp} analyses APP chefferie :
+    - ${totalGraves} sont passées en erreur grave
+    - ${totalLegeres} en erreur légère
+    - ${totalRemisOk} remises en bilan/pisu OK
 
 --- Analyse Médecin Cheffe ---
   Analyses effectuées :             ${totalMedDone}
   Fiches restantes à analyser :     ${totalMedRemaining}
+
+--- Réaliser actions chefferie ---
+  Actions réalisées cette semaine : ${weekActionsDone}
+  Total actions réalisées :         ${totalActionsDone}
+  Actions restantes :               ${totalActionsRemaining}
 
 Accéder à l'application : ${scriptUrl}
 
 — Mail automatique SDS Analyse Opérationnelle
 `.trim();
   
-  // Envoyer au propriétaire du script
-  const ownerEmail = Session.getEffectiveUser().getEmail();
+  // Envoyer à Brice et Eve
+  const recipients = "brice.dubrey@sdis66.fr,eve.laparra@sdis66.fr";
   GmailApp.sendEmail(
-    ownerEmail,
+    recipients,
     "📊 Rapport hebdo SDS – semaine du " + weekStr,
     body
   );
   
-  Logger.log("Rapport hebdo envoyé à " + ownerEmail);
+  Logger.log("Rapport hebdo envoyé à " + recipients);
 }
 
 /**
- * Installer le trigger hebdomadaire (dimanche 23h)
+ * Installer le trigger hebdomadaire (dimanche 20h)
  */
 function installWeeklyReportTrigger() {
   const triggers = ScriptApp.getProjectTriggers();
@@ -2927,10 +2978,80 @@ function installWeeklyReportTrigger() {
   ScriptApp.newTrigger("sendWeeklyReport")
     .timeBased()
     .onWeekDay(ScriptApp.WeekDay.SUNDAY)
-    .atHour(23)
-    .nearMinute(55)
+    .atHour(20)
+    .nearMinute(0)
     .create();
   
-  return "✅ Trigger rapport hebdo installé (dimanche ~23h55)";
+  return "✅ Trigger rapport hebdo installé (dimanche ~20h)";
 }
-// force push 20260417v3
+
+/**
+ * MAIL QUOTIDIEN 9h — Eve si dossier en attente dans "Analyse médecin cheffe"
+ */
+function sendDailyMailEve() {
+  try {
+    const counts = getChefferieCounts();
+    if(counts.med > 0) {
+      const scriptUrl = ScriptApp.getService().getUrl();
+      GmailApp.sendEmail(
+        "eve.laparra@sdis66.fr",
+        "📋 SDS – Dossier(s) en attente Analyse Médecin Cheffe",
+        `Bonjour,\n\nIl y a ${counts.med} dossier(s) en attente dans "Analyse médecin cheffe".\n\nAccéder à l'application : ${scriptUrl}\n\n— Mail automatique SDS Analyse Opérationnelle`
+      );
+      Logger.log("Mail quotidien Eve envoyé - " + counts.med + " dossier(s)");
+    }
+  } catch(e) { Logger.log("Erreur sendDailyMailEve: " + e); }
+}
+
+/**
+ * MAIL QUOTIDIEN 9h — Jean-Luc si dossier en attente dans "Faire APP chefferie" et/ou "Réaliser actions chefferie"
+ */
+function sendDailyMailJeanLuc() {
+  try {
+    const counts = getChefferieCounts();
+    const pending = [];
+    if(counts.isp > 0) pending.push(counts.isp + " dossier(s) dans \"Faire APP chefferie\"");
+    if(counts.action > 0) pending.push(counts.action + " dossier(s) dans \"Réaliser actions chefferie\"");
+    
+    if(pending.length > 0) {
+      const scriptUrl = ScriptApp.getService().getUrl();
+      GmailApp.sendEmail(
+        "jean-luc.leroy@sdis66.fr",
+        "📋 SDS – Dossier(s) en attente Chefferie",
+        `Bonjour,\n\nIl y a :\n- ${pending.join("\n- ")}\n\nAccéder à l'application : ${scriptUrl}\n\n— Mail automatique SDS Analyse Opérationnelle`
+      );
+      Logger.log("Mail quotidien Jean-Luc envoyé - " + pending.join(", "));
+    }
+  } catch(e) { Logger.log("Erreur sendDailyMailJeanLuc: " + e); }
+}
+
+/**
+ * Installer les triggers quotidiens à 9h pour Eve et Jean-Luc
+ */
+function installDailyMailTriggers() {
+  const triggers = ScriptApp.getProjectTriggers();
+  
+  // Supprimer anciens triggers
+  triggers.forEach(t => {
+    if (t.getHandlerFunction() === "sendDailyMailEve" || t.getHandlerFunction() === "sendDailyMailJeanLuc") {
+      ScriptApp.deleteTrigger(t);
+    }
+  });
+  
+  ScriptApp.newTrigger("sendDailyMailEve")
+    .timeBased()
+    .everyDays(1)
+    .atHour(9)
+    .nearMinute(0)
+    .create();
+  
+  ScriptApp.newTrigger("sendDailyMailJeanLuc")
+    .timeBased()
+    .everyDays(1)
+    .atHour(9)
+    .nearMinute(0)
+    .create();
+  
+  return "✅ Triggers quotidiens 9h installés (Eve + Jean-Luc)";
+}
+// force push 20260418v1
