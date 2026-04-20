@@ -2827,7 +2827,7 @@ function sendWeeklyReport() {
   }
   
   // === Compteurs APP par ISP ===
-  let totalAppIsp = 0, weekAppIsp = 0;
+  let totalAppIsp = 0;
   let totalRemaining = 0;
   let totalErrPisu = 0, weekErrPisu = 0;
   let totalErrBilan = 0, weekErrBilan = 0;
@@ -2847,7 +2847,6 @@ function sendWeeklyReport() {
     
     if (isClosed) {
       totalAppIsp++;
-      if (isThisWeek) weekAppIsp++;
     } else {
       totalRemaining++;
     }
@@ -2855,6 +2854,14 @@ function sendWeeklyReport() {
     if (bilanKo) { totalErrBilan++; if (isThisWeek) weekErrBilan++; }
     if (pisuKo) { totalErrPisu++; if (isThisWeek) weekErrPisu++; }
   }
+  
+  // Calculer fiches analysées cette semaine via PropertiesService (diff avec total précédent)
+  const props = PropertiesService.getScriptProperties();
+  const prevTotalKey = "weeklyReport_prevTotalAppIsp";
+  const prevTotal = parseInt(props.getProperty(prevTotalKey)) || 0;
+  const weekAppIsp = prevTotal > 0 ? Math.max(0, totalAppIsp - prevTotal) : totalAppIsp;
+  // Stocker le total actuel pour le prochain rapport
+  props.setProperty(prevTotalKey, String(totalAppIsp));
   
   // === Compteurs Chefferie ISP ===
   let totalChefIsp = 0, totalChefIspRemaining = 0;
