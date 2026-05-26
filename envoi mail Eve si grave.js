@@ -39,7 +39,7 @@ function checkAppEveErrors() {
   }
 
   if (pendingCount > 0) {
-    const appUrl = WEBAPP_EXEC_URL;
+    const appUrl = "https://script.google.com/macros/s/AKfycbx1_TpQBnqA_Z-tDtq2OyAbnYFI0uKXVz7e9f5-0GuDAaOiCpSfgKsd0IKv45C_mS5CVw/exec";
     
     GmailApp.sendEmail(
       "eve.laparra@sdis66.fr",
@@ -91,7 +91,7 @@ function testCheckAppEveErrors_Brice() {
     }
   }
 
-  const appUrl = WEBAPP_EXEC_URL;
+  const appUrl = "https://script.google.com/macros/s/AKfycbx1_TpQBnqA_Z-tDtq2OyAbnYFI0uKXVz7e9f5-0GuDAaOiCpSfgKsd0IKv45C_mS5CVw/exec";
   const body = "[TEST envoi vers brice]\n\n"
     + "Résultat : " + pendingCount + " fiche(s) en attente\n"
     + "URL qui serait envoyée : " + appUrl + "\n\n"

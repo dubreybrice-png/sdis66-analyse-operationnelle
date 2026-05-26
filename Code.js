@@ -198,7 +198,7 @@ function getDropdownList_(sheet, colIndex) { const rule = sheet.getRange(2, colI
 function getStats2026() {
   // === CHERCHER CACHE ===
   const _cache26 = CacheService.getScriptCache();
-  const _ck26 = "stats2026_v6";
+  const _ck26 = "stats2026_v7";
   const _c26 = _cache26.get(_ck26);
   if(_c26) return JSON.parse(_c26);
   const _sc26 = sheetCacheGet(_ck26);
@@ -286,33 +286,48 @@ function getStats2026() {
       for(let i=1; i<dTemps.length; i++) {
         const cis = String(dTemps[i][13]||'').trim();
         if(!cis) continue;
-        if(!tempsByCis[cis]) tempsByCis[cis] = { total:0, day:0, night:0 };
-        tempsByCis[cis].total += 0.5;
         const dtAst = coerceToDateTime_(dTemps[i][C_TEMPS_DATE_AST]);
-        const hAst = dtAst ? dtAst.getHours() : -1;
+        if(!dtAst) continue;
+        // Clé unique pour ce créneau de 30min : date + heure + minute
+        const slotKey = dtAst.getFullYear() + '-' + dtAst.getMonth() + '-' + dtAst.getDate() + '_' + dtAst.getHours() + '_' + dtAst.getMinutes();
+        const hAst = dtAst.getHours();
         const isDay = hAst >= 8 && hAst < 20;
-        if(hAst >= 0) { if(isDay) tempsByCis[cis].day += 0.5; else tempsByCis[cis].night += 0.5; }
+        // Pour le CIS : dédupliquer (plusieurs ISP sur même créneau = 1 créneau couvert)
+        if(!tempsByCis[cis]) tempsByCis[cis] = { total:new Set(), day:new Set(), night:new Set() };
+        tempsByCis[cis].total.add(slotKey);
+        if(isDay) tempsByCis[cis].day.add(slotKey); else tempsByCis[cis].night.add(slotKey);
+        // Pour le secteur : même déduplication
         const sect = cisToSect26[cis] || 'Non défini';
-        if(!tempsBySect[sect]) tempsBySect[sect] = { total:0, day:0, night:0 };
-        tempsBySect[sect].total += 0.5;
-        if(hAst >= 0) { if(isDay) tempsBySect[sect].day += 0.5; else tempsBySect[sect].night += 0.5; }
+        if(!tempsBySect[sect]) tempsBySect[sect] = { total:new Set(), day:new Set(), night:new Set() };
+        tempsBySect[sect].total.add(slotKey);
+        if(isDay) tempsBySect[sect].day.add(slotKey); else tempsBySect[sect].night.add(slotKey);
       }
     }
   } catch(eTmp) { Logger.log('tempsByCis error: ' + eTmp); }
   const _jan1Ytd = new Date(lastDate.getFullYear(), 0, 1);
   const _nbDaysYtd = Math.max(1, Math.round((lastDate - _jan1Ytd) / (1000*60*60*24)) + 1);
-  const _dayPoss = _nbDaysYtd * 12;
-  const _nightPoss = _nbDaysYtd * 12;
-  const _totPoss = _nbDaysYtd * 24;
+  const _dayPoss = _nbDaysYtd * 12;   // 12h possibles en journée (8h-20h)
+  const _nightPoss = _nbDaysYtd * 12; // 12h possibles la nuit (20h-8h)
+  const _totPoss = _nbDaysYtd * 24;   // 24h totales
   const tempsCisList = Object.keys(tempsByCis).sort().map(k => {
     const v = tempsByCis[k];
-    return { name:k, h:Math.round(v.total*10)/10, hDay:Math.round(v.day*10)/10, hNight:Math.round(v.night*10)/10,
-      tauxDay:Math.round(v.day/_dayPoss*1000)/10, tauxNight:Math.round(v.night/_nightPoss*1000)/10, tauxGlobal:Math.round(v.total/_totPoss*1000)/10 };
+    const hTotal = v.total.size * 0.5;
+    const hDay   = v.day.size   * 0.5;
+    const hNight = v.night.size * 0.5;
+    return { name:k, h:hTotal, hDay:hDay, hNight:hNight,
+      tauxDay:   Math.round(hDay   / _dayPoss   * 1000) / 10,
+      tauxNight: Math.round(hNight / _nightPoss * 1000) / 10,
+      tauxGlobal:Math.round(hTotal / _totPoss   * 1000) / 10 };
   });
   const tempsSectList = Object.keys(tempsBySect).sort().map(k => {
     const v = tempsBySect[k];
-    return { name:k, h:Math.round(v.total*10)/10,
-      tauxDay:Math.round(v.day/_dayPoss*1000)/10, tauxNight:Math.round(v.night/_nightPoss*1000)/10, tauxGlobal:Math.round(v.total/_totPoss*1000)/10 };
+    const hTotal = v.total.size * 0.5;
+    const hDay   = v.day.size   * 0.5;
+    const hNight = v.night.size * 0.5;
+    return { name:k, h:hTotal,
+      tauxDay:   Math.round(hDay   / _dayPoss   * 1000) / 10,
+      tauxNight: Math.round(hNight / _nightPoss * 1000) / 10,
+      tauxGlobal:Math.round(hTotal / _totPoss   * 1000) / 10 };
   });
 
   const _result26 = {
@@ -2637,7 +2652,7 @@ function clearAllCaches() {
   try {
     // 1) Vider le CacheService (mémoire)
     const cache = CacheService.getScriptCache();
-    cache.removeAll(["admin_data_full_v2", "astreinte_dept_ispp_v3", "cache_status", "history_cache_v2", "historique_temps_travail_v1", "stats2026_v4", "stats2026_v6", "stats2025_vStable", "chefferie_counts_v4"]);
+    cache.removeAll(["admin_data_full_v2", "astreinte_dept_ispp_v3", "cache_status", "history_cache_v2", "historique_temps_travail_v1", "stats2026_v4", "stats2026_v6", "stats2026_v7", "stats2025_vStable", "chefferie_counts_v4"]);
     
     // 2) Vider TOUT le spreadsheet cache (toutes les clés)
     const cacheSS = _getCacheSS();
