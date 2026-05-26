@@ -31,9 +31,9 @@ function checkAppEveErrors() {
     const qEmpty = valQ === "" || valQ === null;
     const isClosed = valS === true || String(valS).toUpperCase() === "TRUE";
 
-    // Fiche en attente = O ou Q vide ET pas clôturée, ET la ligne a du contenu (col A non vide)
+    // Fiche en attente = O ET Q vides ET pas clôturée, ET la ligne a du contenu (col A non vide)
     const hasContent = values[i][0] !== "" && values[i][0] !== null;
-    if (hasContent && (oEmpty || qEmpty) && !isClosed) {
+    if (hasContent && oEmpty && qEmpty && !isClosed) {
       pendingCount++;
     }
   }
@@ -82,7 +82,7 @@ function testCheckAppEveErrors_Brice() {
     const qEmpty = valQ === "" || valQ === null;
     const isClosed = valS === true || String(valS).toUpperCase() === "TRUE";
 
-    const counted = hasContent && (oEmpty || qEmpty) && !isClosed;
+    const counted = hasContent && oEmpty && qEmpty && !isClosed;
     if (counted) {
       pendingCount++;
       debugLines.push("Ligne " + (i + 2) + " | A=" + valA + " | O=" + JSON.stringify(valO) + " | Q=" + JSON.stringify(valQ) + " | S=" + JSON.stringify(valS) + " → COMPTÉE");
