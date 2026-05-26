@@ -408,6 +408,8 @@
         <div style="display:flex;gap:20px;margin-bottom:20px;flex-wrap:wrap;">
             <div class="panel"><div class="panelHead">Sorties par CIS</div><div class="panelScrollWrapper"><table id="tableCis" class="compact"><thead><tr><th onclick="sortTable('tableCis',0)" style="cursor:pointer">CIS <span class="sort-icon">↕</span></th><th onclick="sortTable('tableCis',1)" class="num" style="cursor:pointer">2026 <span class="sort-icon">↕</span></th><th onclick="sortTable('tableCis',2)" class="num" style="cursor:pointer">2025 (Date) <span class="sort-icon">↕</span></th><th onclick="sortTable('tableCis',3)" class="num" style="cursor:pointer">2025 (Total) <span class="sort-icon">↕</span></th></tr></thead><tbody></tbody></table></div></div>
             <div class="panel"><div class="panelHead">Sorties par Secteur</div><div class="panelScrollWrapper"><table id="tableSect" class="compact"><thead><tr><th onclick="sortTable('tableSect',0)" style="cursor:pointer">Secteur <span class="sort-icon">↕</span></th><th onclick="sortTable('tableSect',1)" class="num" style="cursor:pointer">2026 <span class="sort-icon">↕</span></th><th onclick="sortTable('tableSect',2)" class="num" style="cursor:pointer">2025 (Date) <span class="sort-icon">↕</span></th><th onclick="sortTable('tableSect',3)" class="num" style="cursor:pointer">2025 (Total) <span class="sort-icon">↕</span></th></tr></thead><tbody></tbody></table></div></div>
+            <div class="panel"><div class="panelHead">⏱ H. Dispo/Astreinte par CIS (2026)</div><div class="panelScrollWrapper"><table id="tableTemps" class="compact"><thead><tr><th onclick="sortTable('tableTemps',0)" style="cursor:pointer">CIS <span class="sort-icon">↕</span></th><th onclick="sortTable('tableTemps',1)" class="num" style="cursor:pointer">Heures <span class="sort-icon">↕</span></th><th onclick="sortTable('tableTemps',2)" class="num" style="cursor:pointer">H moy/mois <span class="sort-icon">↕</span></th><th onclick="sortTable('tableTemps',3)" class="num" style="cursor:pointer">H/inter <span class="sort-icon">↕</span></th><th onclick="sortTable('tableTemps',4)" class="num" style="cursor:pointer">Taux Jour ☀️ <span class="sort-icon">↕</span></th><th onclick="sortTable('tableTemps',5)" class="num" style="cursor:pointer">Taux Nuit 🌙 <span class="sort-icon">↕</span></th><th onclick="sortTable('tableTemps',6)" class="num" style="cursor:pointer">Taux Global <span class="sort-icon">↕</span></th></tr></thead><tbody></tbody></table></div></div>
+            <div class="panel"><div class="panelHead">⏱ H. Dispo/Astreinte par Secteur (2026)</div><div class="panelScrollWrapper"><table id="tableTemplSect" class="compact"><thead><tr><th onclick="sortTable('tableTemplSect',0)" style="cursor:pointer">Secteur <span class="sort-icon">↕</span></th><th onclick="sortTable('tableTemplSect',1)" class="num" style="cursor:pointer">Heures <span class="sort-icon">↕</span></th><th onclick="sortTable('tableTemplSect',2)" class="num" style="cursor:pointer">Taux Jour ☀️ <span class="sort-icon">↕</span></th><th onclick="sortTable('tableTemplSect',3)" class="num" style="cursor:pointer">Taux Nuit 🌙 <span class="sort-icon">↕</span></th><th onclick="sortTable('tableTemplSect',4)" class="num" style="cursor:pointer">Taux Global <span class="sort-icon">↕</span></th></tr></thead><tbody></tbody></table></div></div>
         </div>
 
         <div class="panel" style="margin-bottom:20px;">
@@ -578,6 +580,8 @@
                     
                     <div style="margin-top:20px;padding-top:20px;border-top:1px solid #444;text-align:center;">
                       <button style="font-size:11px;padding:6px 12px;background:#e0e4ea;border:1px solid #ccd3de;color:#6b7b8d;cursor:pointer;border-radius:4px;" onclick="clearCachesAndReload(this)">🔄 Vider cache</button>
+                      <button style="font-size:11px;padding:6px 12px;background:#2196F3;border:1px solid #1976D2;color:#fff;cursor:pointer;border-radius:4px;margin-left:10px;" onclick="openMailingModal()">📧 Mailing auto</button>
+                      <button id="btnTestMailEve" style="font-size:11px;padding:6px 12px;background:#FF9800;border:1px solid #F57C00;color:#fff;cursor:pointer;border-radius:4px;margin-left:10px;" onclick="testMailEve(this)">🧪 Test mail Eve (erreurs graves)</button>
                     </div>
                 </div>
                 </div>
@@ -968,7 +972,33 @@
 
             document.querySelector("#tableCis tbody").innerHTML = (d.cis||[]).map(x=>`<tr id="cis_${x.name}"><td>${x.name}</td><td class="num">${x.v26}</td><td class="num v25">...</td><td class="num" style="color:gray">${x.v25tot}</td></tr>`).join('');
             document.querySelector("#tableSect tbody").innerHTML = (d.secteurs||[]).map(x=>`<tr id="sect_${x.name}"><td>${x.name}</td><td class="num">${x.v26}</td><td class="num v25">...</td><td class="num" style="color:gray">${x.v25tot}</td></tr>`).join('');
-            
+
+            // Tableaux dispo/astreinte avec taux de couverture
+            const _now = new Date();
+            const _start = new Date(2026, 0, 1);
+            const _monthsElapsed = Math.max(0.5, (_now - _start) / (1000 * 60 * 60 * 24 * 30.44));
+            const cisInterMap = {};
+            (d.cis||[]).forEach(c => { cisInterMap[c.name] = c.v26; });
+            if (document.querySelector("#tableTemps tbody")) {
+              document.querySelector("#tableTemps tbody").innerHTML = (d.tempsCis||[]).map(x => {
+                const inter = cisInterMap[x.name] || 0;
+                const hMoy = (_monthsElapsed > 0 ? x.h / _monthsElapsed : 0).toFixed(1);
+                const hInter = inter > 0 ? (x.h / inter).toFixed(1) + 'h' : '—';
+                const td = x.tauxDay != null ? x.tauxDay + '%' : '—';
+                const tn = x.tauxNight != null ? x.tauxNight + '%' : '—';
+                const tg = x.tauxGlobal != null ? x.tauxGlobal + '%' : '—';
+                return `<tr><td>${x.name}</td><td class="num">${x.h}h</td><td class="num">${hMoy}h</td><td class="num">${hInter}</td><td class="num">${td}</td><td class="num">${tn}</td><td class="num">${tg}</td></tr>`;
+              }).join('');
+            }
+            if (document.querySelector("#tableTemplSect tbody")) {
+              document.querySelector("#tableTemplSect tbody").innerHTML = (d.tempsSect||[]).map(x => {
+                const td = x.tauxDay != null ? x.tauxDay + '%' : '—';
+                const tn = x.tauxNight != null ? x.tauxNight + '%' : '—';
+                const tg = x.tauxGlobal != null ? x.tauxGlobal + '%' : '—';
+                return `<tr><td>${x.name}</td><td class="num">${x.h}h</td><td class="num">${td}</td><td class="num">${tn}</td><td class="num">${tg}</td></tr>`;
+              }).join('');
+            }
+
             setText("cntAppBadge", d.cntApp||0);
             setText("cntIspGBadge", d.cntIspG||0);
             setText("cntMedBadge", d.cntMed||0);
@@ -2362,6 +2392,21 @@
           if(btn) { btn.disabled = false; btn.textContent = '🔄 Vider cache'; }
         })
         .clearAllCaches();
+    }
+
+    function testMailEve(btn) {
+      if(!confirm('Envoyer un mail de test (debug) à brice.dubrey@sdis66.fr ?')) return;
+      if(btn) { btn.disabled = true; btn.textContent = '⏳ Envoi en cours…'; }
+      google.script.run
+        .withSuccessHandler(function() {
+          alert('✅ Mail de test envoyé à brice.dubrey@sdis66.fr\nVérifie ta boîte !');
+          if(btn) { btn.disabled = false; btn.textContent = '🧪 Test mail Eve (erreurs graves)'; }
+        })
+        .withFailureHandler(function(err) {
+          alert('Erreur: ' + (err && err.message ? err.message : err));
+          if(btn) { btn.disabled = false; btn.textContent = '🧪 Test mail Eve (erreurs graves)'; }
+        })
+        .testCheckAppEveErrors_Brice();
     }
     
     // Charger la miniature au démarrage

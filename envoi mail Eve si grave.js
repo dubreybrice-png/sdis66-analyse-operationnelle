@@ -39,8 +39,7 @@ function checkAppEveErrors() {
   }
 
   if (pendingCount > 0) {
-    const scriptUrl = ScriptApp.getService().getUrl();
-    const appUrl = scriptUrl + "?page=home";
+    const appUrl = WEBAPP_EXEC_URL;
     
     GmailApp.sendEmail(
       "eve.laparra@sdis66.fr",
@@ -50,6 +49,62 @@ function checkAppEveErrors() {
   }
 }
 
+
+/**
+ * TEST — Simule checkAppEveErrors et envoie le résultat + debug à brice.dubrey@sdis66.fr
+ */
+function testCheckAppEveErrors_Brice() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName("APP Eve");
+  if (!sheet) throw new Error('Onglet "APP Eve" introuvable');
+
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) {
+    GmailApp.sendEmail("brice.dubrey@sdis66.fr", "[TEST] APP Eve – aucune ligne", "Onglet APP Eve vide (lastRow=" + lastRow + ")");
+    return;
+  }
+
+  const colO = 15, colQ = 17, colS = 19;
+  const range = sheet.getRange(2, 1, lastRow - 1, Math.max(colS, colQ, colO));
+  const values = range.getValues();
+
+  let pendingCount = 0;
+  const debugLines = [];
+
+  for (let i = 0; i < values.length; i++) {
+    const valA = values[i][0];
+    const valO = values[i][colO - 1];
+    const valQ = values[i][colQ - 1];
+    const valS = values[i][colS - 1];
+
+    const hasContent = valA !== "" && valA !== null;
+    const oEmpty = valO === "" || valO === null;
+    const qEmpty = valQ === "" || valQ === null;
+    const isClosed = valS === true || String(valS).toUpperCase() === "TRUE";
+
+    const counted = hasContent && (oEmpty || qEmpty) && !isClosed;
+    if (counted) {
+      pendingCount++;
+      debugLines.push("Ligne " + (i + 2) + " | A=" + valA + " | O=" + JSON.stringify(valO) + " | Q=" + JSON.stringify(valQ) + " | S=" + JSON.stringify(valS) + " → COMPTÉE");
+    } else if (hasContent) {
+      debugLines.push("Ligne " + (i + 2) + " | A=" + valA + " | O=" + JSON.stringify(valO) + " | Q=" + JSON.stringify(valQ) + " | S=" + JSON.stringify(valS) + " → ignorée (closed=" + isClosed + " oEmpty=" + oEmpty + " qEmpty=" + qEmpty + ")");
+    }
+  }
+
+  const appUrl = WEBAPP_EXEC_URL;
+  const body = "[TEST envoi vers brice]\n\n"
+    + "Résultat : " + pendingCount + " fiche(s) en attente\n"
+    + "URL qui serait envoyée : " + appUrl + "\n\n"
+    + "=== DÉTAIL LIGNES ===\n"
+    + (debugLines.length > 0 ? debugLines.join("\n") : "(aucune ligne avec contenu)");
+
+  GmailApp.sendEmail(
+    "brice.dubrey@sdis66.fr",
+    "[TEST] APP Eve – " + pendingCount + " fiche(s) erreur grave en attente",
+    body
+  );
+  Logger.log("Mail de test envoyé à brice.dubrey@sdis66.fr — " + pendingCount + " fiche(s)");
+}
 
 /**
  * À lancer UNE SEULE FOIS pour créer le déclencheur quotidien à 9h.
