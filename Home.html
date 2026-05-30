@@ -612,6 +612,10 @@
                   <h3 style="margin:0 0 4px 0; font-size:14px;">🎯 Réaliser actions chefferie <span class="badgeBtn red" style="font-size:10px;" id="btnBadgeAction">...</span></h3>
                   <p style="margin:0; font-size:11px; opacity:0.8;">Actions finales à mener</p>
               </button>
+              <button class="c-btn" style="flex:1;" onclick="showChefferieMode('archive')">
+                  <h3 style="margin:0 0 4px 0; font-size:14px;">📁 Revoir dossiers clôturés</h3>
+                  <p style="margin:0; font-size:11px; opacity:0.8;">Actions chefferie réalisées</p>
+              </button>
               <button class="c-btn" style="flex:1;" onclick="showChefferieMode('data')">
                   <h3 style="margin:0 0 4px 0; font-size:14px;">📊 Voir Données APP</h3>
                   <p style="margin:0; font-size:11px; opacity:0.8;">Tous les ISP</p>
@@ -633,6 +637,11 @@
               <!-- Mode Action -->
               <div id="chefModeAction" style="display:none;">
                   <div id="chefActionContent"></div>
+              </div>
+
+              <!-- Mode Archive (dossiers clôturés) -->
+              <div id="chefModeArchive" style="display:none;">
+                  <div id="chefArchiveContent"><div style="text-align:center;padding:40px;color:gray;">Chargement...</div></div>
               </div>
 
               <!-- Mode Data -->
@@ -1645,6 +1654,7 @@
         document.getElementById('chefModeApp').style.display = 'none';
         document.getElementById('chefModeMed').style.display = 'none';
         document.getElementById('chefModeAction').style.display = 'none';
+        document.getElementById('chefModeArchive').style.display = 'none';
         document.getElementById('chefModeData').style.display = 'none';
         
         if(mode === 'app') {
@@ -1656,10 +1666,64 @@
         } else if(mode === 'action') {
             document.getElementById('chefModeAction').style.display = 'block';
             loadActionChefferie();
+        } else if(mode === 'archive') {
+            document.getElementById('chefModeArchive').style.display = 'block';
+            loadArchivedActions();
         } else if(mode === 'data') {
             document.getElementById('chefModeData').style.display = 'block';
             loadGlobalList();
         }
+    }
+
+    function loadArchivedActions() {
+        const div = document.getElementById('chefArchiveContent');
+        div.innerHTML = '<div style="text-align:center;padding:40px;color:gray;">⏳ Chargement des dossiers clôturés...</div>';
+        google.script.run
+            .withSuccessHandler(function(data) {
+                if(!data || data.length === 0) {
+                    div.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted);">✅ Aucun dossier clôturé pour le moment.</div>';
+                    return;
+                }
+                let html = '<div style="margin-bottom:12px;color:var(--muted);font-size:13px;">📁 ' + data.reduce((s,g)=>s+g.count,0) + ' dossier(s) clôturé(s) — groupés par ISP</div>';
+                data.forEach(function(group) {
+                    html += '<div class="panel" style="margin-bottom:16px;">';
+                    html += '<div class="panelHead" style="display:flex;justify-content:space-between;align-items:center;">';
+                    html += '<span>👤 ' + group.ispName + '</span><span class="badgeBtn" style="background:#43a047;">' + group.count + ' fiche(s)</span>';
+                    html += '</div><div class="panelBody" style="padding:0;">';
+                    html += '<table style="width:100%;border-collapse:collapse;font-size:13px;">';
+                    html += '<thead><tr style="background:var(--bg3);">';
+                    html += '<th style="padding:8px;text-align:left;">Date</th>';
+                    html += '<th style="padding:8px;text-align:left;">Motif</th>';
+                    html += '<th style="padding:8px;text-align:left;">Engin</th>';
+                    html += '<th style="padding:8px;text-align:left;">Analyse Med.</th>';
+                    html += '<th style="padding:8px;text-align:left;">Action requise</th>';
+                    html += '<th style="padding:8px;text-align:left;">Action faite</th>';
+                    html += '<th style="padding:8px;text-align:left;">PDF</th>';
+                    html += '</tr></thead><tbody>';
+                    group.fiches.forEach(function(f, idx) {
+                        const bg = idx % 2 === 0 ? '' : 'background:rgba(255,255,255,0.03);';
+                        html += '<tr style="' + bg + 'border-bottom:1px solid var(--border);">';
+                        html += '<td style="padding:7px 8px;white-space:nowrap;">' + (f.date||'—') + '</td>';
+                        html += '<td style="padding:7px 8px;">' + (f.motif||'—') + '</td>';
+                        html += '<td style="padding:7px 8px;">' + (f.engin||'—') + '</td>';
+                        html += '<td style="padding:7px 8px;">' + (f.analyseMed||'—') + '</td>';
+                        html += '<td style="padding:7px 8px;">' + (f.actionRequise||'—') + '</td>';
+                        html += '<td style="padding:7px 8px;color:#43a047;font-weight:bold;">' + (f.actionFaite||'—') + '</td>';
+                        if(f.pdf && f.pdf !== '#N/A' && !String(f.pdf).includes('#N/A')) {
+                            html += '<td style="padding:7px 8px;"><a href="' + f.pdf + '" target="_blank" style="color:var(--accent3);">📄 PDF</a></td>';
+                        } else {
+                            html += '<td style="padding:7px 8px;color:var(--muted);">—</td>';
+                        }
+                        html += '</tr>';
+                    });
+                    html += '</tbody></table></div></div>';
+                });
+                div.innerHTML = html;
+            })
+            .withFailureHandler(function(err) {
+                div.innerHTML = '<div style="color:red;padding:20px;">Erreur: ' + (err&&err.message?err.message:err) + '</div>';
+            })
+            .getArchivedActions();
     }
     
     function loadChefferieCounts() {
