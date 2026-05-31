@@ -6,6 +6,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <script>
     const SCRIPT_URL = "<?= scriptUrl ?>";
+    function buildAppUrl(params) {
+      const sep = SCRIPT_URL.indexOf('?') === -1 ? '?' : '&';
+      return SCRIPT_URL + (params ? sep + params : '');
+    }
   </script>
   <style>
     :root{ --bg:#0b1220; --card:#101a33; --text:#e8eefc; --muted:#bcc8e8; --accent:#6ea8fe; --danger:#ff6b6b; --ok:#47d18c; --border:rgba(255,255,255,.08); --shadow: 0 18px 50px rgba(0,0,0,.35); --radius: 18px; --selectBg:#0e1730; }
@@ -251,7 +255,7 @@
 
     window.onload = () => loadNext();
     
-    function goHome(){ window.open(SCRIPT_URL + "?page=home", "_top"); }
+    function goHome(){ window.open(buildAppUrl("page=home"), "_top"); }
     function setStatus(t){ document.getElementById("statusPill").textContent=t; }
     function toast(m,t="ok"){ const e=document.getElementById("toast"); e.className="toast "+t; e.textContent=m; e.style.display="block"; setTimeout(()=>e.style.display="none",3500); }
     

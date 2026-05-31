@@ -13,6 +13,9 @@ const ID_SS_2025 = "112sOp4EAPm3vq0doLWzWlAbsOdutszGKT86USjSqst0";
 const ID_SS_RH   = "1lwQJ6xTET3qpr9-cPGBngdih_bmfrVRMOYcMgMkUVP0"; 
 const ID_PROTOCOLES_CORRESP = "12-7VNgPo7PsoKoRHzm_y24a-2OoDiCvJIyJFTdC9l7c"; 
 const ID_SS_ASTREINTE_DEPT = "1XPyV7-Ulno1f4-TgrtsCprL8c6cs3NU7jt1UNST3oXE"; 
+const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbx1_TpQBnqA_Z-tDtq2OyAbnYFI0uKXVz7e9f5-0GuDAaOiCpSfgKsd0IKv45C_mS5CVw/exec?gbOpenExternal=1";
+
+function getWebAppUrl_() { return WEBAPP_URL; }
 
 const DASH_LASTDATE_CELL = "D2";
 const DASH_PSUD_2026_CELL = "B3";
@@ -183,11 +186,11 @@ function onOpen() {
 function doGet(e) {
   // Test mode: ?test=1 returns minimal HTML to verify server works
   if (e && e.parameter && e.parameter.test === "1") {
-    return HtmlService.createHtmlOutput("<h1>Server OK</h1><p>doGet works. scriptUrl = " + ScriptApp.getService().getUrl() + "</p>")
+    return HtmlService.createHtmlOutput("<h1>Server OK</h1><p>doGet works. scriptUrl = " + getWebAppUrl_() + "</p>")
       .setTitle("Test").setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   }
   const t = HtmlService.createTemplateFromFile("Home");
-  t.scriptUrl = ScriptApp.getService().getUrl();
+  t.scriptUrl = getWebAppUrl_();
   return t.evaluate().setTitle("SDIS 66 - SDS").setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
@@ -198,7 +201,7 @@ function getDropdownList_(sheet, colIndex) { const rule = sheet.getRange(2, colI
 function getStats2026() {
   // === CHERCHER CACHE ===
   const _cache26 = CacheService.getScriptCache();
-  const _ck26 = "stats2026_v7";
+  const _ck26 = "stats2026_v8";
   const _c26 = _cache26.get(_ck26);
   if(_c26) return JSON.parse(_c26);
   const _sc26 = sheetCacheGet(_ck26);
@@ -226,14 +229,30 @@ function getStats2026() {
   const sectTotals2025 = dash.getRange("K17:K23").getValues().flat();
 
   let countApp = 0;
+    let ssoTotal = 0;
+    const ssoByCisMap = {};
   try {
      const shApp = ss.getSheetByName(APP_SHEET_NAME);
      const data = shApp.getDataRange().getValues();
      for(let i=1; i<data.length; i++) {
          const pdf = String(data[i][C_APP_PDF]).trim();
          if(pdf && pdf !== "#N/A" && !pdf.includes("#N/A") && !data[i][C_BP_CLOSE]) countApp++;
+
+       const motif = String(data[i][C_APP_MOTIF] || '').trim();
+       if(motif.indexOf('FU_') === 0) {
+         ssoTotal++;
+         const rawCis = String(data[i][C_APP_CIS] || '').trim();
+         const cis = rawCis === 'SD SSSM' ? 'Garde PSud' : (rawCis || 'Non défini');
+         ssoByCisMap[cis] = (ssoByCisMap[cis] || 0) + 1;
+       }
      }
   } catch(e){}
+
+    const ssoCisNames = {};
+    ssoCisNames['Garde PSud'] = true;
+    cisNames.forEach(n => { if(n && String(n).trim()) ssoCisNames[String(n).trim()] = true; });
+    Object.keys(ssoByCisMap).forEach(n => { if(n) ssoCisNames[n] = true; });
+    const ssoByCis = Object.keys(ssoCisNames).sort().map(n => ({ name:n, count:ssoByCisMap[n] || 0 }));
 
   let counts = { isp: 0, med: 0 };
   try { counts = getChefferieCounts(); } catch(e) { console.log('getChefferieCounts error: ' + e); }
@@ -335,7 +354,8 @@ function getStats2026() {
     psud: psud2026, total: total2026, sect: secteur2026, ast: astreintes2026,
     cis: cisNames.map((n, i) => ({ name:n, v26:Number(cisCounts2026[i])||0, v25:Number(cisCounts2025ytd[i])||0, v25tot:Number(cisTotals2025[i])||0 })),
     secteurs: sectNames.map((n, i) => ({ name:n, v26:Number(sectCounts2026[i])||0, v25:Number(sectCounts2025ytd[i])||0, v25tot:Number(sectTotals2025[i])||0 })),
-    cntApp: countApp, cntIspG: counts.isp, cntMed: counts.med, cntAction: counts.action,
+    cntApp: countApp, ssoTotal: ssoTotal, ssoByCis: ssoByCis,
+    cntIspG: counts.isp, cntMed: counts.med, cntAction: counts.action,
     bilanOkPct: bilanOkPct, pisuOkPct: pisuOkPct,
     topMotifs: topMotifs, nbPisu: nbPisu,
     protoAdulte: protoAdulte.slice(0, 5), protoEnfant: protoEnfant.slice(0, 5),
@@ -2983,7 +3003,7 @@ function sendWeeklyReport() {
   const dateStr = now.toLocaleDateString("fr-FR");
   const weekStr = monday.toLocaleDateString("fr-FR") + " – " + dateStr;
   
-  const scriptUrl = ScriptApp.getService().getUrl();
+  const scriptUrl = getWebAppUrl_();
   
   const body = `
 Rapport hebdomadaire SDS Analyse Opérationnelle
@@ -3060,7 +3080,7 @@ function sendDailyMailEve() {
   try {
     const counts = getChefferieCounts();
     if(counts.med > 0) {
-      const scriptUrl = ScriptApp.getService().getUrl();
+      const scriptUrl = getWebAppUrl_();
       GmailApp.sendEmail(
         "eve.laparra@sdis66.fr",
         "📋 SDS – Dossier(s) en attente Analyse Médecin Cheffe",
@@ -3082,7 +3102,7 @@ function sendDailyMailJeanLuc() {
     if(counts.action > 0) pending.push(counts.action + " dossier(s) dans \"Réaliser actions chefferie\"");
     
     if(pending.length > 0) {
-      const scriptUrl = ScriptApp.getService().getUrl();
+      const scriptUrl = getWebAppUrl_();
       GmailApp.sendEmail(
         "jean-luc.leroy@sdis66.fr",
         "📋 SDS – Dossier(s) en attente Chefferie",
