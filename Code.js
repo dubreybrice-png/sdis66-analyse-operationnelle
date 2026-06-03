@@ -3356,12 +3356,23 @@ function getMailingData() {
         .map(cis => ({
             cis: cis,
             agents: byCis[cis]
-                .filter(a => a.totalAst > 0 || a.totalInter > 0)
                 .sort((a, b) => a.nom.localeCompare(b.nom, 'fr'))
         }))
         .filter(g => g.agents.length > 0);
 }
 // force push 20260418v1
+
+/**
+ * À lancer dans l'éditeur GAS pour voir les agents sans CIS (0 intervention dans APP).
+ * Résultat dans les logs : Exécution → Journaux.
+ */
+function logAgentsSansAffectation() {
+  const data = getMailingData();
+  const sans = (data.find(g => g.cis === 'Non affecté') || {}).agents || [];
+  if (sans.length === 0) { Logger.log('Tous les agents ont une affectation.'); return; }
+  Logger.log('=== Agents sans affectation (' + sans.length + ') ===');
+  sans.forEach(a => Logger.log(a.nom));
+}
 
 // ============================================================
 // DIAGNOSTIC DÉCALAGE COMMENTAIRES — Historique révisions Drive
