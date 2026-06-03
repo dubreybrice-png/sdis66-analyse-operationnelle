@@ -3351,18 +3351,22 @@ function getMailingData() {
         };
     }
 
-    // Dispo/astreinte : col K (idx 10) = matricule, col J (idx 9) = date, col O (idx 14) = CIS
-    // 1 ligne = 30 min = 0.5h
-    // Colonnes A-F = garde (ignorées ici) ; colonnes J-P = dispo/astreinte
+    // Dispo/astreinte (colonnes J-P) :
+    //   J (idx 9)  = type ("dispo"/"astreinte") — non vide = ligne dispo/astreinte
+    //   K (idx 10) = matricule
+    //   N (idx 13) = centre de secours (CIS)
+    //   O (idx 14) = horodatage (date)
+    // 1 ligne = 30 min = 0.5h ; colonnes A-F = garde (ignorées)
     const shTemps = ss.getSheetByName(TEMPS_SHEET_NAME);
     if (shTemps) {
         const data = shTemps.getDataRange().getValues();
         for (let i = 1; i < data.length; i++) {
+            if (!data[i][9]) continue;                              // col J vide = ligne de garde
             const matAst = normalizeMat(data[i][C_TEMPS_MAT_AST]); // col K
             if (!matAst || !agentMap[matAst]) continue;
-            const cisTT = String(data[i][14] || '').trim();        // col O = CIS
-            if (!cisTT) continue;                                   // pas une ligne dispo/astreinte
-            const dA = coerceToDateTime_(data[i][9]);              // col J = date
+            const cisTT = String(data[i][13] || '').trim();        // col N = CIS
+            if (!cisTT) continue;
+            const dA = coerceToDateTime_(data[i][C_TEMPS_DATE_AST]); // col O = date
             const a = agentMap[matAst];
             const cisNormTT = normCis(cisTT);
             cisNormToDisplay[cisNormTT] = cisNormToDisplay[cisNormTT] || cisTT;
