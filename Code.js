@@ -3360,6 +3360,14 @@ function getMailingData() {
 // DIAGNOSTIC DÉCALAGE COMMENTAIRES — Historique révisions Drive
 // ============================================================
 
+// Scope trick: reference DriveApp so Apps Script static analysis
+// includes https://www.googleapis.com/auth/drive in the OAuth token.
+// Without this, ScriptApp.getOAuthToken() will NOT carry the Drive scope
+// even when it is declared in appsscript.json, because the cached
+// authorization was granted before the manifest change.
+// DriveApp.getFileById is never actually executed here.
+function _diagDriveScopeAnchor_() { DriveApp.getFileById(""); }
+
 /**
  * Parcourt l'historique de révisions Google Drive pour trouver,
  * pour chaque commentaire actuellement dans APP Alex col M et
