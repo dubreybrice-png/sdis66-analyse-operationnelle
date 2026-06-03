@@ -3348,7 +3348,7 @@ function getMailingData() {
             cisVotes:    {},
             mAst:        new Array(12).fill(0),  // heures dispo/astreinte par mois (total agent)
             mInterByCis: {},                      // heures dispo/astreinte par CIS par mois
-            mInter:      new Array(12).fill(0)   // nb interventions APP (total, pas par CIS)
+            mInterAppByCis: {}                   // nb interventions APP par CIS par mois
         };
     }
 
@@ -3382,15 +3382,20 @@ function getMailingData() {
         }
     }
 
-    // Interventions réalisées (APP) - nb d'inter par mois, toutes CIS confondues
+    // Interventions réalisées (APP) - col C (idx 2) = CIS, col I (idx 8) = matricule
     const shApp = ss.getSheetByName(APP_SHEET_NAME);
     if (shApp) {
         const dataApp = shApp.getDataRange().getValues();
         for (let i = 1; i < dataApp.length; i++) {
-            const mat = normalizeMat(dataApp[i][C_APP_MAT]);
+            const mat = normalizeMat(dataApp[i][C_APP_MAT]); // col I
             if (!mat || !agentMap[mat]) continue;
+            const centreApp = String(dataApp[i][C_APP_CIS] || '').trim(); // col C
+            if (!centreApp || centreApp === 'SD SSSM') continue;
             const d = coerceToDateTime_(dataApp[i][C_APP_DATE]);
-            if (d) agentMap[mat].mInter[d.getMonth()] += 1;
+            const cnApp = normCis(centreApp);
+            cisNormToDisplay[cnApp] = cisNormToDisplay[cnApp] || centreApp;
+            if (!agentMap[mat].mInterAppByCis[cnApp]) agentMap[mat].mInterAppByCis[cnApp] = new Array(12).fill(0);
+            if (d) agentMap[mat].mInterAppByCis[cnApp][d.getMonth()] += 1;
         }
     }
 
@@ -3420,12 +3425,13 @@ function getMailingData() {
         // mInter = nb interventions APP (toutes CIS, pas de split pour les inter)
         const mAst = (a.mInterByCis[cisNorm] || new Array(12).fill(0))
                        .map(h => Math.round(h * 2) / 2);
+        const mInter = (a.mInterAppByCis[cisNorm] || new Array(12).fill(0)).slice();
         byCis[grp].push({
             nom:        a.nom,
             mAst:       mAst,
-            mInter:     a.mInter.slice(),
+            mInter:     mInter,
             totalAst:   mAst.reduce((s, v) => s + v, 0),
-            totalInter: a.mInter.reduce((s, v) => s + v, 0)
+            totalInter: mInter.reduce((s, v) => s + v, 0)
         });
     };
 
