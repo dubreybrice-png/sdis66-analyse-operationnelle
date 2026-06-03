@@ -3557,16 +3557,19 @@ function _diagCountRemaining(alexM, eveO, eveQ) {
  * Cherche le texte de chaque commentaire (commentMap[rowIdx].comment) dans TOUTES les lignes
  * du CSV (colonne colIdx), et retient la correspondance la plus proche du rowIdx courant.
  * Corrige le bug du décalage de lignes : les anciens CSV ont le commentaire à un index différent.
+ * Normalise les sauts de ligne (\r\n → \n) avant comparaison pour les commentaires multi-lignes.
  */
 function _diagMatchByText(rows, commentMap, colIdx, revDate) {
+  const norm = s => String(s||'').replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim();
   for (const iStr in commentMap) {
     const t = commentMap[iStr];
     if (t.correctId !== null) continue;
-    const targetRow = +iStr;
+    const targetRow  = +iStr;
+    const normTarget = norm(t.comment);
     let bestId = null, bestDist = Infinity;
     for (let r = 0; r < rows.length; r++) {
       if (!rows[r] || rows[r].length <= colIdx) continue;
-      if (String(rows[r][colIdx]||'').trim() === t.comment) {
+      if (norm(rows[r][colIdx]) === normTarget) {
         const dist = Math.abs(r - targetRow);
         if (dist < bestDist) {
           bestDist = dist;
