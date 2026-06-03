@@ -285,6 +285,7 @@
     /* Mobile: chefferie grid 2-col to 1-col */
     body.mobile-mode #chefModeApp > div > div[style*="grid-template-columns"], body.mobile-mode #chefModeMed > div > div[style*="grid-template-columns"], body.mobile-mode #chefModeAction > div > div[style*="grid-template-columns"] { grid-template-columns:1fr !important; }
   </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
   <script>(function(){var m=localStorage.getItem('sdsOperMode');if(m==='mobile')document.body.classList.add('mobile-mode');})();</script>
@@ -2565,54 +2566,56 @@
     function copyCisDataToClipboard(gIdx) {
         const group = window._mailingGroups[gIdx];
         if(!group) return;
+
+        const tables = document.querySelectorAll('#mailingBody table');
+        const tableEl = tables[gIdx];
+        if (!tableEl) { toast('Tableau introuvable', 'err'); return; }
+
         const now = new Date();
         const dateStr = now.toLocaleDateString('fr-FR', { day:'2-digit', month:'long', year:'numeric' });
 
-        let txt = `=== CIS ${group.cis} — Données 2026 (au ${dateStr}) ===\n\n`;
-        txt += `${'Agent'.padEnd(28)} | ${'Ast/Dispo (h/mois)'.padEnd(55)} | ${'Total'.padEnd(6)} | ${'Interventions/mois'.padEnd(55)} | Total\n`;
-        txt += '-'.repeat(170) + '\n';
-        group.agents.forEach(agent => {
-            const astCols = agent.mAst.map(v => String(v > 0 ? v : '').padStart(4)).join(' ');
-            const interCols = agent.mInter.map(v => String(v > 0 ? v : '').padStart(4)).join(' ');
-            txt += `${agent.nom.padEnd(28)} | ${astCols} | ${String(agent.totalAst).padStart(5)} | ${interCols} | ${String(agent.totalInter).padStart(5)}\n`;
-        });
-        txt += '\nMois : ' + MOIS_COURT.join('  ') + '\n';
+        const wrapper = document.createElement('div');
+        wrapper.style.cssText = 'position:fixed;left:-9999px;top:0;background:#fff;padding:16px;font-family:Arial,sans-serif;min-width:900px;';
+        const titleEl = document.createElement('div');
+        titleEl.style.cssText = 'font-size:15px;font-weight:bold;color:#1a2744;margin-bottom:10px;border-bottom:2px solid #2196F3;padding-bottom:8px;';
+        titleEl.textContent = '\uD83D\uDE92 CIS ' + group.cis + ' \u2014 Donn\u00e9es 2026 (au ' + dateStr + ')';
+        const clone = tableEl.cloneNode(true);
+        clone.style.cssText = 'border-collapse:collapse;font-size:11px;width:100%;';
+        wrapper.appendChild(titleEl);
+        wrapper.appendChild(clone);
+        document.body.appendChild(wrapper);
 
-        let htmlMail = `<div style="font-family:Arial,sans-serif;font-size:13px;">`;
-        htmlMail += `<h2 style="color:#1a2744;border-bottom:2px solid #2196F3;padding-bottom:6px;">🚒 CIS ${group.cis} — Données 2026</h2>`;
-        htmlMail += `<p style="color:#666;font-size:11px;">Extrait au ${dateStr}</p>`;
-        htmlMail += `<table style="border-collapse:collapse;font-size:12px;width:100%;">`;
-        htmlMail += `<thead><tr style="background:#1a2744;color:#fff;">`;
-        htmlMail += `<th style="padding:8px 10px;text-align:left;">Agent</th>`;
-        MOIS_COURT.forEach(m => { htmlMail += `<th style="padding:8px 5px;text-align:center;">${m}<br><small style="opacity:0.7">Ast/D</small></th>`; });
-        htmlMail += `<th style="padding:8px 5px;text-align:center;background:#2196F3;">Total<br><small>Ast/D</small></th>`;
-        MOIS_COURT.forEach(m => { htmlMail += `<th style="padding:8px 5px;text-align:center;background:#0d47a1;color:#fff;">${m}<br><small style="opacity:0.7">Inter</small></th>`; });
-        htmlMail += `<th style="padding:8px 5px;text-align:center;background:#0d47a1;">Total<br><small>Inter</small></th>`;
-        htmlMail += `</tr></thead><tbody>`;
-        group.agents.forEach((agent, i) => {
-            const bg = i%2===0 ? '#f5f7fa' : '#fff';
-            htmlMail += `<tr style="background:${bg};">`;
-            htmlMail += `<td style="padding:6px 10px;font-weight:bold;border-bottom:1px solid #eee;">${agent.nom}</td>`;
-            agent.mAst.forEach(v => { htmlMail += `<td style="padding:5px;text-align:center;border-bottom:1px solid #eee;">${v>0?v:''}</td>`; });
-            htmlMail += `<td style="padding:5px;text-align:center;font-weight:bold;background:#e3f2fd;border-bottom:1px solid #eee;">${agent.totalAst}</td>`;
-            agent.mInter.forEach(v => { htmlMail += `<td style="padding:5px;text-align:center;color:#1565C0;border-bottom:1px solid #eee;">${v>0?v:''}</td>`; });
-            htmlMail += `<td style="padding:5px;text-align:center;font-weight:bold;color:#1565C0;background:#e3f2fd;border-bottom:1px solid #eee;">${agent.totalInter}</td>`;
-            htmlMail += '</tr>';
-        });
-        htmlMail += `</tbody></table></div>`;
+        toast('\u23f3 Capture en cours\u2026', 'ok');
 
-        try {
-            const blob = new Blob([htmlMail], { type: 'text/html' });
-            const blobPlain = new Blob([txt], { type: 'text/plain' });
-            const item = new ClipboardItem({ 'text/html': blob, 'text/plain': blobPlain });
-            navigator.clipboard.write([item]).then(() => {
-                toast('✅ Données copiées — prêtes à coller dans un mail !', 'ok');
-            }).catch(() => {
-                navigator.clipboard.writeText(txt).then(() => toast('✅ Données copiées (texte)', 'ok')).catch(() => toast('Erreur copie', 'err'));
-            });
-        } catch(e) {
-            navigator.clipboard.writeText(txt).then(() => toast('✅ Données copiées (texte)', 'ok')).catch(() => toast('Erreur copie', 'err'));
-        }
+        html2canvas(wrapper, { backgroundColor: '#ffffff', scale: 2, logging: false })
+          .then(canvas => {
+            document.body.removeChild(wrapper);
+            canvas.toBlob(blob => {
+              if (!blob) { toast('Erreur capture image', 'err'); return; }
+              try {
+                const item = new ClipboardItem({ 'image/png': blob });
+                navigator.clipboard.write([item])
+                  .then(() => toast('\u2705 Image copi\u00e9e \u2014 colle directement dans ton mail !', 'ok'))
+                  .catch(() => { _downloadMailingPng(blob, group.cis); });
+              } catch(e) {
+                _downloadMailingPng(blob, group.cis);
+              }
+            }, 'image/png');
+          })
+          .catch(err => {
+            if(document.body.contains(wrapper)) document.body.removeChild(wrapper);
+            toast('Erreur capture: ' + err.message, 'err');
+          });
+    }
+
+    function _downloadMailingPng(blob, cisName) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'CIS_' + cisName.replace(/\s+/g, '_') + '.png';
+        a.click();
+        URL.revokeObjectURL(url);
+        toast('\u2705 Image t\u00e9l\u00e9charg\u00e9e (copie presse-papier non support\u00e9e dans ce navigateur)', 'ok');
     }
 
     // === MOBILE / DESKTOP MODE ===
