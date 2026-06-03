@@ -3403,14 +3403,17 @@ function getMailingData() {
         const cisNorm = normCis(cis);
         const grp = cisNorm || 'Non affecte';
         if (!byCis[grp]) byCis[grp] = [];
-        const mInter = (a.mInterByCis[cisNorm] || new Array(12).fill(0)).slice();
-        const mAst   = isPrimary ? a.mAst.slice() : new Array(12).fill(0);
+        // mHours = heures faites A CE CIS (lecture directe col N Temps travail)
+        // Valable pour tous les agents, y compris les bi-CIS
+        const mHours = (a.mInterByCis[cisNorm] || new Array(12).fill(0))
+                         .map(h => Math.round(h * 2) / 2);
+        const total  = mHours.reduce((s, v) => s + v, 0);
         byCis[grp].push({
-            nom:        a.nom + (isPrimary ? a.suffix : ''),
-            mAst:       mAst.map(h => Math.round(h * 2) / 2),
-            mInter:     mInter,
-            totalAst:   isPrimary ? Math.ceil(a.mAst.reduce((s, v) => s + v, 0)) : 0,
-            totalInter: mInter.reduce((s, v) => s + v, 0)
+            nom:        a.nom,
+            mAst:       mHours,
+            mInter:     new Array(12).fill(0),
+            totalAst:   Math.ceil(total * 2) / 2,
+            totalInter: 0
         });
     };
 
