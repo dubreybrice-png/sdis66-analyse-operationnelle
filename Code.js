@@ -3346,8 +3346,9 @@ function getMailingData() {
             suffix:      '',
             hidden:      aff ? (aff.hidden || false) : false,
             cisVotes:    {},
-            mAst:        new Array(12).fill(0),
-            mInterByCis: {}
+            mAst:        new Array(12).fill(0),  // heures dispo/astreinte par mois (total agent)
+            mInterByCis: {},                      // heures dispo/astreinte par CIS par mois
+            mInter:      new Array(12).fill(0)   // nb interventions APP (total, pas par CIS)
         };
     }
 
@@ -3381,6 +3382,18 @@ function getMailingData() {
         }
     }
 
+    // Interventions réalisées (APP) - nb d'inter par mois, toutes CIS confondues
+    const shApp = ss.getSheetByName(APP_SHEET_NAME);
+    if (shApp) {
+        const dataApp = shApp.getDataRange().getValues();
+        for (let i = 1; i < dataApp.length; i++) {
+            const mat = normalizeMat(dataApp[i][C_APP_MAT]);
+            if (!mat || !agentMap[mat]) continue;
+            const d = coerceToDateTime_(dataApp[i][C_APP_DATE]);
+            if (d) agentMap[mat].mInter[d.getMonth()] += 1;
+        }
+    }
+
     // Resoudre CIS1 pour agents sans affectation officielle (vote-majority)
     for (const mat in agentMap) {
         const a = agentMap[mat];
@@ -3403,17 +3416,16 @@ function getMailingData() {
         const cisNorm = normCis(cis);
         const grp = cisNorm || 'Non affecte';
         if (!byCis[grp]) byCis[grp] = [];
-        // mHours = heures faites A CE CIS (lecture directe col N Temps travail)
-        // Valable pour tous les agents, y compris les bi-CIS
-        const mHours = (a.mInterByCis[cisNorm] || new Array(12).fill(0))
-                         .map(h => Math.round(h * 2) / 2);
-        const total  = mHours.reduce((s, v) => s + v, 0);
+        // mAst = heures dispo/astreinte faites A CE CIS (col N Temps travail)
+        // mInter = nb interventions APP (toutes CIS, pas de split pour les inter)
+        const mAst = (a.mInterByCis[cisNorm] || new Array(12).fill(0))
+                       .map(h => Math.round(h * 2) / 2);
         byCis[grp].push({
             nom:        a.nom,
-            mAst:       mHours,
-            mInter:     new Array(12).fill(0),
-            totalAst:   Math.ceil(total * 2) / 2,
-            totalInter: 0
+            mAst:       mAst,
+            mInter:     a.mInter.slice(),
+            totalAst:   mAst.reduce((s, v) => s + v, 0),
+            totalInter: a.mInter.reduce((s, v) => s + v, 0)
         });
     };
 
