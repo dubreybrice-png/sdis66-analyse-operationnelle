@@ -3380,7 +3380,6 @@ function _diagDriveScopeAnchor_() { DriveApp.getFileById(""); }
 function diagnosisDecalageCommentaires() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const fileId = ss.getId();
-  const token = ScriptApp.getOAuthToken();
   const startTime = Date.now();
   const MAX_EXEC_MS = 300000; // 5 minutes max (limite GAS = 6min)
 
@@ -3413,7 +3412,7 @@ function diagnosisDecalageCommentaires() {
              ", Eve-O: " + Object.keys(eveO).length + ", Eve-Q: " + Object.keys(eveQ).length);
 
   // Récupère la liste complète des révisions (du plus ancien au plus récent)
-  const revisions = _diagGetRevisionsList(fileId, token);
+  const revisions = _diagGetRevisionsList(fileId);
   Logger.log(revisions.length + " révisions trouvées");
 
   let processed = 0;
@@ -3432,12 +3431,12 @@ function diagnosisDecalageCommentaires() {
     if (remaining === 0) { Logger.log("Tous les commentaires trouvés !"); break; }
 
     const rev = revisions[r];
-    const exportUrl = _diagGetExportUrl(fileId, rev.id, token);
+    const exportUrl = _diagGetExportUrl(fileId, rev.id);
     if (!exportUrl) continue;
 
     // --- APP Alex col M ---
     if (Object.values(alexM).some(v => v.correctId === null)) {
-      const csv = _diagFetchCsv(exportUrl, gidAlex, token);
+      const csv = _diagFetchCsv(exportUrl, gidAlex);
       if (csv) {
         const rows = _diagParseCSV(csv);
         for (const iStr in alexM) {
@@ -3456,7 +3455,7 @@ function diagnosisDecalageCommentaires() {
     const needEve = Object.values(eveO).some(v => v.correctId === null) ||
                     Object.values(eveQ).some(v => v.correctId === null);
     if (needEve) {
-      const csv = _diagFetchCsv(exportUrl, gidEve, token);
+      const csv = _diagFetchCsv(exportUrl, gidEve);
       if (csv) {
         const rows = _diagParseCSV(csv);
         for (const iStr in eveO) {
@@ -3489,37 +3488,32 @@ function diagnosisDecalageCommentaires() {
   _diagWriteResults(ss, alexM, eveO, eveQ, curAlex, curEve);
 }
 
-function _diagGetRevisionsList(fileId, token) {
+function _diagGetRevisionsList(fileId) {
   const all = [];
   let pageToken = null;
   do {
-    let url = "https://www.googleapis.com/drive/v2/files/" + fileId +
-              "/revisions?maxResults=200&fields=nextPageToken,items(id,modifiedDate)";
-    if (pageToken) url += "&pageToken=" + encodeURIComponent(pageToken);
-    const resp = UrlFetchApp.fetch(url, { headers: { Authorization: "Bearer " + token }, muteHttpExceptions: true });
-    if (resp.getResponseCode() !== 200) { Logger.log("Erreur revisions: " + resp.getContentText()); break; }
-    const d = JSON.parse(resp.getContentText());
-    if (d.items) all.push.apply(all, d.items);
-    pageToken = d.nextPageToken || null;
+    const params = { maxResults: 200, fields: 'nextPageToken,items(id,modifiedDate)' };
+    if (pageToken) params.pageToken = pageToken;
+    const resp = Drive.Revisions.list(fileId, params);
+    if (resp.items) all.push.apply(all, resp.items);
+    pageToken = resp.nextPageToken || null;
   } while (pageToken);
-  return all; // order: oldest → newest
+  return all; // oldest → newest
 }
 
-function _diagGetExportUrl(fileId, revisionId, token) {
-  const url = "https://www.googleapis.com/drive/v2/files/" + fileId +
-              "/revisions/" + revisionId + "?fields=exportLinks";
-  const resp = UrlFetchApp.fetch(url, { headers: { Authorization: "Bearer " + token }, muteHttpExceptions: true });
-  if (resp.getResponseCode() !== 200) return null;
-  const d = JSON.parse(resp.getContentText());
-  if (!d.exportLinks) return null;
-  return d.exportLinks["text/csv"] || null;
+function _diagGetExportUrl(fileId, revisionId) {
+  try {
+    const rev = Drive.Revisions.get(fileId, revisionId);
+    if (!rev.exportLinks) return null;
+    return rev.exportLinks['text/csv'] || null;
+  } catch(e) { return null; }
 }
 
-function _diagFetchCsv(exportUrl, gid, token) {
+function _diagFetchCsv(exportUrl, gid) {
   try {
     const url = exportUrl + "&gid=" + gid;
     const resp = UrlFetchApp.fetch(url, {
-      headers: { Authorization: "Bearer " + token },
+      headers: { Authorization: "Bearer " + ScriptApp.getOAuthToken() },
       muteHttpExceptions: true,
       followRedirects: true
     });
