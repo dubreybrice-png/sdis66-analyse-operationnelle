@@ -302,11 +302,15 @@ function getStats2026() {
         const s = String(dTemps[i][19]||'').trim();
         if(c && s) cisToSect26[c] = s;
       }
+      const _todayMidnight = new Date(); _todayMidnight.setHours(0,0,0,0);
       for(let i=1; i<dTemps.length; i++) {
         const cis = String(dTemps[i][13]||'').trim();
         if(!cis) continue;
         const dtAst = coerceToDateTime_(dTemps[i][C_TEMPS_DATE_AST]);
         if(!dtAst) continue;
+        // Ne pas compter les créneaux futurs (évite surestimation si planning en avance)
+        const _slotDay = new Date(dtAst.getFullYear(), dtAst.getMonth(), dtAst.getDate());
+        if(_slotDay > _todayMidnight) continue;
         // Clé unique pour ce créneau de 30min : date + heure + minute
         const slotKey = dtAst.getFullYear() + '-' + dtAst.getMonth() + '-' + dtAst.getDate() + '_' + dtAst.getHours() + '_' + dtAst.getMinutes();
         const hAst = dtAst.getHours();
@@ -323,8 +327,11 @@ function getStats2026() {
       }
     }
   } catch(eTmp) { Logger.log('tempsByCis error: ' + eTmp); }
-  const _jan1Ytd = new Date(lastDate.getFullYear(), 0, 1);
-  const _nbDaysYtd = Math.max(1, Math.round((lastDate - _jan1Ytd) / (1000*60*60*24)) + 1);
+  // Utiliser aujourd'hui comme référence (pas lastDate) pour éviter la surestimation
+  // si les créneaux temps couvrent plus de jours que la dernière intervention
+  const _refDate = new Date();
+  const _jan1Ytd = new Date(_refDate.getFullYear(), 0, 1);
+  const _nbDaysYtd = Math.max(1, Math.round((_refDate - _jan1Ytd) / (1000*60*60*24)) + 1);
   const _dayPoss = _nbDaysYtd * 12;   // 12h possibles en journée (8h-20h)
   const _nightPoss = _nbDaysYtd * 12; // 12h possibles la nuit (20h-8h)
   const _totPoss = _nbDaysYtd * 24;   // 24h totales
@@ -3377,115 +3384,162 @@ function _diagDriveScopeAnchor_() { DriveApp.getFileById(""); }
  * Résultats écrits dans l'onglet "DIAG_DECALAGE".
  * À lancer depuis l'éditeur Apps Script : menu Exécuter → diagnosisDecalageCommentaires
  */
+/**
+ * Diagnostic résumable : peut être relancé plusieurs fois si timeout.
+ * L'état est sauvegardé dans PropertiesService entre les runs.
+ * Fonctions utilitaires : diagnosisReset() pour recommencer de zéro.
+ */
 function diagnosisDecalageCommentaires() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const fileId = ss.getId();
+  const ss        = SpreadsheetApp.getActiveSpreadsheet();
   const startTime = Date.now();
-  const MAX_EXEC_MS = 300000; // 5 minutes max (limite GAS = 6min)
+  const MAX_MS    = 240000; // 4 min — marge avant limite 6min GAS
+  const props     = PropertiesService.getScriptProperties();
 
-  const shAlex = ss.getSheetByName("APP Alex");
-  const shEve  = ss.getSheetByName("APP Eve");
-  if (!shAlex || !shEve) { Logger.log("Onglets APP Alex / APP Eve introuvables"); return; }
+  const shAlex = ss.getSheetByName('APP Alex');
+  const shEve  = ss.getSheetByName('APP Eve');
+  if (!shAlex || !shEve) { Logger.log('Onglets APP Alex / APP Eve introuvables'); return; }
 
+  const fileId  = ss.getId();
   const gidAlex = shAlex.getSheetId();
   const gidEve  = shEve.getSheetId();
 
+  // === Charger ou initialiser l'état ===
+  let revisions, revIdx;
+  const savedRevs = props.getProperty('DIAG_REVS');
+  const savedIdx  = props.getProperty('DIAG_IDX');
+
+  if (savedRevs && savedIdx !== null) {
+    revisions = JSON.parse(savedRevs);
+    revIdx    = parseInt(savedIdx, 10);
+    Logger.log('⏩ Reprise à la révision ' + revIdx + '/' + revisions.length);
+  } else {
+    revisions = _diagGetRevisionsList(fileId);
+    revIdx    = 0;
+    props.setProperty('DIAG_REVS', JSON.stringify(revisions));
+    props.setProperty('DIAG_IDX',  '0');
+    Logger.log(revisions.length + ' révisions trouvées');
+  }
+
+  // Charger les commentaires actuels depuis la feuille
   const curAlex = shAlex.getDataRange().getValues();
   const curEve  = shEve.getDataRange().getValues();
 
-  // Collecte des commentaires actuels à retrouver dans l'historique
-  // Structure : { rowIndex(0-based) : { comment, correctId, revDate } }
-  const alexM = {}, eveO = {}, eveQ = {};
+  // Charger les résultats déjà trouvés lors des runs précédents
+  const savedA = JSON.parse(props.getProperty('DIAG_FOUND_A') || '{}');
+  const savedO = JSON.parse(props.getProperty('DIAG_FOUND_O') || '{}');
+  const savedQ = JSON.parse(props.getProperty('DIAG_FOUND_Q') || '{}');
 
+  // Construire les maps : comment → {correctId (null si pas encore trouvé), revDate}
+  const alexM = {}, eveO = {}, eveQ = {};
   for (let i = 1; i < curAlex.length; i++) {
-    const c = String(curAlex[i][12] || "").trim(); // col M = index 12
-    if (c) alexM[i] = { comment: c, correctId: null, revDate: null };
+    const c = String(curAlex[i][12]||'').trim();
+    if (!c) continue;
+    const sv = savedA[i];
+    alexM[i] = { comment: c, correctId: sv ? sv.split('\x00')[0] : null, revDate: sv ? sv.split('\x00')[1] : null };
   }
   for (let i = 1; i < curEve.length; i++) {
-    const o = String(curEve[i][14] || "").trim(); // col O = index 14
-    const q = String(curEve[i][16] || "").trim(); // col Q = index 16
-    if (o) eveO[i] = { comment: o, correctId: null, revDate: null };
-    if (q) eveQ[i] = { comment: q, correctId: null, revDate: null };
+    const o = String(curEve[i][14]||'').trim();
+    const q = String(curEve[i][16]||'').trim();
+    if (o) { const sv = savedO[i]; eveO[i] = { comment: o, correctId: sv ? sv.split('\x00')[0] : null, revDate: sv ? sv.split('\x00')[1] : null }; }
+    if (q) { const sv = savedQ[i]; eveQ[i] = { comment: q, correctId: sv ? sv.split('\x00')[0] : null, revDate: sv ? sv.split('\x00')[1] : null }; }
   }
 
-  Logger.log("Commentaires à analyser — Alex-M: " + Object.keys(alexM).length +
-             ", Eve-O: " + Object.keys(eveO).length + ", Eve-Q: " + Object.keys(eveQ).length);
+  Logger.log('Commentaires: AlexM=' + Object.keys(alexM).length +
+             ' EveO=' + Object.keys(eveO).length + ' EveQ=' + Object.keys(eveQ).length);
 
-  // Récupère la liste complète des révisions (du plus ancien au plus récent)
-  const revisions = _diagGetRevisionsList(fileId);
-  Logger.log(revisions.length + " révisions trouvées");
+  // === Traiter les révisions ===
+  while (revIdx < revisions.length) {
+    const remaining = _diagCountRemaining(alexM, eveO, eveQ);
+    if (remaining === 0) { Logger.log('✅ Tous les commentaires trouvés !'); break; }
 
-  let processed = 0;
-
-  for (let r = 0; r < revisions.length; r++) {
-    // Temps restant
-    if (Date.now() - startTime > MAX_EXEC_MS) {
-      Logger.log("Arrêt timeout après " + r + " révisions analysées");
-      break;
+    if (Date.now() - startTime > MAX_MS) {
+      _diagSaveState(props, revIdx, alexM, eveO, eveQ);
+      Logger.log('⏸ Pause à rév ' + revIdx + '/' + revisions.length +
+                 ' — ' + remaining + ' commentaires restants. Relancez diagnosisDecalageCommentaires.');
+      return;
     }
 
-    // Arrêt anticipé si tout est trouvé
-    const remaining = [alexM, eveO, eveQ].reduce(
-      (s, obj) => s + Object.values(obj).filter(v => v.correctId === null).length, 0
-    );
-    if (remaining === 0) { Logger.log("Tous les commentaires trouvés !"); break; }
-
-    const rev = revisions[r];
+    const rev = revisions[revIdx];
     const exportUrl = _diagGetExportUrl(fileId, rev.id);
-    if (!exportUrl) continue;
 
-    // --- APP Alex col M ---
-    if (Object.values(alexM).some(v => v.correctId === null)) {
-      const csv = _diagFetchCsv(exportUrl, gidAlex);
-      if (csv) {
-        const rows = _diagParseCSV(csv);
-        for (const iStr in alexM) {
-          const t = alexM[iStr]; if (t.correctId !== null) continue;
-          const i = +iStr;
-          if (i >= rows.length || !rows[i] || rows[i].length < 13) continue;
-          if (String(rows[i][12] || "").trim() === t.comment) {
-            t.correctId = String(rows[i][0] || "").trim();
-            t.revDate   = rev.modifiedDate;
+    if (exportUrl) {
+      if (Object.values(alexM).some(v => v.correctId === null)) {
+        const csv = _diagFetchCsv(exportUrl, gidAlex);
+        if (csv) {
+          const rows = _diagParseCSV(csv);
+          for (const iStr in alexM) {
+            const t = alexM[iStr]; if (t.correctId !== null) continue;
+            const i = +iStr;
+            if (i < rows.length && rows[i] && rows[i].length >= 13 &&
+                String(rows[i][12]||'').trim() === t.comment) {
+              t.correctId = String(rows[i][0]||'').trim();
+              t.revDate   = rev.modifiedDate;
+            }
+          }
+        }
+      }
+      if (Object.values(eveO).some(v => v.correctId === null) ||
+          Object.values(eveQ).some(v => v.correctId === null)) {
+        const csv = _diagFetchCsv(exportUrl, gidEve);
+        if (csv) {
+          const rows = _diagParseCSV(csv);
+          for (const iStr in eveO) {
+            const t = eveO[iStr]; if (t.correctId !== null) continue;
+            const i = +iStr;
+            if (i < rows.length && rows[i] && rows[i].length >= 15 &&
+                String(rows[i][14]||'').trim() === t.comment) {
+              t.correctId = String(rows[i][0]||'').trim();
+              t.revDate   = rev.modifiedDate;
+            }
+          }
+          for (const iStr in eveQ) {
+            const t = eveQ[iStr]; if (t.correctId !== null) continue;
+            const i = +iStr;
+            if (i < rows.length && rows[i] && rows[i].length >= 17 &&
+                String(rows[i][16]||'').trim() === t.comment) {
+              t.correctId = String(rows[i][0]||'').trim();
+              t.revDate   = rev.modifiedDate;
+            }
           }
         }
       }
     }
 
-    // --- APP Eve col O et Q ---
-    const needEve = Object.values(eveO).some(v => v.correctId === null) ||
-                    Object.values(eveQ).some(v => v.correctId === null);
-    if (needEve) {
-      const csv = _diagFetchCsv(exportUrl, gidEve);
-      if (csv) {
-        const rows = _diagParseCSV(csv);
-        for (const iStr in eveO) {
-          const t = eveO[iStr]; if (t.correctId !== null) continue;
-          const i = +iStr;
-          if (i >= rows.length || !rows[i] || rows[i].length < 15) continue;
-          if (String(rows[i][14] || "").trim() === t.comment) {
-            t.correctId = String(rows[i][0] || "").trim();
-            t.revDate   = rev.modifiedDate;
-          }
-        }
-        for (const iStr in eveQ) {
-          const t = eveQ[iStr]; if (t.correctId !== null) continue;
-          const i = +iStr;
-          if (i >= rows.length || !rows[i] || rows[i].length < 17) continue;
-          if (String(rows[i][16] || "").trim() === t.comment) {
-            t.correctId = String(rows[i][0] || "").trim();
-            t.revDate   = rev.modifiedDate;
-          }
-        }
-      }
-    }
-
-    processed++;
-    // Anti rate-limit : pause toutes les 15 révisions
-    if (r % 15 === 14) Utilities.sleep(1000);
+    revIdx++;
   }
 
-  Logger.log(processed + " révisions analysées");
+  // Terminé → nettoyer l'état et écrire les résultats
+  _diagClearState(props);
   _diagWriteResults(ss, alexM, eveO, eveQ, curAlex, curEve);
+}
+
+/** Sauvegarde l'état intermédiaire dans PropertiesService */
+function _diagSaveState(props, revIdx, alexM, eveO, eveQ) {
+  props.setProperty('DIAG_IDX', String(revIdx));
+  const cA = {}, cO = {}, cQ = {};
+  for (const i in alexM) if (alexM[i].correctId) cA[i] = alexM[i].correctId + '\x00' + alexM[i].revDate;
+  for (const i in eveO)  if (eveO[i].correctId)  cO[i] = eveO[i].correctId  + '\x00' + eveO[i].revDate;
+  for (const i in eveQ)  if (eveQ[i].correctId)  cQ[i] = eveQ[i].correctId  + '\x00' + eveQ[i].revDate;
+  props.setProperty('DIAG_FOUND_A', JSON.stringify(cA));
+  props.setProperty('DIAG_FOUND_O', JSON.stringify(cO));
+  props.setProperty('DIAG_FOUND_Q', JSON.stringify(cQ));
+}
+
+/** Supprime les propriétés de l'état du diagnostic */
+function _diagClearState(props) {
+  ['DIAG_REVS','DIAG_IDX','DIAG_FOUND_A','DIAG_FOUND_O','DIAG_FOUND_Q'].forEach(k => props.deleteProperty(k));
+}
+
+/** Compte les commentaires pas encore associés à un ID */
+function _diagCountRemaining(alexM, eveO, eveQ) {
+  return [alexM, eveO, eveQ].reduce(
+    (s, obj) => s + Object.values(obj).filter(v => v.correctId === null).length, 0);
+}
+
+/** Remet le diagnostic à zéro (recommencer depuis le début) */
+function diagnosisReset() {
+  _diagClearState(PropertiesService.getScriptProperties());
+  Logger.log('État du diagnostic réinitialisé.');
 }
 
 function _diagGetRevisionsList(fileId) {
@@ -3588,9 +3642,5 @@ function _diagWriteResults(ss, alexM, eveO, eveQ, curAlex, curEve) {
 
   sh.autoResizeColumns(1, header.length);
 
-  Logger.log("Résultats écrits dans DIAG_DECALAGE : " + (data.length - 1) + " lignes");
-  SpreadsheetApp.getUi().alert(
-    "Diagnostic terminé !\n" + (data.length - 1) + " commentaire(s) analysé(s).\n" +
-    "Voir l'onglet DIAG_DECALAGE dans le tableur."
-  );
+  Logger.log('✅ Résultats écrits dans DIAG_DECALAGE : ' + (data.length - 1) + ' lignes');
 }
