@@ -369,6 +369,10 @@
               <div class="kpiBottom"><span style="color:var(--muted);font-size:11px">Total 2025:</span><span class="badge" id="total2025Badge">...</span></div>
               <div style="font-size:9px;color:var(--muted);margin-top:4px;">Comparaison du 1er janvier au <span id="cutoffCompTotal">...</span></div>
            </div></div>
+              <div class="panel"><div class="panelBody">
+                  <div style="font-size:11px;color:var(--muted)">SSO</div><div style="font-size:32px;font-weight:900" id="sso2026">...</div>
+                  <div style="font-size:9px;color:var(--muted);margin-top:4px;">Intitulés APP commençant par FU_</div>
+              </div></div>
         </div>
 
         <div class="panel" style="margin-bottom:20px;width:fit-content;"><div class="panelBody" style="display:flex;align-items:center;gap:40px;">
@@ -408,6 +412,8 @@
         <div style="display:flex;gap:20px;margin-bottom:20px;flex-wrap:wrap;">
             <div class="panel"><div class="panelHead">Sorties par CIS</div><div class="panelScrollWrapper"><table id="tableCis" class="compact"><thead><tr><th onclick="sortTable('tableCis',0)" style="cursor:pointer">CIS <span class="sort-icon">↕</span></th><th onclick="sortTable('tableCis',1)" class="num" style="cursor:pointer">2026 <span class="sort-icon">↕</span></th><th onclick="sortTable('tableCis',2)" class="num" style="cursor:pointer">2025 (Date) <span class="sort-icon">↕</span></th><th onclick="sortTable('tableCis',3)" class="num" style="cursor:pointer">2025 (Total) <span class="sort-icon">↕</span></th></tr></thead><tbody></tbody></table></div></div>
             <div class="panel"><div class="panelHead">Sorties par Secteur</div><div class="panelScrollWrapper"><table id="tableSect" class="compact"><thead><tr><th onclick="sortTable('tableSect',0)" style="cursor:pointer">Secteur <span class="sort-icon">↕</span></th><th onclick="sortTable('tableSect',1)" class="num" style="cursor:pointer">2026 <span class="sort-icon">↕</span></th><th onclick="sortTable('tableSect',2)" class="num" style="cursor:pointer">2025 (Date) <span class="sort-icon">↕</span></th><th onclick="sortTable('tableSect',3)" class="num" style="cursor:pointer">2025 (Total) <span class="sort-icon">↕</span></th></tr></thead><tbody></tbody></table></div></div>
+            <div class="panel"><div class="panelHead">SSO par Cis</div><div class="panelScrollWrapper"><table id="tableSsoCis" class="compact"><thead><tr><th onclick="sortTable('tableSsoCis',0)" style="cursor:pointer">CIS <span class="sort-icon">↕</span></th><th onclick="sortTable('tableSsoCis',1)" class="num" style="cursor:pointer">SSO <span class="sort-icon">↕</span></th></tr></thead><tbody></tbody></table></div></div>
+            <div class="panel"><div class="panelHead">👥 ≥2 ISP simultanés par CIS</div><div class="panelScrollWrapper"><table id="tableDoubleIsp" class="compact"><thead><tr><th onclick="sortTable('tableDoubleIsp',0)" style="cursor:pointer">CIS <span class="sort-icon">↕</span></th><th onclick="sortTable('tableDoubleIsp',1)" class="num" style="cursor:pointer">Heures <span class="sort-icon">↕</span></th></tr></thead><tbody><tr><td colspan="2" style="text-align:center;color:gray;font-size:10px;">Chargement...</td></tr></tbody></table></div></div>
             <div class="panel"><div class="panelHead">⏱ H. Dispo/Astreinte par CIS (2026)</div><div class="panelScrollWrapper"><table id="tableTemps" class="compact"><thead><tr><th onclick="sortTable('tableTemps',0)" style="cursor:pointer">CIS <span class="sort-icon">↕</span></th><th onclick="sortTable('tableTemps',1)" class="num" style="cursor:pointer">Heures <span class="sort-icon">↕</span></th><th onclick="sortTable('tableTemps',2)" class="num" style="cursor:pointer">H moy/mois <span class="sort-icon">↕</span></th><th onclick="sortTable('tableTemps',3)" class="num" style="cursor:pointer">H/inter <span class="sort-icon">↕</span></th><th onclick="sortTable('tableTemps',4)" class="num" style="cursor:pointer">Taux Jour ☀️ <span class="sort-icon">↕</span></th><th onclick="sortTable('tableTemps',5)" class="num" style="cursor:pointer">Taux Nuit 🌙 <span class="sort-icon">↕</span></th><th onclick="sortTable('tableTemps',6)" class="num" style="cursor:pointer">Taux Global <span class="sort-icon">↕</span></th></tr></thead><tbody></tbody></table></div></div>
             <div class="panel"><div class="panelHead">⏱ H. Dispo/Astreinte par Secteur (2026)</div><div class="panelScrollWrapper"><table id="tableTemplSect" class="compact"><thead><tr><th onclick="sortTable('tableTemplSect',0)" style="cursor:pointer">Secteur <span class="sort-icon">↕</span></th><th onclick="sortTable('tableTemplSect',1)" class="num" style="cursor:pointer">Heures <span class="sort-icon">↕</span></th><th onclick="sortTable('tableTemplSect',2)" class="num" style="cursor:pointer">Taux Jour ☀️ <span class="sort-icon">↕</span></th><th onclick="sortTable('tableTemplSect',3)" class="num" style="cursor:pointer">Taux Nuit 🌙 <span class="sort-icon">↕</span></th><th onclick="sortTable('tableTemplSect',4)" class="num" style="cursor:pointer">Taux Global <span class="sort-icon">↕</span></th></tr></thead><tbody></tbody></table></div></div>
         </div>
@@ -964,6 +970,7 @@
             setText("cutoffCompTotal", d.date);
             setText("cutoffCompAst", d.date);
             setText("psud2026", d.psud); setText("total2026", d.total);
+            setText("sso2026", d.ssoTotal || 0);
             setText("secteur2026", d.sect); setText("hrs2026", d.ast+" h");
             
             // Tuiles qualité + motifs + protocoles
@@ -981,6 +988,19 @@
 
             document.querySelector("#tableCis tbody").innerHTML = (d.cis||[]).map(x=>`<tr id="cis_${x.name}"><td>${x.name}</td><td class="num">${x.v26}</td><td class="num v25">...</td><td class="num" style="color:gray">${x.v25tot}</td></tr>`).join('');
             document.querySelector("#tableSect tbody").innerHTML = (d.secteurs||[]).map(x=>`<tr id="sect_${x.name}"><td>${x.name}</td><td class="num">${x.v26}</td><td class="num v25">...</td><td class="num" style="color:gray">${x.v25tot}</td></tr>`).join('');
+            document.querySelector("#tableSsoCis tbody").innerHTML = (d.ssoByCis||[]).map(x=>`<tr><td>${x.name}</td><td class="num">${x.count}</td></tr>`).join('');
+
+            // Tuile ≥2 ISP simultanés — chargement séparé (calcul lourd)
+            if (document.querySelector("#tableDoubleIsp tbody")) {
+              google.script.run
+                .withSuccessHandler(rows => {
+                  document.querySelector("#tableDoubleIsp tbody").innerHTML = (rows||[]).map(x=>`<tr><td>${x.name}</td><td class="num">${x.heures}h</td></tr>`).join('') || '<tr><td colspan="2" style="text-align:center;color:gray;font-size:10px;">Aucune donnée</td></tr>';
+                })
+                .withFailureHandler(() => {
+                  document.querySelector("#tableDoubleIsp tbody").innerHTML = '<tr><td colspan="2" style="text-align:center;color:red;font-size:10px;">Erreur</td></tr>';
+                })
+                .getCisDoubleIspHours();
+            }
 
             // Tableaux dispo/astreinte avec taux de couverture
             const _now = new Date();
@@ -2008,7 +2028,11 @@
                         <div class="panelBody">
                             <textarea id="txtActionFaite" style="width:100%; min-height:100px;" placeholder="Décrivez l'action réalisée...">${info.actionFaite || ''}</textarea>
                             ${data.bilanKo ? '<div style="margin-top:10px;"><label style="cursor:pointer;"><input type="checkbox" id="chkPasserBilanOk"> ✅ Passer en Bilan OK</label></div>' : ''}
-                            ${data.pisuKo ? '<div style="margin-top:6px;"><label style="cursor:pointer;"><input type="checkbox" id="chkPasserPisuOk"> ✅ Passer en PISU OK</label></div>' : ''}
+                            ${data.pisuKo ? `<div style="margin-top:10px;padding:10px;background:rgba(255,165,0,0.08);border-radius:6px;border:1px solid rgba(255,165,0,0.3);">
+                                <div style="font-size:11px;color:var(--muted);margin-bottom:8px;">Reclassifier l'erreur PISU :</div>
+                                <label style="cursor:pointer;display:block;margin-bottom:6px;" onclick="exclusiveCheck('chkPasserErrLegere','chkPasserNonErreur')"><input type="checkbox" id="chkPasserErrLegere"> ⚠️ Passer en erreur légère</label>
+                                <label style="cursor:pointer;display:block;" onclick="exclusiveCheck('chkPasserNonErreur','chkPasserErrLegere')"><input type="checkbox" id="chkPasserNonErreur"> ✅ Passer en non-erreur</label>
+                            </div>` : ''}
                             <div style="margin-top:20px; display:flex; gap:10px;">
                                 <button class="btn ok" style="flex:1;" onclick="saveAndNextAction()">💾 Clôturer et Suivant</button>
                                 <button class="btn" style="flex:1; background:var(--bg3); color:var(--text); border:1px solid var(--border);" onclick="skipToNextAction()">⏭️ Voir suivant</button>
@@ -2025,8 +2049,9 @@
             rowEve: currentChefData.rowEve,
             rowApp: currentChefData.rowApp || -1,
             actionFaite: document.getElementById('txtActionFaite').value,
-            passerBilanOk: document.getElementById('chkPasserBilanOk') ? document.getElementById('chkPasserBilanOk').checked : false,
-            passerPisuOk: document.getElementById('chkPasserPisuOk') ? document.getElementById('chkPasserPisuOk').checked : false
+            passerBilanOk:   document.getElementById('chkPasserBilanOk')   ? document.getElementById('chkPasserBilanOk').checked   : false,
+            passerErrLegere: document.getElementById('chkPasserErrLegere') ? document.getElementById('chkPasserErrLegere').checked : false,
+            passerNonErreur: document.getElementById('chkPasserNonErreur') ? document.getElementById('chkPasserNonErreur').checked : false
         };
         
         if(!form.actionFaite) { toast("Veuillez décrire l'action réalisée"); return; }
@@ -2443,6 +2468,12 @@
       }).getPlanningMois();
     }
     
+    function exclusiveCheck(toCheck, toUncheck) {
+      const a = document.getElementById(toCheck);
+      const b = document.getElementById(toUncheck);
+      if (a && a.checked && b) b.checked = false;
+    }
+
     function clearCachesAndReload(btn) {
       if(!confirm('Vider tous les caches ? La page va se recharger.')) return;
       if(btn) { btn.disabled = true; btn.textContent = '⏳ Vidage en cours…'; }
@@ -2478,6 +2509,112 @@
     
     function closeModal(id){ document.getElementById(id).style.display="none"; }
 
+    // === MAILING AUTO ===
+    function openMailingModal() {
+        document.getElementById('modalMailing').style.display = 'flex';
+        document.getElementById('mailingBody').innerHTML = '<div style="text-align:center;padding:40px;color:gray;">Chargement des données...</div>';
+        google.script.run.withSuccessHandler(renderMailingData).withFailureHandler(e => {
+            document.getElementById('mailingBody').innerHTML = '<div style="text-align:center;padding:40px;color:var(--red);">Erreur: ' + e.message + '</div>';
+        }).getMailingData();
+    }
+
+    const MOIS_COURT = ["Jan","Fév","Mar","Avr","Mai","Jun","Jul","Aoû","Sep","Oct","Nov","Déc"];
+
+    function renderMailingData(groups) {
+        if(!groups || groups.length === 0) {
+            document.getElementById('mailingBody').innerHTML = '<div style="text-align:center;padding:40px;color:gray;">Aucune donnée disponible.</div>';
+            return;
+        }
+        window._mailingGroups = groups;
+        let html = '';
+        groups.forEach((group, gIdx) => {
+            html += `
+            <div style="margin-bottom:30px;border:1px solid var(--border);border-radius:12px;overflow:hidden;">
+                <div style="background:#1a2744;color:#fff;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;">
+                    <span style="font-size:15px;font-weight:bold;">🚒 ${group.cis}</span>
+                    <button onclick="copyCisDataToClipboard(${gIdx})" style="background:#2196F3;border:none;color:#fff;padding:7px 14px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:bold;">📋 Copier données</button>
+                </div>
+                <div style="overflow-x:auto;">
+                <table style="width:100%;border-collapse:collapse;font-size:11px;">
+                    <thead>
+                        <tr style="background:#f0f2f5;">
+                            <th style="padding:7px 10px;text-align:left;border-bottom:1px solid #ddd;white-space:nowrap;">Agent</th>
+                            ${MOIS_COURT.map(m => `<th style="padding:7px 6px;text-align:center;border-bottom:1px solid #ddd;color:#666;white-space:nowrap;">${m}<br><span style="font-size:9px;color:#999;">Ast/Disp</span></th>`).join('')}
+                            <th style="padding:7px 6px;text-align:center;border-bottom:1px solid #ddd;font-weight:bold;white-space:nowrap;">Total<br><span style="font-size:9px;">Ast/Disp</span></th>
+                            ${MOIS_COURT.map(m => `<th style="padding:7px 6px;text-align:center;border-bottom:1px solid #ddd;color:#1976D2;white-space:nowrap;">${m}<br><span style="font-size:9px;color:#999;">Inter</span></th>`).join('')}
+                            <th style="padding:7px 6px;text-align:center;border-bottom:1px solid #ddd;font-weight:bold;color:#1976D2;white-space:nowrap;">Total<br><span style="font-size:9px;">Inter</span></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${group.agents.map((agent, aIdx) => `
+                        <tr style="border-bottom:1px solid #eee;${aIdx%2===0?'background:#fff;':'background:#f9fafc;'}">
+                            <td style="padding:6px 10px;font-weight:bold;white-space:nowrap;">${agent.nom}</td>
+                            ${agent.mAst.map(v => `<td style="text-align:center;padding:5px;font-family:monospace;">${v>0?v:''}</td>`).join('')}
+                            <td style="text-align:center;padding:5px;font-family:monospace;font-weight:bold;">${agent.totalAst}</td>
+                            ${agent.mInter.map(v => `<td style="text-align:center;padding:5px;font-family:monospace;color:#1976D2;">${v>0?v:''}</td>`).join('')}
+                            <td style="text-align:center;padding:5px;font-family:monospace;font-weight:bold;color:#1976D2;">${agent.totalInter}</td>
+                        </tr>`).join('')}
+                    </tbody>
+                </table>
+                </div>
+            </div>`;
+        });
+        document.getElementById('mailingBody').innerHTML = html;
+    }
+
+    function copyCisDataToClipboard(gIdx) {
+        const group = window._mailingGroups[gIdx];
+        if(!group) return;
+        const now = new Date();
+        const dateStr = now.toLocaleDateString('fr-FR', { day:'2-digit', month:'long', year:'numeric' });
+
+        let txt = `=== CIS ${group.cis} — Données 2026 (au ${dateStr}) ===\n\n`;
+        txt += `${'Agent'.padEnd(28)} | ${'Ast/Dispo (h/mois)'.padEnd(55)} | ${'Total'.padEnd(6)} | ${'Interventions/mois'.padEnd(55)} | Total\n`;
+        txt += '-'.repeat(170) + '\n';
+        group.agents.forEach(agent => {
+            const astCols = agent.mAst.map(v => String(v > 0 ? v : '').padStart(4)).join(' ');
+            const interCols = agent.mInter.map(v => String(v > 0 ? v : '').padStart(4)).join(' ');
+            txt += `${agent.nom.padEnd(28)} | ${astCols} | ${String(agent.totalAst).padStart(5)} | ${interCols} | ${String(agent.totalInter).padStart(5)}\n`;
+        });
+        txt += '\nMois : ' + MOIS_COURT.join('  ') + '\n';
+
+        let htmlMail = `<div style="font-family:Arial,sans-serif;font-size:13px;">`;
+        htmlMail += `<h2 style="color:#1a2744;border-bottom:2px solid #2196F3;padding-bottom:6px;">🚒 CIS ${group.cis} — Données 2026</h2>`;
+        htmlMail += `<p style="color:#666;font-size:11px;">Extrait au ${dateStr}</p>`;
+        htmlMail += `<table style="border-collapse:collapse;font-size:12px;width:100%;">`;
+        htmlMail += `<thead><tr style="background:#1a2744;color:#fff;">`;
+        htmlMail += `<th style="padding:8px 10px;text-align:left;">Agent</th>`;
+        MOIS_COURT.forEach(m => { htmlMail += `<th style="padding:8px 5px;text-align:center;">${m}<br><small style="opacity:0.7">Ast/D</small></th>`; });
+        htmlMail += `<th style="padding:8px 5px;text-align:center;background:#2196F3;">Total<br><small>Ast/D</small></th>`;
+        MOIS_COURT.forEach(m => { htmlMail += `<th style="padding:8px 5px;text-align:center;background:#0d47a1;color:#fff;">${m}<br><small style="opacity:0.7">Inter</small></th>`; });
+        htmlMail += `<th style="padding:8px 5px;text-align:center;background:#0d47a1;">Total<br><small>Inter</small></th>`;
+        htmlMail += `</tr></thead><tbody>`;
+        group.agents.forEach((agent, i) => {
+            const bg = i%2===0 ? '#f5f7fa' : '#fff';
+            htmlMail += `<tr style="background:${bg};">`;
+            htmlMail += `<td style="padding:6px 10px;font-weight:bold;border-bottom:1px solid #eee;">${agent.nom}</td>`;
+            agent.mAst.forEach(v => { htmlMail += `<td style="padding:5px;text-align:center;border-bottom:1px solid #eee;">${v>0?v:''}</td>`; });
+            htmlMail += `<td style="padding:5px;text-align:center;font-weight:bold;background:#e3f2fd;border-bottom:1px solid #eee;">${agent.totalAst}</td>`;
+            agent.mInter.forEach(v => { htmlMail += `<td style="padding:5px;text-align:center;color:#1565C0;border-bottom:1px solid #eee;">${v>0?v:''}</td>`; });
+            htmlMail += `<td style="padding:5px;text-align:center;font-weight:bold;color:#1565C0;background:#e3f2fd;border-bottom:1px solid #eee;">${agent.totalInter}</td>`;
+            htmlMail += '</tr>';
+        });
+        htmlMail += `</tbody></table></div>`;
+
+        try {
+            const blob = new Blob([htmlMail], { type: 'text/html' });
+            const blobPlain = new Blob([txt], { type: 'text/plain' });
+            const item = new ClipboardItem({ 'text/html': blob, 'text/plain': blobPlain });
+            navigator.clipboard.write([item]).then(() => {
+                toast('✅ Données copiées — prêtes à coller dans un mail !', 'ok');
+            }).catch(() => {
+                navigator.clipboard.writeText(txt).then(() => toast('✅ Données copiées (texte)', 'ok')).catch(() => toast('Erreur copie', 'err'));
+            });
+        } catch(e) {
+            navigator.clipboard.writeText(txt).then(() => toast('✅ Données copiées (texte)', 'ok')).catch(() => toast('Erreur copie', 'err'));
+        }
+    }
+
     // === MOBILE / DESKTOP MODE ===
     function chooseMobile() { localStorage.setItem('sdsOperMode','mobile'); document.body.classList.add('mobile-mode'); document.getElementById('splashChoice').style.display='none'; showModeStrip('mobile'); }
     function chooseDesktop() { localStorage.setItem('sdsOperMode','desktop'); document.body.classList.remove('mobile-mode'); document.getElementById('splashChoice').style.display='none'; showModeStrip('desktop'); }
@@ -2489,5 +2626,18 @@
     (function(){ var s=localStorage.getItem('sdsOperMode'); if(s==='mobile'||s==='desktop'){document.getElementById('splashChoice').style.display='none';showModeStrip(s);if(s==='mobile')document.body.classList.add('mobile-mode');} })();
 
   </script>
+
+  <!-- MODAL : Mailing auto -->
+  <div id="modalMailing" class="modalOverlay" style="z-index:20000;display:none;">
+    <div class="modalCard" style="max-width:1200px;">
+      <div class="modalHead">
+        <span>📧 Mailing auto — Données par CIS</span>
+        <button class="closeBtn" onclick="document.getElementById('modalMailing').style.display='none'">×</button>
+      </div>
+      <div style="flex:1;overflow-y:auto;padding:20px;" id="mailingBody">
+        <div style="text-align:center;padding:40px;color:gray;">Chargement...</div>
+      </div>
+    </div>
+  </div>
 </body>
 </html>

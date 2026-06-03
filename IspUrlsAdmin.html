@@ -1,0 +1,178 @@
+<!doctype html>
+<html>
+<head>
+  <base target="_top">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body{font-family:ui-sans-serif,system-ui,sans-serif;margin:0;padding:14px;font-size:13px;background:#f5f7fa;}
+    h2{margin:0 0 12px;font-size:15px;color:#1b2a4a;}
+    .toolbar{display:flex;gap:8px;margin-bottom:12px;align-items:center;}
+    .btn{padding:7px 14px;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;transition:.15s;}
+    .btn-primary{background:#2196F3;color:white;}
+    .btn-primary:hover{background:#1e88e5;}
+    .search{padding:6px 10px;border:1px solid #ccd3de;border-radius:6px;font-size:12px;outline:none;flex:1;background:#fff;}
+    .search:focus{border-color:#2196F3;}
+    table{width:100%;border-collapse:collapse;background:white;border-radius:8px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.1);}
+    th{background:#1b2a4a;color:white;padding:8px 10px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.5px;}
+    td{padding:7px 10px;border-bottom:1px solid #eef0f3;font-size:12px;}
+    tr:last-child td{border-bottom:none;}
+    tr:hover td{background:#f0f4ff;}
+    .url-cell{color:#2196F3;font-family:monospace;font-size:11px;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;}
+    .copy-btn{padding:3px 8px;background:#e8f0fe;border:1px solid #2196F3;color:#2196F3;border-radius:4px;cursor:pointer;font-size:11px;white-space:nowrap;}
+    .copy-btn:hover,.copy-btn.done{background:#2196F3;color:white;}
+    .status{font-size:11px;color:#388e3c;font-weight:600;height:16px;}
+    #loading{text-align:center;color:#888;margin:40px 0;font-size:13px;}
+    .badge{background:rgba(33,150,243,.1);color:#2196F3;border-radius:4px;padding:1px 6px;font-size:11px;font-weight:600;margin-left:6px;}
+    .err{color:#c62828;font-weight:700;white-space:pre-wrap;}
+  </style>
+</head>
+<body>
+  <h2>🔗 URLs ISP <span id="countBadge" class="badge" style="display:none"></span></h2>
+  <div id="loading">⏳ Chargement des URLs...</div>
+  <div id="content" style="display:none">
+    <div class="toolbar">
+      <button class="btn btn-primary" onclick="copyAll()">📋 Copier tout (Nom + URL)</button>
+      <input class="search" id="search" type="text" placeholder="Rechercher un ISP..." oninput="filterTable()">
+      <span class="status" id="status"></span>
+    </div>
+    <table>
+      <thead><tr><th>ISP</th><th>URL</th><th>Copier</th></tr></thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+
+  <script>
+    var items = [];
+    var timeoutId = null;
+    var FORCED_EXEC_BASE = 'https://script.google.com/macros/s/AKfycbx1_TpQBnqA_Z-tDtq2OyAbnYFI0uKXVz7e9f5-0GuDAaOiCpSfgKsd0IKv45C_mS5CVw/exec';
+
+    window.onerror = function(message, source, lineno, colno) {
+      showError('Erreur JS: ' + message + ' (L' + lineno + ')');
+      return false;
+    };
+
+    function showError(msg) {
+      clearTimeout(timeoutId);
+      var loading = document.getElementById('loading');
+      loading.className = 'err';
+      loading.textContent = '❌ ' + msg;
+      document.getElementById('content').style.display='none';
+    }
+
+    function startLoad() {
+      timeoutId = setTimeout(function() {
+        showError('Timeout de chargement (>20s).');
+      }, 20000);
+
+      try {
+        google.script.run
+          .withSuccessHandler(function(data) {
+            clearTimeout(timeoutId);
+            items = Array.isArray(data) ? data : [];
+            document.getElementById('countBadge').textContent = items.length + ' ISP';
+            document.getElementById('countBadge').style.display = '';
+            renderTable(items);
+            document.getElementById('loading').style.display='none';
+            document.getElementById('content').style.display='';
+          })
+          .withFailureHandler(function(err) {
+            var msg = (err && err.message) ? err.message : String(err || 'Erreur inconnue');
+            showError(msg);
+          })
+          .getIspUrlsForAdmin();
+      } catch (e) {
+        showError(e && e.message ? e.message : String(e));
+      }
+    }
+
+    function renderTable(data) {
+      var tbody = document.getElementById('tbody');
+      tbody.innerHTML = '';
+      data.forEach(function(item, idx) {
+        var finalUrl = buildUrl(item);
+        var tr = document.createElement('tr');
+        tr.innerHTML = '<td><b>' + esc(item.nom) + '</b></td>' +
+          '<td class="url-cell" title="' + esc(finalUrl) + '" onclick="copyUrl(' + idx + ')">' + esc(finalUrl) + '</td>' +
+          '<td><button class="copy-btn" id="cb_' + idx + '" onclick="copyUrl(' + idx + ')">Copier</button></td>';
+        tbody.appendChild(tr);
+      });
+    }
+
+    function filterTable() {
+      var q = document.getElementById('search').value.toLowerCase();
+      renderTable(items.filter(function(i) { return String(i.nom||'').toLowerCase().includes(q); }));
+    }
+
+    function copyUrl(idx) {
+      var item = items[idx];
+      if (!item) return;
+      var text = buildUrl(item);
+
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function() {
+          markCopied(idx, item.nom);
+        }).catch(function() {
+          fallbackCopy(text);
+          markCopied(idx, item.nom);
+        });
+      } else {
+        fallbackCopy(text);
+        markCopied(idx, item.nom);
+      }
+    }
+
+    function fallbackCopy(text) {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    }
+
+    function markCopied(idx, nom) {
+      var btn = document.getElementById('cb_' + idx);
+      if (btn) {
+        btn.textContent = '✓ Copié';
+        btn.classList.add('done');
+        setTimeout(function(){ btn.textContent='Copier'; btn.classList.remove('done'); }, 1500);
+      }
+      setStatus('✅ ' + nom + ' copié');
+    }
+
+    function copyAll() {
+      var text = items.map(function(i) { return (i.nom||'') + '\t' + buildUrl(i); }).join('\n');
+      try {
+        fallbackCopy(text);
+        setStatus('✅ ' + items.length + ' URLs copiées');
+      } catch (e) {
+        showError('Copie impossible: ' + (e.message || e));
+      }
+    }
+
+    function buildUrl(item) {
+      var tok = (item && item.token) ? String(item.token).trim() : '';
+      if (!tok && item && item.url) {
+        try {
+          var m = String(item.url).match(/[?&]ispToken=([^&]+)/i);
+          if (m) tok = m[1];
+        } catch(e) {}
+      }
+      if (!tok) return String((item && item.url) || '');
+      return FORCED_EXEC_BASE + '?ispToken=' + encodeURIComponent(tok);
+    }
+
+    function setStatus(msg) {
+      var s = document.getElementById('status');
+      s.textContent = msg;
+      setTimeout(function(){ s.textContent=''; }, 3000);
+    }
+
+    function esc(s) {
+      return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    startLoad();
+  </script>
+</body>
+</html>

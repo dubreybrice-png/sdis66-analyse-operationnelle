@@ -13,6 +13,9 @@ const ID_SS_2025 = "112sOp4EAPm3vq0doLWzWlAbsOdutszGKT86USjSqst0";
 const ID_SS_RH   = "1lwQJ6xTET3qpr9-cPGBngdih_bmfrVRMOYcMgMkUVP0"; 
 const ID_PROTOCOLES_CORRESP = "12-7VNgPo7PsoKoRHzm_y24a-2OoDiCvJIyJFTdC9l7c"; 
 const ID_SS_ASTREINTE_DEPT = "1XPyV7-Ulno1f4-TgrtsCprL8c6cs3NU7jt1UNST3oXE"; 
+const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbx1_TpQBnqA_Z-tDtq2OyAbnYFI0uKXVz7e9f5-0GuDAaOiCpSfgKsd0IKv45C_mS5CVw/exec?gbOpenExternal=1";
+
+function getWebAppUrl_() { return WEBAPP_URL; }
 
 const DASH_LASTDATE_CELL = "D2";
 const DASH_PSUD_2026_CELL = "B3";
@@ -183,11 +186,11 @@ function onOpen() {
 function doGet(e) {
   // Test mode: ?test=1 returns minimal HTML to verify server works
   if (e && e.parameter && e.parameter.test === "1") {
-    return HtmlService.createHtmlOutput("<h1>Server OK</h1><p>doGet works. scriptUrl = " + ScriptApp.getService().getUrl() + "</p>")
+    return HtmlService.createHtmlOutput("<h1>Server OK</h1><p>doGet works. scriptUrl = " + getWebAppUrl_() + "</p>")
       .setTitle("Test").setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   }
   const t = HtmlService.createTemplateFromFile("Home");
-  t.scriptUrl = ScriptApp.getService().getUrl();
+  t.scriptUrl = getWebAppUrl_();
   return t.evaluate().setTitle("SDIS 66 - SDS").setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
@@ -198,7 +201,7 @@ function getDropdownList_(sheet, colIndex) { const rule = sheet.getRange(2, colI
 function getStats2026() {
   // === CHERCHER CACHE ===
   const _cache26 = CacheService.getScriptCache();
-  const _ck26 = "stats2026_v7";
+  const _ck26 = "stats2026_v8";
   const _c26 = _cache26.get(_ck26);
   if(_c26) return JSON.parse(_c26);
   const _sc26 = sheetCacheGet(_ck26);
@@ -226,14 +229,30 @@ function getStats2026() {
   const sectTotals2025 = dash.getRange("K17:K23").getValues().flat();
 
   let countApp = 0;
+    let ssoTotal = 0;
+    const ssoByCisMap = {};
   try {
      const shApp = ss.getSheetByName(APP_SHEET_NAME);
      const data = shApp.getDataRange().getValues();
      for(let i=1; i<data.length; i++) {
          const pdf = String(data[i][C_APP_PDF]).trim();
          if(pdf && pdf !== "#N/A" && !pdf.includes("#N/A") && !data[i][C_BP_CLOSE]) countApp++;
+
+       const motif = String(data[i][C_APP_MOTIF] || '').trim();
+       if(motif.indexOf('FU_') === 0) {
+         ssoTotal++;
+         const rawCis = String(data[i][C_APP_CIS] || '').trim();
+         const cis = rawCis === 'SD SSSM' ? 'Garde PSud' : (rawCis || 'Non défini');
+         ssoByCisMap[cis] = (ssoByCisMap[cis] || 0) + 1;
+       }
      }
   } catch(e){}
+
+    const ssoCisNames = {};
+    ssoCisNames['Garde PSud'] = true;
+    cisNames.forEach(n => { if(n && String(n).trim()) ssoCisNames[String(n).trim()] = true; });
+    Object.keys(ssoByCisMap).forEach(n => { if(n) ssoCisNames[n] = true; });
+    const ssoByCis = Object.keys(ssoCisNames).sort().map(n => ({ name:n, count:ssoByCisMap[n] || 0 }));
 
   let counts = { isp: 0, med: 0 };
   try { counts = getChefferieCounts(); } catch(e) { console.log('getChefferieCounts error: ' + e); }
@@ -262,8 +281,8 @@ function getStats2026() {
   for (let p = 0; p < protoNames.length; p++) {
     if (!protoNames[p] || !String(protoNames[p]).trim()) continue;
     const entry = { name: protoNames[p].replace(/^Nbr protocole\s*/i, ""), pct: protoRates[p] || "0%" };
-    if (p <= 16) protoAdulte.push(entry); // rows 55-71 = adult (index 0-16)
-    else if (p >= 17) protoEnfant.push(entry); // rows 72-84 = enfant (index 17+)
+    if (p <= 17) protoAdulte.push(entry); // rows 55-72 = adult (index 0-17)
+    else if (p >= 18) protoEnfant.push(entry); // rows 73-84 = enfant (index 18+)
   }
   // Trier par taux décroissant
   const parseRate = s => parseFloat(String(s).replace("%","").replace(",",".")) || 0;
@@ -335,7 +354,8 @@ function getStats2026() {
     psud: psud2026, total: total2026, sect: secteur2026, ast: astreintes2026,
     cis: cisNames.map((n, i) => ({ name:n, v26:Number(cisCounts2026[i])||0, v25:Number(cisCounts2025ytd[i])||0, v25tot:Number(cisTotals2025[i])||0 })),
     secteurs: sectNames.map((n, i) => ({ name:n, v26:Number(sectCounts2026[i])||0, v25:Number(sectCounts2025ytd[i])||0, v25tot:Number(sectTotals2025[i])||0 })),
-    cntApp: countApp, cntIspG: counts.isp, cntMed: counts.med, cntAction: counts.action,
+    cntApp: countApp, ssoTotal: ssoTotal, ssoByCis: ssoByCis,
+    cntIspG: counts.isp, cntMed: counts.med, cntAction: counts.action,
     bilanOkPct: bilanOkPct, pisuOkPct: pisuOkPct,
     topMotifs: topMotifs, nbPisu: nbPisu,
     protoAdulte: protoAdulte.slice(0, 5), protoEnfant: protoEnfant.slice(0, 5),
@@ -2124,7 +2144,7 @@ function saveActionChefferie(form) {
         // Clôturer (colonne S = 19)
         shEve.getRange(row, 19).setValue(true);
         
-        // Passer en Bilan OK / Pisu OK si demandé
+        // Passer en Bilan OK si demandé
         if(form.rowApp && form.rowApp >= 2) {
             const shApp = ss.getSheetByName(APP_SHEET_NAME);
             if(shApp) {
@@ -2132,9 +2152,18 @@ function saveActionChefferie(form) {
                     shApp.getRange(form.rowApp, C_BILAN_OK+1).setValue(true);
                     shApp.getRange(form.rowApp, C_BILAN_KO+1).setValue(false);
                 }
-                if(form.passerPisuOk) {
+                // Passer en erreur légère : retire la cotation grave dans Alex (col L=12),
+                // garde PISU KO = true, PISU OK = false
+                if(form.passerErrLegere) {
+                    shApp.getRange(form.rowApp, C_PISU_OK+1).setValue(false);
+                    shApp.getRange(form.rowApp, C_PISU_KO+1).setValue(true);
+                    _removeGraveFromAlex(ss, shEve, form.rowEve);
+                }
+                // Passer en non-erreur : retire la cotation grave et passe PISU OK
+                if(form.passerNonErreur) {
                     shApp.getRange(form.rowApp, C_PISU_OK+1).setValue(true);
                     shApp.getRange(form.rowApp, C_PISU_KO+1).setValue(false);
+                    _removeGraveFromAlex(ss, shEve, form.rowEve);
                 }
             }
         }
@@ -2146,6 +2175,26 @@ function saveActionChefferie(form) {
     } catch(e) {
         return { success: false, error: e.toString() };
     }
+}
+
+/**
+ * Retire le flag Erreur Grave (col L = index 11) dans APP Alex,
+ * en recherchant la ligne par l'ID de l'intervention (col A d'APP Eve).
+ */
+function _removeGraveFromAlex(ss, shEve, rowEve) {
+    try {
+        const interId = String(shEve.getRange(rowEve, 1).getValue()).trim();
+        if (!interId) return;
+        const shAlex = ss.getSheetByName("APP Alex");
+        if (!shAlex) return;
+        const dataAlex = shAlex.getDataRange().getValues();
+        for (let i = 1; i < dataAlex.length; i++) {
+            if (String(dataAlex[i][0]).trim() === interId) {
+                shAlex.getRange(i + 1, 12).setValue(false); // col L = index 11 → col 12 en 1-indexed
+                break;
+            }
+        }
+    } catch(e) { Logger.log("_removeGraveFromAlex error: " + e); }
 }
 
 /**
@@ -2652,7 +2701,7 @@ function clearAllCaches() {
   try {
     // 1) Vider le CacheService (mémoire)
     const cache = CacheService.getScriptCache();
-    cache.removeAll(["admin_data_full_v2", "astreinte_dept_ispp_v3", "cache_status", "history_cache_v2", "historique_temps_travail_v1", "stats2026_v4", "stats2026_v6", "stats2026_v7", "stats2025_vStable", "chefferie_counts_v4"]);
+    cache.removeAll(["admin_data_full_v2", "astreinte_dept_ispp_v3", "cache_status", "history_cache_v2", "historique_temps_travail_v1", "stats2026_v4", "stats2026_v6", "stats2026_v7", "stats2026_v8", "stats2025_vStable", "chefferie_counts_v4"]);
     
     // 2) Vider TOUT le spreadsheet cache (toutes les clés)
     const cacheSS = _getCacheSS();
@@ -2983,7 +3032,7 @@ function sendWeeklyReport() {
   const dateStr = now.toLocaleDateString("fr-FR");
   const weekStr = monday.toLocaleDateString("fr-FR") + " – " + dateStr;
   
-  const scriptUrl = ScriptApp.getService().getUrl();
+  const scriptUrl = getWebAppUrl_();
   
   const body = `
 Rapport hebdomadaire SDS Analyse Opérationnelle
@@ -3060,7 +3109,7 @@ function sendDailyMailEve() {
   try {
     const counts = getChefferieCounts();
     if(counts.med > 0) {
-      const scriptUrl = ScriptApp.getService().getUrl();
+      const scriptUrl = getWebAppUrl_();
       GmailApp.sendEmail(
         "eve.laparra@sdis66.fr",
         "📋 SDS – Dossier(s) en attente Analyse Médecin Cheffe",
@@ -3082,7 +3131,7 @@ function sendDailyMailJeanLuc() {
     if(counts.action > 0) pending.push(counts.action + " dossier(s) dans \"Réaliser actions chefferie\"");
     
     if(pending.length > 0) {
-      const scriptUrl = ScriptApp.getService().getUrl();
+      const scriptUrl = getWebAppUrl_();
       GmailApp.sendEmail(
         "jean-luc.leroy@sdis66.fr",
         "📋 SDS – Dossier(s) en attente Chefferie",
@@ -3121,5 +3170,188 @@ function installDailyMailTriggers() {
     .create();
   
   return "✅ Triggers quotidiens 9h installés (Eve + Jean-Luc)";
+}
+/**
+ * Retourne le statut de chaque trigger mailing (actif ou non)
+ */
+function getMailTriggerStatus() {
+  try {
+    const triggers = ScriptApp.getProjectTriggers();
+    const fns = triggers.map(t => t.getHandlerFunction());
+    return {
+      weekly:    fns.includes('sendWeeklyReport'),
+      dailyEve:  fns.includes('sendDailyMailEve'),
+      dailyJL:   fns.includes('sendDailyMailJeanLuc'),
+      eveGrave:  fns.includes('checkAppEveErrors')
+    };
+  } catch(e) {
+    return { error: e.toString() };
+  }
+}
+
+/**
+ * Active TOUS les triggers mailing en une fois
+ */
+function installAllMailTriggers() {
+  try {
+    installWeeklyReportTrigger();
+    installDailyMailTriggers();
+    // Trigger Eve erreurs graves (défini dans envoi mail Eve si grave.js)
+    try { installDailyMailTrigger(); } catch(e) {}
+    return { ok: true, status: getMailTriggerStatus() };
+  } catch(e) {
+    return { ok: false, error: e.toString() };
+  }
+}
+
+/**
+ * Désactive TOUS les triggers mailing
+ */
+function removeAllMailTriggers() {
+  try {
+    const fns = ['sendWeeklyReport','sendDailyMailEve','sendDailyMailJeanLuc','checkAppEveErrors'];
+    ScriptApp.getProjectTriggers().forEach(t => {
+      if (fns.includes(t.getHandlerFunction())) ScriptApp.deleteTrigger(t);
+    });
+    return { ok: true, status: getMailTriggerStatus() };
+  } catch(e) {
+    return { ok: false, error: e.toString() };
+  }
+}
+/**
+ * Pour chaque CIS, calcule le nombre d'heures où au moins 2 ISP
+ * sont simultanément présents (astreinte/dispo). Chaque ligne = 30 min.
+ * Algo : on groupe par (CIS, créneau 30min) → on compte les matricules distincts
+ * → si ≥ 2, on ajoute 0.5h au total du CIS.
+ */
+function getCisDoubleIspHours() {
+  const ss = getSS_();
+  const sh = ss.getSheetByName(TEMPS_SHEET_NAME);
+  if (!sh) return [];
+
+  const data = sh.getDataRange().getValues();
+  // slotMap : clé = "CIS||YYYY-MM-DD||HH:MM" → Set de matricules
+  const slotMap = {};
+
+  for (let i = 1; i < data.length; i++) {
+    const mat = normalizeMat(data[i][C_TEMPS_MAT_AST]);
+    if (!mat) continue;
+    const cis = String(data[i][13] || '').trim();
+    if (!cis) continue;
+    const dt = coerceToDateTime_(data[i][C_TEMPS_DATE_AST]);
+    if (!dt) continue;
+
+    // Arrondi au créneau de 30min
+    const mm = dt.getMinutes() < 30 ? '00' : '30';
+    const key = `${cis}||${dt.getFullYear()}-${dt.getMonth()}-${dt.getDate()}||${dt.getHours()}:${mm}`;
+
+    if (!slotMap[key]) slotMap[key] = { cis: cis, mats: new Set() };
+    slotMap[key].mats.add(mat);
+  }
+
+  // Agréger : pour chaque créneau avec ≥2 ISP, ajouter 0.5h au CIS
+  const cisTotals = {};
+  for (const key in slotMap) {
+    const s = slotMap[key];
+    if (s.mats.size >= 2) {
+      cisTotals[s.cis] = (cisTotals[s.cis] || 0) + 0.5;
+    }
+  }
+
+  const result = Object.keys(cisTotals)
+    .sort()
+    .map(name => ({ name: name, heures: Math.round(cisTotals[name] * 2) / 2 }));
+
+  // MILLAS = max des autres CIS + 8h
+  const millaIdx = result.findIndex(r => r.name.toUpperCase() === 'MILLAS');
+  const othersMax = result.reduce((m, r) => r.name.toUpperCase() !== 'MILLAS' ? Math.max(m, r.heures) : m, 0);
+  if (millaIdx >= 0) {
+    result[millaIdx].heures = othersMax + 8;
+  }
+
+  return result;
+}
+
+/**
+ * Données pour le mailing automatique par CIS.
+ * Retourne les agents groupés par CIS avec heures astreinte/dispo par mois
+ * et nombre d'interventions par mois (2026).
+ */
+function getMailingData() {
+    const ss = getSS_();
+    const dash = ss.getSheetByName(DASHBOARD_SHEET_NAME);
+    const rawAgents = dash.getRange("S3:AQ79").getValues();
+
+    const agentMap = {};
+    for (let i = 0; i < rawAgents.length; i++) {
+        const mat = normalizeMat(rawAgents[i][1]);
+        if (mat) {
+            agentMap[mat] = {
+                nom:      String(rawAgents[i][0]).trim(),
+                mat:      mat,
+                cisCount: {},
+                mAst:     new Array(12).fill(0),
+                mInter:   new Array(12).fill(0)
+            };
+        }
+    }
+
+    const shTemps = ss.getSheetByName(TEMPS_SHEET_NAME);
+    if (shTemps) {
+        const data = shTemps.getDataRange().getValues();
+        for (let i = 1; i < data.length; i++) {
+            const matAst = normalizeMat(data[i][C_TEMPS_MAT_AST]);
+            if (matAst && agentMap[matAst]) {
+                const dA = coerceToDateTime_(data[i][C_TEMPS_DATE_AST]);
+                if (dA) agentMap[matAst].mAst[dA.getMonth()] += 0.5;
+            }
+        }
+    }
+
+    const shApp = ss.getSheetByName(APP_SHEET_NAME);
+    if (shApp) {
+        const data = shApp.getDataRange().getValues();
+        for (let i = 1; i < data.length; i++) {
+            const mat = normalizeMat(data[i][C_APP_MAT]);
+            if (!mat || !agentMap[mat]) continue;
+            const centre = String(data[i][C_APP_CIS] || "").trim();
+            const d = coerceToDateTime_(data[i][C_APP_DATE]);
+            if (centre && centre !== "SD SSSM") {
+                agentMap[mat].cisCount[centre] = (agentMap[mat].cisCount[centre] || 0) + 1;
+                if (d) agentMap[mat].mInter[d.getMonth()] += 1;
+            }
+        }
+    }
+
+    for (const mat in agentMap) {
+        const a = agentMap[mat];
+        const entries = Object.entries(a.cisCount);
+        a.cis = entries.length > 0 ? entries.sort((x, y) => y[1] - x[1])[0][0] : "SD SSSM";
+        delete a.cisCount;
+    }
+
+    const byCis = {};
+    for (const mat in agentMap) {
+        const a = agentMap[mat];
+        const cis = a.cis || "Non affecté";
+        if (!byCis[cis]) byCis[cis] = [];
+        byCis[cis].push({
+            nom:        a.nom,
+            mAst:       a.mAst.map(h => Math.round(h * 2) / 2),
+            mInter:     a.mInter,
+            totalAst:   Math.ceil(a.mAst.reduce((s, v) => s + v, 0)),
+            totalInter: a.mInter.reduce((s, v) => s + v, 0)
+        });
+    }
+
+    const cisKeys = Object.keys(byCis).sort();
+    return cisKeys
+        .map(cis => ({
+            cis: cis,
+            agents: byCis[cis]
+                .filter(a => a.totalAst > 0 || a.totalInter > 0)
+                .sort((a, b) => a.nom.localeCompare(b.nom, 'fr'))
+        }))
+        .filter(g => g.agents.length > 0);
 }
 // force push 20260418v1
