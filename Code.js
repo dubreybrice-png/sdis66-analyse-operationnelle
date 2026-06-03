@@ -3345,7 +3345,7 @@ function getMailingData() {
       'JOAO CLEMENTINE':         { cis: 'PERPIGNAN SUD',    suffix: ' (en dispo)' },
       'LE ROY JEAN-LUC':         { cis: 'CANET EN ROUSSILLON' },
       'MASSE ALISON':            { cis: 'ILLE SUR TET' },
-      'PERIE ANAIS':             { cis: null },  // doublon de SOLEY ANAIS → exclure
+      'PERIE ANAIS':             { cis: 'LES ASPRES' },
       'PIGUILLEM ALEXANDRA':     { cis: 'PERPIGNAN OUEST' },
       'RIERA SAFYA':             { cis: 'ELNE' },
       'SARRAZIN VANESSA':        { cis: 'RIBERAL',          suffix: ' (en dispo)' },
