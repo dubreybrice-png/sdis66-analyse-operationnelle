@@ -3355,3 +3355,234 @@ function getMailingData() {
         .filter(g => g.agents.length > 0);
 }
 // force push 20260418v1
+
+// ============================================================
+// DIAGNOSTIC DÉCALAGE COMMENTAIRES — Historique révisions Drive
+// ============================================================
+
+/**
+ * Parcourt l'historique de révisions Google Drive pour trouver,
+ * pour chaque commentaire actuellement dans APP Alex col M et
+ * APP Eve col O/Q, le numéro d'intervention qui était sur la même
+ * ligne au moment où le commentaire a été saisi pour la première fois.
+ *
+ * Résultats écrits dans l'onglet "DIAG_DECALAGE".
+ * À lancer depuis l'éditeur Apps Script : menu Exécuter → diagnosisDecalageCommentaires
+ */
+function diagnosisDecalageCommentaires() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const fileId = ss.getId();
+  const token = ScriptApp.getOAuthToken();
+  const startTime = Date.now();
+  const MAX_EXEC_MS = 300000; // 5 minutes max (limite GAS = 6min)
+
+  const shAlex = ss.getSheetByName("APP Alex");
+  const shEve  = ss.getSheetByName("APP Eve");
+  if (!shAlex || !shEve) { Logger.log("Onglets APP Alex / APP Eve introuvables"); return; }
+
+  const gidAlex = shAlex.getSheetId();
+  const gidEve  = shEve.getSheetId();
+
+  const curAlex = shAlex.getDataRange().getValues();
+  const curEve  = shEve.getDataRange().getValues();
+
+  // Collecte des commentaires actuels à retrouver dans l'historique
+  // Structure : { rowIndex(0-based) : { comment, correctId, revDate } }
+  const alexM = {}, eveO = {}, eveQ = {};
+
+  for (let i = 1; i < curAlex.length; i++) {
+    const c = String(curAlex[i][12] || "").trim(); // col M = index 12
+    if (c) alexM[i] = { comment: c, correctId: null, revDate: null };
+  }
+  for (let i = 1; i < curEve.length; i++) {
+    const o = String(curEve[i][14] || "").trim(); // col O = index 14
+    const q = String(curEve[i][16] || "").trim(); // col Q = index 16
+    if (o) eveO[i] = { comment: o, correctId: null, revDate: null };
+    if (q) eveQ[i] = { comment: q, correctId: null, revDate: null };
+  }
+
+  Logger.log("Commentaires à analyser — Alex-M: " + Object.keys(alexM).length +
+             ", Eve-O: " + Object.keys(eveO).length + ", Eve-Q: " + Object.keys(eveQ).length);
+
+  // Récupère la liste complète des révisions (du plus ancien au plus récent)
+  const revisions = _diagGetRevisionsList(fileId, token);
+  Logger.log(revisions.length + " révisions trouvées");
+
+  let processed = 0;
+
+  for (let r = 0; r < revisions.length; r++) {
+    // Temps restant
+    if (Date.now() - startTime > MAX_EXEC_MS) {
+      Logger.log("Arrêt timeout après " + r + " révisions analysées");
+      break;
+    }
+
+    // Arrêt anticipé si tout est trouvé
+    const remaining = [alexM, eveO, eveQ].reduce(
+      (s, obj) => s + Object.values(obj).filter(v => v.correctId === null).length, 0
+    );
+    if (remaining === 0) { Logger.log("Tous les commentaires trouvés !"); break; }
+
+    const rev = revisions[r];
+    const exportUrl = _diagGetExportUrl(fileId, rev.id, token);
+    if (!exportUrl) continue;
+
+    // --- APP Alex col M ---
+    if (Object.values(alexM).some(v => v.correctId === null)) {
+      const csv = _diagFetchCsv(exportUrl, gidAlex, token);
+      if (csv) {
+        const rows = _diagParseCSV(csv);
+        for (const iStr in alexM) {
+          const t = alexM[iStr]; if (t.correctId !== null) continue;
+          const i = +iStr;
+          if (i >= rows.length || !rows[i] || rows[i].length < 13) continue;
+          if (String(rows[i][12] || "").trim() === t.comment) {
+            t.correctId = String(rows[i][0] || "").trim();
+            t.revDate   = rev.modifiedDate;
+          }
+        }
+      }
+    }
+
+    // --- APP Eve col O et Q ---
+    const needEve = Object.values(eveO).some(v => v.correctId === null) ||
+                    Object.values(eveQ).some(v => v.correctId === null);
+    if (needEve) {
+      const csv = _diagFetchCsv(exportUrl, gidEve, token);
+      if (csv) {
+        const rows = _diagParseCSV(csv);
+        for (const iStr in eveO) {
+          const t = eveO[iStr]; if (t.correctId !== null) continue;
+          const i = +iStr;
+          if (i >= rows.length || !rows[i] || rows[i].length < 15) continue;
+          if (String(rows[i][14] || "").trim() === t.comment) {
+            t.correctId = String(rows[i][0] || "").trim();
+            t.revDate   = rev.modifiedDate;
+          }
+        }
+        for (const iStr in eveQ) {
+          const t = eveQ[iStr]; if (t.correctId !== null) continue;
+          const i = +iStr;
+          if (i >= rows.length || !rows[i] || rows[i].length < 17) continue;
+          if (String(rows[i][16] || "").trim() === t.comment) {
+            t.correctId = String(rows[i][0] || "").trim();
+            t.revDate   = rev.modifiedDate;
+          }
+        }
+      }
+    }
+
+    processed++;
+    // Anti rate-limit : pause toutes les 15 révisions
+    if (r % 15 === 14) Utilities.sleep(1000);
+  }
+
+  Logger.log(processed + " révisions analysées");
+  _diagWriteResults(ss, alexM, eveO, eveQ, curAlex, curEve);
+}
+
+function _diagGetRevisionsList(fileId, token) {
+  const all = [];
+  let pageToken = null;
+  do {
+    let url = "https://www.googleapis.com/drive/v2/files/" + fileId +
+              "/revisions?maxResults=200&fields=nextPageToken,items(id,modifiedDate)";
+    if (pageToken) url += "&pageToken=" + encodeURIComponent(pageToken);
+    const resp = UrlFetchApp.fetch(url, { headers: { Authorization: "Bearer " + token }, muteHttpExceptions: true });
+    if (resp.getResponseCode() !== 200) { Logger.log("Erreur revisions: " + resp.getContentText()); break; }
+    const d = JSON.parse(resp.getContentText());
+    if (d.items) all.push.apply(all, d.items);
+    pageToken = d.nextPageToken || null;
+  } while (pageToken);
+  return all; // order: oldest → newest
+}
+
+function _diagGetExportUrl(fileId, revisionId, token) {
+  const url = "https://www.googleapis.com/drive/v2/files/" + fileId +
+              "/revisions/" + revisionId + "?fields=exportLinks";
+  const resp = UrlFetchApp.fetch(url, { headers: { Authorization: "Bearer " + token }, muteHttpExceptions: true });
+  if (resp.getResponseCode() !== 200) return null;
+  const d = JSON.parse(resp.getContentText());
+  if (!d.exportLinks) return null;
+  return d.exportLinks["text/csv"] || null;
+}
+
+function _diagFetchCsv(exportUrl, gid, token) {
+  try {
+    const url = exportUrl + "&gid=" + gid;
+    const resp = UrlFetchApp.fetch(url, {
+      headers: { Authorization: "Bearer " + token },
+      muteHttpExceptions: true,
+      followRedirects: true
+    });
+    if (resp.getResponseCode() !== 200) return null;
+    return resp.getContentText();
+  } catch(e) { return null; }
+}
+
+function _diagParseCSV(text) {
+  const rows = [];
+  let row = [], cell = "", inQ = false;
+  for (let i = 0; i <= text.length; i++) {
+    const ch = i < text.length ? text[i] : "\n";
+    if (ch === '"') {
+      if (inQ && text[i + 1] === '"') { cell += '"'; i++; }
+      else inQ = !inQ;
+    } else if (!inQ && ch === ',') {
+      row.push(cell); cell = "";
+    } else if (!inQ && (ch === '\n' || ch === '\r')) {
+      if (ch === '\r' && text[i + 1] === '\n') i++;
+      row.push(cell); cell = "";
+      if (row.some(c => c !== "")) rows.push(row);
+      row = [];
+    } else {
+      cell += ch;
+    }
+  }
+  return rows;
+}
+
+function _diagWriteResults(ss, alexM, eveO, eveQ, curAlex, curEve) {
+  let sh = ss.getSheetByName("DIAG_DECALAGE");
+  if (!sh) sh = ss.insertSheet("DIAG_DECALAGE");
+  else sh.clearContents();
+
+  const header = ["Onglet", "Colonne", "Ligne", "Commentaire", "ID Intervention (historique)", "ID Actuel (col A)", "1ère apparition", "Décalé?"];
+  const data = [header];
+
+  const pushRows = (target, sheetName, colLetter, cur) => {
+    const idxs = Object.keys(target).map(Number).sort((a, b) => a - b);
+    for (const i of idxs) {
+      const t = target[i];
+      const curId = cur[i] ? String(cur[i][0] || "").trim() : "";
+      let status;
+      if (!t.correctId) status = "❓ NON TROUVÉ";
+      else if (t.correctId === curId) status = "✅ OK";
+      else status = "⚠️ DÉCALÉ";
+      data.push([sheetName, colLetter, i + 1, t.comment, t.correctId || "", curId, t.revDate || "", status]);
+    }
+  };
+
+  pushRows(alexM, "APP Alex", "M", curAlex);
+  pushRows(eveO,  "APP Eve",  "O", curEve);
+  pushRows(eveQ,  "APP Eve",  "Q", curEve);
+
+  sh.getRange(1, 1, data.length, header.length).setValues(data);
+  sh.getRange(1, 1, 1, header.length).setFontWeight("bold").setBackground("#0d47a1").setFontColor("#ffffff");
+  sh.autoResizeColumns(1, header.length);
+
+  // Colorier les lignes décalées en orange
+  for (let r = 1; r < data.length; r++) {
+    if (String(data[r][7]).includes("DÉCALÉ")) {
+      sh.getRange(r + 1, 1, 1, header.length).setBackground("#fff3e0");
+    } else if (String(data[r][7]).includes("NON TROUVÉ")) {
+      sh.getRange(r + 1, 1, 1, header.length).setBackground("#ffebee");
+    }
+  }
+
+  Logger.log("Résultats écrits dans DIAG_DECALAGE : " + (data.length - 1) + " lignes");
+  SpreadsheetApp.getUi().alert(
+    "Diagnostic terminé !\n" + (data.length - 1) + " commentaire(s) analysé(s).\n" +
+    "Voir l'onglet DIAG_DECALAGE dans le tableur."
+  );
+}
