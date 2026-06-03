@@ -3289,9 +3289,13 @@ function getMailingData() {
     const dash = ss.getSheetByName(DASHBOARD_SHEET_NAME);
     const rawAgents = dash.getRange("S3:AQ79").getValues();
 
-    // Normalise un nom : MAJUSCULES sans accents (pour matching fiable)
+    // Normalise un nom ou un nom de CIS : MAJUSCULES sans accents (pour matching fiable)
     const normNom = n => String(n||'').trim().toUpperCase()
                           .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const normCis = normNom; // meme fonction, alias semantique
+
+    // Mapping cle normalisee -> nom d'affichage original (construit a la lecture de APP)
+    const cisNormToDisplay = {};
 
     // Affectations officielles.
     // cis1 = CIS principal, cis2 = CIS secondaire optionnel, suffix = texte apres le nom.
@@ -3369,9 +3373,11 @@ function getMailingData() {
             const centre = String(data[i][C_APP_CIS] || '').trim();
             const d = coerceToDateTime_(data[i][C_APP_DATE]);
             if (!centre || centre === 'SD SSSM') continue;
-            agentMap[mat].cisVotes[centre] = (agentMap[mat].cisVotes[centre] || 0) + 1;
-            if (!agentMap[mat].mInterByCis[centre]) agentMap[mat].mInterByCis[centre] = new Array(12).fill(0);
-            if (d) agentMap[mat].mInterByCis[centre][d.getMonth()] += 1;
+            const centreNorm = normCis(centre);
+            cisNormToDisplay[centreNorm] = cisNormToDisplay[centreNorm] || centre;
+            agentMap[mat].cisVotes[centreNorm] = (agentMap[mat].cisVotes[centreNorm] || 0) + 1;
+            if (!agentMap[mat].mInterByCis[centreNorm]) agentMap[mat].mInterByCis[centreNorm] = new Array(12).fill(0);
+            if (d) agentMap[mat].mInterByCis[centreNorm][d.getMonth()] += 1;
         }
     }
 
@@ -3393,9 +3399,10 @@ function getMailingData() {
     const byCis = {};
     const pushAgent = (cis, a, isPrimary) => {
         if (cis === null) return; // exclu
-        const grp = cis || 'Non affecte';
+        const cisNorm = normCis(cis);
+        const grp = cisNorm || 'Non affecte';
         if (!byCis[grp]) byCis[grp] = [];
-        const mInter = (a.mInterByCis[cis] || new Array(12).fill(0)).slice();
+        const mInter = (a.mInterByCis[cisNorm] || new Array(12).fill(0)).slice();
         const mAst   = isPrimary ? a.mAst.slice() : new Array(12).fill(0);
         byCis[grp].push({
             nom:        a.nom + (isPrimary ? a.suffix : ''),
@@ -3414,9 +3421,9 @@ function getMailingData() {
 
     const cisKeys = Object.keys(byCis).sort();
     return cisKeys
-        .map(cis => ({
-            cis:    cis,
-            agents: byCis[cis].sort((a, b) => a.nom.localeCompare(b.nom, 'fr'))
+        .map(cisNorm => ({
+            cis:    cisNormToDisplay[cisNorm] || cisNorm,
+            agents: byCis[cisNorm].sort((a, b) => a.nom.localeCompare(b.nom, 'fr'))
         }))
         .filter(g => g.agents.length > 0);
 }
