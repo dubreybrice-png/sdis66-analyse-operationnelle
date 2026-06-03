@@ -201,7 +201,7 @@ function getDropdownList_(sheet, colIndex) { const rule = sheet.getRange(2, colI
 function getStats2026() {
   // === CHERCHER CACHE ===
   const _cache26 = CacheService.getScriptCache();
-  const _ck26 = "stats2026_v8";
+  const _ck26 = "stats2026_v9";
   const _c26 = _cache26.get(_ck26);
   if(_c26) return JSON.parse(_c26);
   const _sc26 = sheetCacheGet(_ck26);
@@ -2708,7 +2708,7 @@ function clearAllCaches() {
   try {
     // 1) Vider le CacheService (mémoire)
     const cache = CacheService.getScriptCache();
-    cache.removeAll(["admin_data_full_v2", "astreinte_dept_ispp_v3", "cache_status", "history_cache_v2", "historique_temps_travail_v1", "stats2026_v4", "stats2026_v6", "stats2026_v7", "stats2026_v8", "stats2025_vStable", "chefferie_counts_v4"]);
+    cache.removeAll(["admin_data_full_v2", "astreinte_dept_ispp_v3", "cache_status", "history_cache_v2", "historique_temps_travail_v1", "stats2026_v4", "stats2026_v6", "stats2026_v7", "stats2026_v8", "stats2026_v9", "stats2025_vStable", "chefferie_counts_v4"]);
     
     // 2) Vider TOUT le spreadsheet cache (toutes les clés)
     const cacheSS = _getCacheSS();
@@ -3336,7 +3336,7 @@ function getMailingData() {
     const AFFECTATIONS_MANUELLES = {
       'BASSAL THOMAS':           { cis: 'PERPIGNAN SUD',    suffix: ' (en dispo)' },
       'BERTRAN REMI':            { cis: 'CANET EN ROUSSILLON' },
-      'COLLARD PREVOST EMILIE':  { cis: 'RIBERAL' },
+      'COLLARD PREVOST EMILIE':  { cis: 'RIBERAL',          suffix: ' (en dispo)' },
       'COMAS ELODIE':            { cis: 'CANET EN ROUSSILLON' },
       'CUEVAS ISABEL':           { cis: 'VINCA' },
       'FERRARI MADISON':         { cis: 'PERPIGNAN SUD',    suffix: ' (en dispo)' },
