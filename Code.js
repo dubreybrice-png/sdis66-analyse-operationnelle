@@ -3330,16 +3330,55 @@ function getMailingData() {
         }
     }
 
+    // Affectations manuelles pour les agents sans interventions dans APP
+    // Clé = nom exact (majuscules), valeur = { cis, suffix? }
+    // suffix = texte ajouté après le nom dans l'affichage
+    const AFFECTATIONS_MANUELLES = {
+      'BASSAL THOMAS':           { cis: 'PERPIGNAN SUD',    suffix: ' (en dispo)' },
+      'BERTRAN REMI':            { cis: 'CANET EN ROUSSILLON' },
+      'COLLARD PREVOST EMILIE':  { cis: 'RIBERAL' },
+      'COMAS ELODIE':            { cis: 'CANET EN ROUSSILLON' },
+      'CUEVAS ISABEL':           { cis: 'VINCA' },
+      'FERRARI MADISON':         { cis: 'PERPIGNAN SUD',    suffix: ' (en dispo)' },
+      'FIORENZA LUCIE':          { cis: 'PERPIGNAN SUD',    suffix: ' (en dispo)' },
+      'FREZOUL MARLENE':         { cis: 'PERPIGNAN NORD' },
+      'JOAO CLEMENTINE':         { cis: 'PERPIGNAN SUD',    suffix: ' (en dispo)' },
+      'LE ROY JEAN-LUC':         { cis: 'CANET EN ROUSSILLON' },
+      'MASSE ALISON':            { cis: 'ILLE SUR TET' },
+      'PERIE ANAIS':             { cis: null },  // doublon de SOLEY ANAIS → exclure
+      'PIGUILLEM ALEXANDRA':     { cis: 'PERPIGNAN OUEST' },
+      'RIERA SAFYA':             { cis: 'ELNE' },
+      'SARRAZIN VANESSA':        { cis: 'RIBERAL',          suffix: ' (en dispo)' },
+      'SOLEY ANAIS':             { cis: 'RIVESALTES' },
+      'WIEGAND RAYMOND CECILE':  { cis: 'RIBERAL' },
+      // Agents à exclure totalement
+      'AUGUET ELYSE':            { cis: null },
+      'CRIBEILLET SIMON':        { cis: null },
+      'PICARD YANNICK':          { cis: null },
+      'PIQUE CHARLOTTE':         { cis: null }
+    };
+
     for (const mat in agentMap) {
         const a = agentMap[mat];
         const entries = Object.entries(a.cisCount);
-        a.cis = entries.length > 0 ? entries.sort((x, y) => y[1] - x[1])[0][0] : "Non affecté";
+        if (entries.length > 0) {
+            a.cis = entries.sort((x, y) => y[1] - x[1])[0][0];
+        } else {
+            const override = AFFECTATIONS_MANUELLES[a.nom];
+            if (override !== undefined) {
+                a.cis = override.cis; // null = exclure
+                if (override.suffix) a.nom = a.nom + override.suffix;
+            } else {
+                a.cis = 'Non affecté';
+            }
+        }
         delete a.cisCount;
     }
 
     const byCis = {};
     for (const mat in agentMap) {
         const a = agentMap[mat];
+        if (a.cis === null) continue; // agent exclu
         const cis = a.cis || "Non affecté";
         if (!byCis[cis]) byCis[cis] = [];
         byCis[cis].push({
