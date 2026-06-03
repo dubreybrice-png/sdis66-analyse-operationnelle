@@ -3333,7 +3333,7 @@ function getMailingData() {
     for (const mat in agentMap) {
         const a = agentMap[mat];
         const entries = Object.entries(a.cisCount);
-        a.cis = entries.length > 0 ? entries.sort((x, y) => y[1] - x[1])[0][0] : "SD SSSM";
+        a.cis = entries.length > 0 ? entries.sort((x, y) => y[1] - x[1])[0][0] : "Non affecté";
         delete a.cisCount;
     }
 

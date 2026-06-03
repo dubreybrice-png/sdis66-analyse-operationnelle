@@ -1108,10 +1108,10 @@
     };
 
     function askPass(target) {
+        if(target==='chef') { toast('🚧 Accès chefferie en cours de travaux', 'warn'); return; }
         const p=prompt("Mot de passe :");
         if(p==="0007"){
             document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
-            if(target==='chef') document.getElementById('viewChefferie').classList.add('active');
             if(target==='med') { document.getElementById('viewMedecin').classList.add('active'); loadChefCase('med_chef'); }
         } else toast("Erreur");
     }
