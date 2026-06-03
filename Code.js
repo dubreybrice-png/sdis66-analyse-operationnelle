@@ -3289,20 +3289,64 @@ function getMailingData() {
     const dash = ss.getSheetByName(DASHBOARD_SHEET_NAME);
     const rawAgents = dash.getRange("S3:AQ79").getValues();
 
+    // Normalise un nom : MAJUSCULES sans accents (pour matching fiable)
+    const normNom = n => String(n||'').trim().toUpperCase()
+                          .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+    // Affectations officielles.
+    // cis1 = CIS principal, cis2 = CIS secondaire optionnel, suffix = texte apres le nom.
+    // Si cis1 est defini : override le vote-majority.
+    // cis1: null -> agent exclu.
+    const AFFECTATIONS = {
+      // Agents sans interventions APP (ou affectation forcee)
+      'AUGUET ELYSE':           { cis1: 'VALLESPIR' },
+      'BASSAL THOMAS':          { cis1: 'RIVESALTES' },
+      'BERTRAN REMI':           { cis1: 'CANET EN ROUSSILLON' },
+      'COLLARD PREVOST EMILIE': { cis1: 'RIBERAL',          suffix: ' (en dispo)' },
+      'COMAS ELODIE':           { cis1: 'CANET EN ROUSSILLON' },
+      'CRIBEILLET SIMON':       { cis1: 'PERPIGNAN SUD',    suffix: ' (en dispo)' },
+      'CUEVAS ISABEL':          { cis1: 'VINCA' },
+      'FERRARI MADISON':        { cis1: 'PERPIGNAN SUD',    suffix: ' (en dispo)' },
+      'FIORENZA LUCIE':         { cis1: 'PERPIGNAN SUD',    suffix: ' (en dispo)' },
+      'FREZOUL MARLENE':        { cis1: 'PERPIGNAN NORD' },
+      'JOAO CLEMENTINE':        { cis1: 'PERPIGNAN SUD',    suffix: ' (en dispo)' },
+      'LE ROY JEAN-LUC':        { cis1: 'CANET EN ROUSSILLON' },
+      'MASSE ALISON':           { cis1: 'ILLE SUR TET' },
+      'PERIE ANAIS':            { cis1: 'LES ASPRES' },
+      'PICARD YANNICK':         { cis1: 'PERPIGNAN NORD',   suffix: ' (en dispo)' },
+      'PIGUILLEM ALEXANDRA':    { cis1: 'PERPIGNAN OUEST' },
+      'PIQUE CHARLOTTE':        { cis1: 'PERPIGNAN NORD',   suffix: ' (en dispo)' },
+      'RIERA SAFYA':            { cis1: 'ELNE' },
+      'SARRAZIN VANESSA':       { cis1: 'RIBERAL',          suffix: ' (en dispo)' },
+      'SOLEY ANAIS':            { cis1: 'RIVESALTES' },
+      'WIEGAND RAYMOND CECILE': { cis1: 'RIBERAL' },
+      // Agents bi-CIS : apparaissent dans les deux groupes
+      // mInter split par CIS, mAst comptee une seule fois (CIS principal)
+      'BEDU ANTOINE':           { cis1: 'ELNE',           cis2: 'PERPIGNAN SUD' },
+      'BROUART CEDRIC':         { cis1: 'VINGRAU',        cis2: 'PERPIGNAN NORD' },
+      'CAMBILLAU FRANCOISE':    { cis1: 'PERPIGNAN NORD', cis2: 'MAURY' },
+      'CASTANY ELISE':          { cis1: 'VINCA',          cis2: 'PERPIGNAN NORD' },
+    };
+
     const agentMap = {};
     for (let i = 0; i < rawAgents.length; i++) {
         const mat = normalizeMat(rawAgents[i][1]);
-        if (mat) {
-            agentMap[mat] = {
-                nom:      String(rawAgents[i][0]).trim(),
-                mat:      mat,
-                cisCount: {},
-                mAst:     new Array(12).fill(0),
-                mInter:   new Array(12).fill(0)
-            };
-        }
+        const nom = String(rawAgents[i][0]).trim();
+        if (!mat) continue;
+        const aff = AFFECTATIONS[normNom(nom)];
+        agentMap[mat] = {
+            nom:         nom,
+            mat:         mat,
+            cis1:        aff !== undefined ? aff.cis1 : null,  // null = vote-majority
+            cis2:        aff ? (aff.cis2 || null) : null,
+            suffix:      aff ? (aff.suffix || '') : '',
+            cisVotes:    {},
+            mAst:        new Array(12).fill(0),
+            mInterByCis: {}
+        };
     }
 
+    // Astreinte globale (TEMPS n'a pas de colonne CIS)
     const shTemps = ss.getSheetByName(TEMPS_SHEET_NAME);
     if (shTemps) {
         const data = shTemps.getDataRange().getValues();
@@ -3315,87 +3359,64 @@ function getMailingData() {
         }
     }
 
+    // Interventions par CIS
     const shApp = ss.getSheetByName(APP_SHEET_NAME);
     if (shApp) {
         const data = shApp.getDataRange().getValues();
         for (let i = 1; i < data.length; i++) {
             const mat = normalizeMat(data[i][C_APP_MAT]);
             if (!mat || !agentMap[mat]) continue;
-            const centre = String(data[i][C_APP_CIS] || "").trim();
+            const centre = String(data[i][C_APP_CIS] || '').trim();
             const d = coerceToDateTime_(data[i][C_APP_DATE]);
-            if (centre && centre !== "SD SSSM") {
-                agentMap[mat].cisCount[centre] = (agentMap[mat].cisCount[centre] || 0) + 1;
-                if (d) agentMap[mat].mInter[d.getMonth()] += 1;
-            }
+            if (!centre || centre === 'SD SSSM') continue;
+            agentMap[mat].cisVotes[centre] = (agentMap[mat].cisVotes[centre] || 0) + 1;
+            if (!agentMap[mat].mInterByCis[centre]) agentMap[mat].mInterByCis[centre] = new Array(12).fill(0);
+            if (d) agentMap[mat].mInterByCis[centre][d.getMonth()] += 1;
         }
     }
 
-    // Affectations manuelles pour les agents sans interventions dans APP
-    // Clé = nom exact (majuscules), valeur = { cis, suffix? }
-    // suffix = texte ajouté après le nom dans l'affichage
-    const AFFECTATIONS_MANUELLES = {
-      'BASSAL THOMAS':           { cis: 'PERPIGNAN SUD',    suffix: ' (en dispo)' },
-      'BERTRAN REMI':            { cis: 'CANET EN ROUSSILLON' },
-      'COLLARD PREVOST EMILIE':  { cis: 'RIBERAL',          suffix: ' (en dispo)' },
-      'COMAS ELODIE':            { cis: 'CANET EN ROUSSILLON' },
-      'CUEVAS ISABEL':           { cis: 'VINCA' },
-      'FERRARI MADISON':         { cis: 'PERPIGNAN SUD',    suffix: ' (en dispo)' },
-      'FIORENZA LUCIE':          { cis: 'PERPIGNAN SUD',    suffix: ' (en dispo)' },
-      'FREZOUL MARLENE':         { cis: 'PERPIGNAN NORD' },
-      'JOAO CLEMENTINE':         { cis: 'PERPIGNAN SUD',    suffix: ' (en dispo)' },
-      'LE ROY JEAN-LUC':         { cis: 'CANET EN ROUSSILLON' },
-      'MASSE ALISON':            { cis: 'ILLE SUR TET' },
-      'PERIE ANAIS':             { cis: 'LES ASPRES' },
-      'PIGUILLEM ALEXANDRA':     { cis: 'PERPIGNAN OUEST' },
-      'RIERA SAFYA':             { cis: 'ELNE' },
-      'SARRAZIN VANESSA':        { cis: 'RIBERAL',          suffix: ' (en dispo)' },
-      'SOLEY ANAIS':             { cis: 'RIVESALTES' },
-      'WIEGAND RAYMOND CECILE':  { cis: 'RIBERAL' },
-      // Agents à exclure totalement
-      'AUGUET ELYSE':            { cis: null },
-      'CRIBEILLET SIMON':        { cis: null },
-      'PICARD YANNICK':          { cis: null },
-      'PIQUE CHARLOTTE':         { cis: null }
+    // Resoudre CIS1 pour agents sans affectation officielle (vote-majority)
+    for (const mat in agentMap) {
+        const a = agentMap[mat];
+        if (a.cis1 === null) {
+            const entries = Object.entries(a.cisVotes);
+            a.cis1 = entries.length > 0
+                ? entries.sort((x, y) => y[1] - x[1])[0][0]
+                : 'Non affecte';
+        }
+    }
+
+    // Grouper par CIS
+    // Pour les bi-CIS : l'agent apparait dans 2 groupes
+    //   - CIS principal (isPrimary=true)  : mInter de ce CIS + astreinte totale
+    //   - CIS secondaire (isPrimary=false): mInter de ce CIS + astreinte = 0 (evite doublon)
+    const byCis = {};
+    const pushAgent = (cis, a, isPrimary) => {
+        if (cis === null) return; // exclu
+        const grp = cis || 'Non affecte';
+        if (!byCis[grp]) byCis[grp] = [];
+        const mInter = (a.mInterByCis[cis] || new Array(12).fill(0)).slice();
+        const mAst   = isPrimary ? a.mAst.slice() : new Array(12).fill(0);
+        byCis[grp].push({
+            nom:        a.nom + (isPrimary ? a.suffix : ''),
+            mAst:       mAst.map(h => Math.round(h * 2) / 2),
+            mInter:     mInter,
+            totalAst:   isPrimary ? Math.ceil(a.mAst.reduce((s, v) => s + v, 0)) : 0,
+            totalInter: mInter.reduce((s, v) => s + v, 0)
+        });
     };
 
     for (const mat in agentMap) {
         const a = agentMap[mat];
-        const entries = Object.entries(a.cisCount);
-        if (entries.length > 0) {
-            a.cis = entries.sort((x, y) => y[1] - x[1])[0][0];
-        } else {
-            const override = AFFECTATIONS_MANUELLES[a.nom];
-            if (override !== undefined) {
-                a.cis = override.cis; // null = exclure
-                if (override.suffix) a.nom = a.nom + override.suffix;
-            } else {
-                a.cis = 'Non affecté';
-            }
-        }
-        delete a.cisCount;
-    }
-
-    const byCis = {};
-    for (const mat in agentMap) {
-        const a = agentMap[mat];
-        if (a.cis === null) continue; // agent exclu
-        const cis = a.cis || "Non affecté";
-        if (!byCis[cis]) byCis[cis] = [];
-        byCis[cis].push({
-            nom:        a.nom,
-            mAst:       a.mAst.map(h => Math.round(h * 2) / 2),
-            mInter:     a.mInter,
-            totalAst:   Math.ceil(a.mAst.reduce((s, v) => s + v, 0)),
-            totalInter: a.mInter.reduce((s, v) => s + v, 0)
-        });
+        pushAgent(a.cis1, a, true);
+        if (a.cis2) pushAgent(a.cis2, a, false);
     }
 
     const cisKeys = Object.keys(byCis).sort();
     return cisKeys
         .map(cis => ({
-            cis: cis,
-            agents: byCis[cis]
-                .sort((a, b) => a.nom.localeCompare(b.nom, 'fr'))
+            cis:    cis,
+            agents: byCis[cis].sort((a, b) => a.nom.localeCompare(b.nom, 'fr'))
         }))
         .filter(g => g.agents.length > 0);
 }
