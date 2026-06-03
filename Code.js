@@ -3571,16 +3571,22 @@ function _diagWriteResults(ss, alexM, eveO, eveQ, curAlex, curEve) {
 
   sh.getRange(1, 1, data.length, header.length).setValues(data);
   sh.getRange(1, 1, 1, header.length).setFontWeight("bold").setBackground("#0d47a1").setFontColor("#ffffff");
-  sh.autoResizeColumns(1, header.length);
 
-  // Colorier les lignes décalées en orange
+  // Colorisation en un seul appel batch
+  const bgColors = [];
   for (let r = 1; r < data.length; r++) {
-    if (String(data[r][7]).includes("DÉCALÉ")) {
-      sh.getRange(r + 1, 1, 1, header.length).setBackground("#fff3e0");
-    } else if (String(data[r][7]).includes("NON TROUVÉ")) {
-      sh.getRange(r + 1, 1, 1, header.length).setBackground("#ffebee");
-    }
+    const status = String(data[r][7]);
+    let color;
+    if (status.includes("DÉCALÉ"))     color = "#fff3e0";
+    else if (status.includes("NON TROUVÉ")) color = "#ffebee";
+    else                                color = null;
+    bgColors.push(new Array(header.length).fill(color));
   }
+  if (bgColors.length > 0) {
+    sh.getRange(2, 1, bgColors.length, header.length).setBackgrounds(bgColors);
+  }
+
+  sh.autoResizeColumns(1, header.length);
 
   Logger.log("Résultats écrits dans DIAG_DECALAGE : " + (data.length - 1) + " lignes");
   SpreadsheetApp.getUi().alert(
