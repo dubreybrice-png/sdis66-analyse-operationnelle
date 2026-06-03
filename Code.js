@@ -3306,100 +3306,24 @@ function getMailingData() {
       'AUGUET ELYSE':           { cis1: 'VALLESPIR' },
       'BASSAL THOMAS':          { cis1: 'RIVESALTES' },
       'BERTRAN REMI':           { cis1: 'CANET EN ROUSSILLON' },
-      'COLLARD PREVOST EMILIE': { cis1: 'RIBERAL',          suffix: ' (en dispo)' },
+      'COLLARD PREVOST EMILIE': { cis1: 'RIBERAL', hidden: true },
       'COMAS ELODIE':           { cis1: 'CANET EN ROUSSILLON' },
-      'CRIBEILLET SIMON':       { cis1: 'PERPIGNAN SUD',    suffix: ' (en dispo)' },
+      'CRIBEILLET SIMON':       { cis1: 'PERPIGNAN SUD', hidden: true },
       'CUEVAS ISABEL':          { cis1: 'VINCA' },
-      'FERRARI MADISON':        { cis1: 'PERPIGNAN SUD',    suffix: ' (en dispo)' },
-      'FIORENZA LUCIE':         { cis1: 'PERPIGNAN SUD',    suffix: ' (en dispo)' },
+      'FERRARI MADISON':        { cis1: 'PERPIGNAN SUD', hidden: true },
+      'FIORENZA LUCIE':         { cis1: 'PERPIGNAN SUD', hidden: true },
       'FREZOUL MARLENE':        { cis1: 'PERPIGNAN NORD' },
-      'JOAO CLEMENTINE':        { cis1: 'PERPIGNAN SUD',    suffix: ' (en dispo)' },
+      'JOAO CLEMENTINE':        { cis1: 'PERPIGNAN SUD', hidden: true },
       'LE ROY JEAN-LUC':        { cis1: 'CANET EN ROUSSILLON' },
       'MASSE ALISON':           { cis1: 'ILLE SUR TET' },
       'PERIE ANAIS':            { cis1: 'LES ASPRES' },
-      'PICARD YANNICK':         { cis1: 'PERPIGNAN NORD',   suffix: ' (en dispo)' },
+      'PICARD YANNICK':         { cis1: 'PERPIGNAN NORD', hidden: true },
       'PIGUILLEM ALEXANDRA':    { cis1: 'PERPIGNAN OUEST' },
-      'PIQUE CHARLOTTE':        { cis1: 'PERPIGNAN NORD',   suffix: ' (en dispo)' },
+      'PIQUE CHARLOTTE':        { cis1: 'PERPIGNAN NORD', hidden: true },
       'RIERA SAFYA':            { cis1: 'ELNE' },
-      'SARRAZIN VANESSA':       { cis1: 'RIBERAL',          suffix: ' (en dispo)' },
+      'SARRAZIN VANESSA':       { cis1: 'RIBERAL', hidden: true },
       'SOLEY ANAIS':            { cis1: 'RIVESALTES' },
       'WIEGAND RAYMOND CECILE': { cis1: 'RIBERAL' },
-      // Agents avec affectation explicite (tout le referentiel)
-      'ANXIONNAZ SABRINA':       { cis1: 'PERPIGNAN SUD' },
-      'BARRERE JUSTINE':         { cis1: 'BANYULS' },
-      'BEJAT FLORIE':            { cis1: 'PERPIGNAN SUD' },
-      'BELNOUE LUCY':            { cis1: 'PERPIGNAN SUD' },
-      'BENAZET MARINE':          { cis1: 'PERPIGNAN SUD' },
-      'BODE--FOUSSARD LINA':     { cis1: 'BOULOU' },
-      'BOIS FLORIAN':            { cis1: 'CANET EN ROUSSILLON' },
-      'BONAFOS REMY':            { cis1: 'SAINT CYPRIEN' },
-      'BOSCHSACOMA JULIE':       { cis1: 'CERET' },
-      'BRAU MELANIE':            { cis1: 'ARGELES' },
-      'BURCET ALEXANDRE':        { cis1: 'PERPIGNAN SUD' },
-      'CALVET SEVERINE':         { cis1: 'CANET EN ROUSSILLON' },
-      'CAPUANO YANNICK':         { cis1: 'PERPIGNAN NORD' },
-      'CAROL EMMANUELLE':        { cis1: 'COTE VERMEILLE' },
-      'CHALOT SOPHIE':           { cis1: 'PALAU' },
-      'CHANSON JENNIFER':        { cis1: 'RIVESALTES' },
-      'CHASTANG GUILLAUME':      { cis1: 'BOULOU' },
-      'CONDEMINAS CEDRIC':       { cis1: 'PERPIGNAN NORD' },
-      'COSTA BRUNO':             { cis1: 'ILLE SUR TET' },
-      'CUNILL CAROLINE':         { cis1: 'MILLAS' },
-      'DELABRIERE JULIA':        { cis1: 'PERPIGNAN NORD' },
-      'DENIAU DANIELE':          { cis1: 'LES ASPRES' },
-      'DIAZ MARIN ISABEL':       { cis1: 'CERDAGNE' },
-      'DUBREY BRICE':            { cis1: 'MILLAS' },
-      'DUCHET MARIE':            { cis1: 'BAIXAS' },
-      'FALGARONNE THOMAS':       { cis1: 'BOULOU' },
-      'FAURE ALICE':             { cis1: 'AGLY' },
-      'FORT THOMAS':             { cis1: 'BOULOU' },
-      'FRIEDERICH JOELLE':       { cis1: 'VINCA' },
-      'GARCIA GIL CLAUDIA':      { cis1: 'SAILLAGOUSE' },
-      'GARRIGUE OLIVIER':        { cis1: 'PALAU' },
-      'GIMENEZ JENNIFER':        { cis1: 'SAILLAGOUSE' },
-      'GIPULO MATHIEU':          { cis1: 'ILLE SUR TET' },
-      'GOUNA NADINE':            { cis1: 'PERPIGNAN OUEST' },
-      'GRISOT ELISA':            { cis1: 'MILLAS' },
-      'HERBAUT MERYL':           { cis1: 'ELNE' },
-      'KAZANDJIAN SARAH':        { cis1: 'RIVESALTES' },
-      'LABE ANAIS':              { cis1: 'PERPIGNAN NORD' },
-      'LAMBERT EMMANUELLE':      { cis1: 'ELNE' },
-      'LASSAGNE JEAN-MICHEL':    { cis1: 'PRATS DE MOLLO' },
-      'LEBEAU ANNE':             { cis1: 'OLETTE' },
-      'LECOEUR YANN':            { cis1: 'AGLY' },
-      'LOPEZ LYDIE':             { cis1: 'SAINT PAUL DE FENOUILLET' },
-      'MALE SANDRINE':           { cis1: 'PERPIGNAN OUEST' },
-      'MANO CHRISTELLE':         { cis1: 'ELNE' },
-      'MARAVAL KARINE':          { cis1: 'MILLAS' },
-      'MARMET CHRISTOPHE':       { cis1: 'SAINT CYPRIEN' },
-      'MARQUES GOMES CARLOS':    { cis1: 'MILLAS' },
-      'MATHIEU JONATHAN':        { cis1: 'SALANQUE' },
-      'NABONNE AGNES':           { cis1: 'RIVESALTES' },
-      'NACHEZ AUDREY':           { cis1: 'BOULOU' },
-      'PARES-BORRAT CELINE':     { cis1: 'PERPIGNAN OUEST' },
-      'PETIPRE CHLOE':           { cis1: 'PERPIGNAN SUD' },
-      'PI MARION':               { cis1: 'VALLESPIR' },
-      'POMEROLE ELISA':          { cis1: 'SALANQUE' },
-      'PONS EMELINE':            { cis1: 'CERET' },
-      'PY KRISTELE':             { cis1: 'PERPIGNAN OUEST' },
-      'RAINOTTE NICOLAS':        { cis1: 'PERPIGNAN SUD' },
-      'RAYNAUD CINDY':           { cis1: 'SAINT PAUL DE FENOUILLET' },
-      'RIBES ANNE':              { cis1: 'ST LAURENT DE CERDANS' },
-      'ROBOAM JULIE':            { cis1: 'PORTE' },
-      'ROQUE CHRISTINE':         { cis1: 'BANYULS' },
-      'ROUSSET VALERIE':         { cis1: 'SALANQUE' },
-      'SALLES-MAZOU AUDREY':     { cis1: 'RIBERAL' },
-      'SANCHEZ SOPHIE':          { cis1: 'LES ASPRES' },
-      'SAUTIN AMANDINE':         { cis1: 'RIBERAL' },
-      'SOLEY GUILLAUME':         { cis1: 'RIVESALTES' },
-      'SOLLIEC RONAN':           { cis1: 'RIVESALTES' },
-      'SOTO YANNICK':            { cis1: 'LES ASPRES' },
-      'SPILEMONT JEAN-BAPTISTE': { cis1: 'BOULOU' },
-      'TCHEPAK STEPHANE':        { cis1: 'MILLAS' },
-      'TOUSTOU JEAN-CHRISTOPHE': { cis1: 'PERPIGNAN SUD' },
-      'VAN DEN BERGH KEVIN':     { cis1: 'LES ASPRES' },
-      'VANNEPH MATHILDE':        { cis1: 'PERPIGNAN SUD' },
-      'VERDAGUER-CLARA MORGANE': { cis1: 'RIBERAL' },
       // Agents bi-CIS : apparaissent dans les deux groupes
       // mInter split par CIS, mAst comptee une seule fois (CIS principal)
       'BEDU ANTOINE':           { cis1: 'ELNE',           cis2: 'PERPIGNAN SUD' },
@@ -3419,41 +3343,37 @@ function getMailingData() {
             mat:         mat,
             cis1:        aff !== undefined ? aff.cis1 : null,  // null = vote-majority
             cis2:        aff ? (aff.cis2 || null) : null,
-            suffix:      aff ? (aff.suffix || '') : '',
+            suffix:      '',
+            hidden:      aff ? (aff.hidden || false) : false,
             cisVotes:    {},
             mAst:        new Array(12).fill(0),
             mInterByCis: {}
         };
     }
 
-    // Astreinte globale (TEMPS n'a pas de colonne CIS)
+    // Dispo/astreinte : col K (idx 10) = matricule, col J (idx 9) = date, col O (idx 14) = CIS
+    // 1 ligne = 30 min = 0.5h
+    // Colonnes A-F = garde (ignorées ici) ; colonnes J-P = dispo/astreinte
     const shTemps = ss.getSheetByName(TEMPS_SHEET_NAME);
     if (shTemps) {
         const data = shTemps.getDataRange().getValues();
         for (let i = 1; i < data.length; i++) {
-            const matAst = normalizeMat(data[i][C_TEMPS_MAT_AST]);
-            if (matAst && agentMap[matAst]) {
-                const dA = coerceToDateTime_(data[i][C_TEMPS_DATE_AST]);
-                if (dA) agentMap[matAst].mAst[dA.getMonth()] += 0.5;
+            const matAst = normalizeMat(data[i][C_TEMPS_MAT_AST]); // col K
+            if (!matAst || !agentMap[matAst]) continue;
+            const cisTT = String(data[i][14] || '').trim();        // col O = CIS
+            if (!cisTT) continue;                                   // pas une ligne dispo/astreinte
+            const dA = coerceToDateTime_(data[i][9]);              // col J = date
+            const a = agentMap[matAst];
+            const cisNormTT = normCis(cisTT);
+            cisNormToDisplay[cisNormTT] = cisNormToDisplay[cisNormTT] || cisTT;
+            // Votes pour vote-majority
+            a.cisVotes[cisNormTT] = (a.cisVotes[cisNormTT] || 0) + 1;
+            // Heures par CIS (pour bi-CIS split)
+            if (!a.mInterByCis[cisNormTT]) a.mInterByCis[cisNormTT] = new Array(12).fill(0);
+            if (dA) {
+                a.mInterByCis[cisNormTT][dA.getMonth()] += 0.5;
+                a.mAst[dA.getMonth()] += 0.5; // total astreinte agent
             }
-        }
-    }
-
-    // Interventions par CIS
-    const shApp = ss.getSheetByName(APP_SHEET_NAME);
-    if (shApp) {
-        const data = shApp.getDataRange().getValues();
-        for (let i = 1; i < data.length; i++) {
-            const mat = normalizeMat(data[i][C_APP_MAT]);
-            if (!mat || !agentMap[mat]) continue;
-            const centre = String(data[i][C_APP_CIS] || '').trim();
-            const d = coerceToDateTime_(data[i][C_APP_DATE]);
-            if (!centre || centre === 'SD SSSM') continue;
-            const centreNorm = normCis(centre);
-            cisNormToDisplay[centreNorm] = cisNormToDisplay[centreNorm] || centre;
-            agentMap[mat].cisVotes[centreNorm] = (agentMap[mat].cisVotes[centreNorm] || 0) + 1;
-            if (!agentMap[mat].mInterByCis[centreNorm]) agentMap[mat].mInterByCis[centreNorm] = new Array(12).fill(0);
-            if (d) agentMap[mat].mInterByCis[centreNorm][d.getMonth()] += 1;
         }
     }
 
@@ -3475,6 +3395,7 @@ function getMailingData() {
     const byCis = {};
     const pushAgent = (cis, a, isPrimary) => {
         if (cis === null) return; // exclu
+        if (a.hidden) return;    // en dispo : masque
         const cisNorm = normCis(cis);
         const grp = cisNorm || 'Non affecte';
         if (!byCis[grp]) byCis[grp] = [];
