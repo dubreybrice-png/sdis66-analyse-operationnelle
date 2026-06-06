@@ -1,0 +1,479 @@
+<!doctype html>
+<!-- ISP Public View — SDS 66 Analyse Opérationnelle -->
+<html>
+<head>
+  <base target="_top">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Vue ISP — SDS 66</title>
+  <style>
+    :root {
+      --bg:#e8ecf3; --text:#2c3e50; --muted:#6b7b8d; --border:rgba(0,0,0,.1);
+      --accent:#2196F3; --ok:#27ae60; --orange:#e67e22; --red:#e74c3c;
+      --card:#fff; --shadow: 0 2px 10px rgba(0,0,0,.07);
+    }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:ui-sans-serif,system-ui,-apple-system,sans-serif; background:var(--bg); color:var(--text); font-size:13px; min-height:100vh; }
+
+    /* ── HEADER ── */
+    header { background:linear-gradient(135deg,#1b2a4a 0%,#162240 100%); color:#fff; padding:16px 24px; display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap; box-shadow:0 2px 12px rgba(0,0,0,.25); }
+    .hdr-left { display:flex; flex-direction:column; gap:4px; }
+    .hdr-name { font-size:22px; font-weight:800; letter-spacing:-.3px; }
+    .hdr-sub  { font-size:11px; color:#8090a8; }
+    .taux-badge { background:rgba(33,150,243,.2); border:1px solid rgba(33,150,243,.5); border-radius:10px; padding:10px 18px; text-align:center; }
+    .taux-val { font-size:26px; font-weight:700; color:#6ea8fe; line-height:1; }
+    .taux-lbl { font-size:10px; color:#8090a8; text-transform:uppercase; letter-spacing:.5px; margin-top:2px; }
+
+    /* ── KPI STRIP ── */
+    .kpi-strip { display:flex; gap:12px; padding:16px 24px; flex-wrap:wrap; }
+    .kpi { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:12px 16px; min-width:130px; flex:1; box-shadow:var(--shadow); }
+    .kpi-lbl { font-size:10px; text-transform:uppercase; color:var(--muted); letter-spacing:.4px; }
+    .kpi-val { font-size:24px; font-weight:700; margin-top:3px; color:var(--text); }
+    .kpi-sub { font-size:11px; color:var(--muted); margin-top:2px; }
+    .kpi.accent { border-top:3px solid var(--accent); }
+    .kpi.green  { border-top:3px solid var(--ok); }
+
+    /* ── SECTION ── */
+    .section { margin:0 24px 20px; }
+    .sec-title { font-size:13px; font-weight:700; color:var(--text); margin-bottom:10px; padding-bottom:5px; border-bottom:2px solid var(--accent); display:inline-block; }
+
+    /* ── PANEL ── */
+    .panel { background:var(--card); border:1px solid var(--border); border-radius:12px; overflow:hidden; box-shadow:var(--shadow); }
+    .scroll-wrap { overflow-x:auto; }
+
+    /* ── TABLE ── */
+    table { width:100%; border-collapse:collapse; font-size:11px; }
+    thead { position:sticky; top:0; z-index:3; }
+    th { background:#f0f2f5; text-align:center; padding:7px 10px; border-bottom:1px solid var(--border); font-size:10px; text-transform:uppercase; color:var(--muted); white-space:nowrap; font-weight:700; }
+    th.left { text-align:left; }
+    td { padding:6px 10px; border-bottom:1px solid rgba(0,0,0,.04); text-align:center; white-space:nowrap; }
+    td.left { text-align:left; white-space:normal; }
+    tbody tr:hover td { background:rgba(33,150,243,.06); cursor:pointer; }
+    .num { font-family:monospace; }
+    .cell-hi { background:rgba(33,150,243,.1) !important; font-weight:700; }
+    .cell-zero { color:#ccc; }
+
+    /* ── BILAN COUNT CARDS ── */
+    .bilan-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:14px; }
+    .bc { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:14px; text-align:center; box-shadow:var(--shadow); }
+    .bc.vert   { border-top:4px solid var(--ok); }
+    .bc.orange { border-top:4px solid var(--orange); }
+    .bc.rouge  { border-top:4px solid var(--red); }
+    .bc-num { font-size:30px; font-weight:800; line-height:1; }
+    .bc-num.vert   { color:var(--ok); }
+    .bc-num.orange { color:var(--orange); }
+    .bc-num.rouge  { color:var(--red); }
+    .bc-lbl { font-size:11px; color:var(--muted); margin-top:4px; }
+
+    /* ── TAGS ── */
+    .tag { display:inline-block; padding:2px 7px; border-radius:12px; font-size:10px; font-weight:600; border:1px solid transparent; margin:1px; }
+    .tag-ok     { color:var(--ok);     border-color:var(--ok);     background:rgba(39,174,96,.08); }
+    .tag-orange { color:var(--orange); border-color:var(--orange); background:rgba(230,126,34,.08); }
+    .tag-red    { color:var(--red);    border-color:var(--red);    background:rgba(231,76,60,.08); }
+
+    /* ── MODAL ── */
+    .modal-ov { display:none; position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:9999; align-items:center; justify-content:center; backdrop-filter:blur(4px); }
+    .modal-ov.open { display:flex; }
+    .modal-card { background:#fff; border-radius:16px; width:96%; max-width:1150px; height:92vh; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 8px 48px rgba(0,0,0,.25); }
+    .modal-head { padding:14px 18px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; font-weight:700; font-size:14px; flex-shrink:0; }
+    .modal-close { background:none; border:none; font-size:24px; cursor:pointer; color:var(--muted); line-height:1; padding:0 4px; }
+    .modal-close:hover { color:var(--red); }
+    .modal-body { display:flex; flex:1; overflow:hidden; }
+    .modal-pdf-wrap { flex:2.5; position:relative; background:#1a1a2e; }
+    .modal-pdf-host { position:absolute; inset:0; width:100%; height:100%; }
+    .modal-pdf-host iframe,
+    .modal-pdf-host object,
+    .modal-pdf-host embed { position:absolute; inset:0; width:100%; height:100%; border:0; }
+    .modal-info { flex:1; min-width:280px; max-width:340px; padding:16px; overflow-y:auto; border-left:1px solid var(--border); display:flex; flex-direction:column; gap:10px; background:#f8f9fb; }
+    .comm-box { background:#fff; border:1px solid var(--border); border-radius:8px; padding:10px 12px; }
+    .comm-lbl { font-size:10px; text-transform:uppercase; color:var(--muted); font-weight:700; margin-bottom:5px; letter-spacing:.4px; }
+    .comm-txt { font-size:12px; color:var(--text); line-height:1.55; }
+    .comm-txt.empty { color:var(--muted); font-style:italic; }
+    .modal-meta { display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--muted); padding:6px 0; }
+    .modal-meta span { display:flex; gap:6px; }
+    .modal-meta b { color:var(--text); }
+
+    /* ── LOADING / ERROR ── */
+    #loading { display:flex; align-items:center; justify-content:center; height:70vh; flex-direction:column; gap:12px; color:var(--muted); }
+    .spinner { width:38px; height:38px; border:3px solid #dde2ea; border-top-color:var(--accent); border-radius:50%; animation:spin .7s linear infinite; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .error-box { max-width:440px; margin:60px auto; background:#fff0f0; border:1px solid var(--red); border-radius:12px; padding:28px; text-align:center; color:var(--red); font-size:14px; font-weight:600; }
+
+    /* ── MISC ── */
+    .spacer-top { height:4px; }
+    .no-data-row td { color:var(--muted); text-align:center; padding:20px; font-style:italic; }
+  </style>
+</head>
+<body>
+
+  <div id="loading"><div class="spinner"></div><div>Chargement de vos données...</div></div>
+  <div id="errBox" style="display:none"></div>
+
+  <div id="app" style="display:none">
+
+    <!-- HEADER -->
+    <header>
+      <div class="hdr-left">
+        <div class="hdr-name" id="hdrName">—</div>
+        <div class="hdr-sub">Vue ISP · SDS 66 · Analyse Opérationnelle</div>
+      </div>
+      <div class="taux-badge">
+        <div class="taux-lbl">Taux de sollicitation</div>
+        <div class="taux-val" id="txSollVal">—</div>
+      </div>
+    </header>
+
+    <!-- KPI STRIP -->
+    <div class="kpi-strip" id="kpiStrip"></div>
+
+    <!-- TEMPS TRAVAIL 2026 MENSUEL -->
+    <div class="section">
+      <div class="sec-title">📅 Temps de travail 2026 — mensuel</div>
+      <div class="panel scroll-wrap">
+        <table id="tbl2026"></table>
+      </div>
+    </div>
+
+    <!-- DONNÉES 2025 -->
+    <div class="section">
+      <div class="sec-title">📊 Données 2025</div>
+      <div class="panel">
+        <table id="tbl2025"></table>
+      </div>
+    </div>
+
+    <!-- BILANS -->
+    <div class="section">
+      <div class="sec-title">📋 Bilans d'interventions 2026</div>
+      <div class="bilan-grid" id="bilanCards"></div>
+      <div class="panel scroll-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th class="left">Date</th>
+              <th class="left">Motif</th>
+              <th class="left">Centre</th>
+              <th class="left">Engin</th>
+              <th class="left">Statut</th>
+              <th class="left">Analyse</th>
+            </tr>
+          </thead>
+          <tbody id="bilanTbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div style="height:30px"></div>
+  </div><!-- /app -->
+
+  <!-- MODAL BPV -->
+  <div id="modalOv" class="modal-ov" onclick="closeModalOv(event)">
+    <div class="modal-card">
+      <div class="modal-head">
+        <span id="modalTitle">Détails intervention</span>
+        <button class="modal-close" onclick="closeModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-pdf-wrap">
+          <div id="modalPdfHost" class="modal-pdf-host"></div>
+        </div>
+        <div class="modal-info">
+          <div class="modal-meta" id="modalMeta"></div>
+          <div class="comm-box">
+            <div class="comm-lbl">📝 Commentaire ISP</div>
+            <div class="comm-txt" id="mCommIsp"></div>
+          </div>
+          <div class="comm-box">
+            <div class="comm-lbl">🏥 Commentaire chefferie</div>
+            <div class="comm-txt" id="mCommChef"></div>
+          </div>
+          <div id="mCommMedBox" class="comm-box" style="display:none">
+            <div class="comm-lbl">⚕️ Commentaire médecin cheffe</div>
+            <div class="comm-txt" id="mCommMed"></div>
+          </div>
+          <div class="comm-box">
+            <div class="comm-lbl">🏷️ Résultat analyse</div>
+            <div id="mTags"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const SCRIPT_URL = "<?= scriptUrl ?>";
+    const ISP_TOKEN  = "<?= ispToken ?>";
+    const MOIS_COURT = ["Jan","Fév","Mar","Avr","Mai","Jun","Jul","Aoû","Sep","Oct","Nov","Déc"];
+    const NOW_MONTH  = new Date().getMonth();
+
+    var _details = [];
+    var _pdfObjectUrl = '';
+
+    // ── Load data ──
+    google.script.run
+      .withSuccessHandler(renderPage)
+      .withFailureHandler(function(e) { showErr(e.message || String(e)); })
+      .getIspPublicData(ISP_TOKEN);
+
+    function showErr(msg) {
+      document.getElementById('loading').style.display = 'none';
+      var el = document.getElementById('errBox');
+      el.innerHTML = '<div class="error-box">❌ ' + esc(msg) + '</div>';
+      el.style.display = '';
+    }
+
+    function renderPage(d) {
+      document.getElementById('loading').style.display = 'none';
+      if (!d || d.error) { showErr(d && d.error ? d.error : 'Erreur inconnue'); return; }
+      document.getElementById('app').style.display = '';
+
+      // Header
+      document.getElementById('hdrName').textContent = d.nom || '—';
+      var tx = d.txSoll;
+      document.getElementById('txSollVal').textContent = (typeof tx === 'number' && tx > 0)
+        ? (tx * 100).toFixed(1) + '%' : '—';
+
+      // KPI strip
+      var kpis = [
+        { lbl:'Inter HG 2026',    val: d.inter2026 || 0,           sub:'interventions hors garde',   cls:'accent' },
+        { lbl:'Astreinte 2026',   val: fmt(d.astreinte2026)+'h',   sub:'temps disponible total',     cls:'accent' },
+        { lbl:'Garde 2026',       val: fmt(d.garde2026)+'h',       sub:'temps de garde total',       cls:'' },
+        { lbl:'Inter HG 2025',    val: d.inter2025_ytd || 0,       sub:'cumul 2025 même période · '+( d.inter2025_tot||0)+' annuel', cls:'' },
+        { lbl:'Astreinte 2025',   val: fmt(d.astreinte2025_ytd)+'h', sub:'cumul 2025 même période · '+fmt(d.astreinte2025_tot)+'h annuel', cls:'' },
+        { lbl:'Bilans conformes', val: d.bilanOkCount || 0,        sub:'bilan OK 2026',              cls:'green' }
+      ];
+      document.getElementById('kpiStrip').innerHTML = kpis.map(function(k) {
+        return '<div class="kpi ' + k.cls + '">' +
+          '<div class="kpi-lbl">' + k.lbl + '</div>' +
+          '<div class="kpi-val">' + k.val + '</div>' +
+          '<div class="kpi-sub">' + k.sub + '</div>' +
+          '</div>';
+      }).join('');
+
+      // Monthly 2026 table
+      var mAst   = d.monthlyAst26   || new Array(12).fill(0);
+      var mGarde = d.monthlyGarde26 || new Array(12).fill(0);
+      var mInter = d.monthlyInter26 || new Array(12).fill(0);
+
+      var rows2026 = [
+        { lbl: 'Astreinte (h)',  data: mAst   },
+        { lbl: 'Garde (h)',      data: mGarde },
+        { lbl: 'Inter HG',       data: mInter }
+      ];
+
+      var html2026 = '<thead><tr><th class="left" style="min-width:110px">Indicateur</th>' +
+        MOIS_COURT.map(function(m, i) { return '<th' + (i===NOW_MONTH?' style="background:rgba(33,150,243,.15)"':'') + '>' + m + '</th>'; }).join('') +
+        '<th style="background:#e8ecf3">Total</th></tr></thead><tbody>';
+
+      rows2026.forEach(function(row) {
+        var tot = row.data.reduce(function(a,b){return a+b;},0);
+        html2026 += '<tr><td class="left" style="font-weight:700;padding-left:14px">' + row.lbl + '</td>';
+        row.data.forEach(function(v, i) {
+          var hi = i === NOW_MONTH ? ' cell-hi' : '';
+          html2026 += '<td class="num' + hi + '">' + (v > 0 ? fmtD(v) : '<span class="cell-zero">—</span>') + '</td>';
+        });
+        html2026 += '<td class="num" style="font-weight:700;background:rgba(0,0,0,.03)">' + fmtD(tot) + '</td></tr>';
+      });
+      html2026 += '</tbody>';
+      document.getElementById('tbl2026').innerHTML = html2026;
+
+      // 2025 table
+      var cutoffText = d.cutoffLabel ? ('Cumul 2025 au ' + d.cutoffLabel) : 'Cumul 2025 même période';
+      var cols2025 = ['', 'Total 2025 (annuel)', cutoffText];
+      var rows2025 = [
+        ['Inter HG',      d.inter2025_tot||0,                     d.inter2025_ytd||0],
+        ['Astreinte (h)', fmt(d.astreinte2025_tot||0)+'h',        fmt(d.astreinte2025_ytd||0)+'h'],
+        ['Garde (h)',     fmt(d.garde2025_tot||0)+'h',            fmt(d.garde2025_ytd||0)+'h']
+      ];
+      var html2025 = '<thead><tr>' + cols2025.map(function(c,i){ return '<th'+(i===0?' class="left"':'')+'>' + c + '</th>'; }).join('') + '</tr></thead><tbody>';
+      rows2025.forEach(function(r) {
+        html2025 += '<tr><td class="left" style="font-weight:700;padding-left:14px">' + r[0] + '</td><td class="num">' + r[1] + '</td><td class="num">' + r[2] + '</td></tr>';
+      });
+      html2025 += '</tbody>';
+      document.getElementById('tbl2025').innerHTML = html2025;
+
+      // Bilan count cards
+      var nOrange = ((d.errLegereBilan||[]).length) + ((d.errLegerePisu||[]).length);
+      var nRouge  = (d.errLourde||[]).length;
+      document.getElementById('bilanCards').innerHTML =
+        '<div class="bc vert"><div class="bc-num vert">' + (d.bilanOkCount||0) + '</div><div class="bc-lbl">✅ Bilans conformes</div></div>' +
+        '<div class="bc orange"><div class="bc-num orange">' + nOrange + '</div><div class="bc-lbl">⚠️ Erreurs légères</div></div>' +
+        '<div class="bc rouge"><div class="bc-num rouge">' + nRouge + '</div><div class="bc-lbl">🔴 Erreurs graves</div></div>';
+
+      // Bilan table
+      _details = d.details || [];
+      var tbody = document.getElementById('bilanTbody');
+      if (_details.length === 0) {
+        tbody.innerHTML = '<tr class="no-data-row"><td colspan="6">Aucun bilan disponible</td></tr>';
+      } else {
+        tbody.innerHTML = _details.map(function(item, idx) {
+          var typeTags = (item.types || []).map(function(t) {
+            var cls = t.indexOf('Légère') >= 0 ? 'tag-orange' : t.indexOf('Grave') >= 0 ? 'tag-red' : 'tag-ok';
+            return '<span class="tag ' + cls + '">' + esc(t) + '</span>';
+          }).join('');
+          if (!typeTags) typeTags = '<span style="color:#ccc;font-size:11px">—</span>';
+          return '<tr onclick="openModal(' + idx + ')">' +
+            '<td class="left">' + esc(item.date||'—') + '</td>' +
+            '<td class="left">' + esc(item.motif||'—') + '</td>' +
+            '<td class="left">' + esc(item.centre||'—') + '</td>' +
+            '<td class="left">' + esc(item.engin||'—') + '</td>' +
+            '<td class="left" style="color:var(--muted);font-size:11px">' + esc(item.status||'—') + '</td>' +
+            '<td class="left">' + typeTags + '</td>' +
+            '</tr>';
+        }).join('');
+      }
+    }
+
+    // ── Modal ──
+    function openModal(idx) {
+      var item = _details[idx];
+      if (!item) return;
+      document.getElementById('modalOv').classList.add('open');
+      document.getElementById('modalTitle').textContent =
+        'Intervention n°' + (item.id||'') + '  ·  ' + (item.date||'');
+
+      // Meta
+      document.getElementById('modalMeta').innerHTML =
+        '<span><b>Motif :</b> ' + esc(item.motif||'—') + '</span>' +
+        '<span><b>Centre :</b> ' + esc(item.centre||'—') + ' · ' + esc(item.engin||'—') + '</span>' +
+        '<span><b>Statut :</b> ' + esc(item.status||'—') + '</span>';
+
+      // PDF
+      showPdfLoading();
+      var _interId = item.id;
+      google.script.run
+        .withSuccessHandler(function(res) {
+          if (_pdfObjectUrl) { URL.revokeObjectURL(_pdfObjectUrl); _pdfObjectUrl = ''; }
+          if (res && res.ok && res.base64) {
+            try {
+              var bytes = Uint8Array.from(atob(res.base64), function(c){ return c.charCodeAt(0); });
+              var blob = new Blob([bytes], {type: res.mimeType || 'application/pdf'});
+              _pdfObjectUrl = URL.createObjectURL(blob);
+              renderPdfBlob(_pdfObjectUrl, 'Ouvrir le BPV');
+            } catch(ex) { showPdfError('Erreur décodage PDF : ' + ex); }
+          } else if (res && res.directUrl) {
+            var pu = toDrivePreviewUrl(res.directUrl);
+            if (pu) { renderPdfUrl(pu, 'Ouvrir le BPV'); }
+            else showPdfError(res.error || 'BPV non affichable.');
+          } else {
+            var msg = (res && res.error) ? res.error : 'BPV introuvable.';
+            if (res && res.detail) msg += ' ' + res.detail;
+            showPdfError(msg);
+          }
+        })
+        .withFailureHandler(function(err) { showPdfError('Erreur serveur : ' + String(err)); })
+        .getBpvPdfDataByToken(ISP_TOKEN, String(_interId));
+
+      // Comments
+      setComm('mCommIsp',  item.commIsp);
+      setComm('mCommChef', item.commChef);
+      setComm('mCommMed',  item.commMed);
+      document.getElementById('mCommMedBox').style.display = item.commMed ? '' : 'none';
+
+      // Tags
+      var tags = (item.types||[]).map(function(t) {
+        var cls = t.indexOf('Légère')>=0 ? 'tag-orange' : t.indexOf('Grave')>=0 ? 'tag-red' : 'tag-ok';
+        return '<span class="tag ' + cls + '">' + esc(t) + '</span>';
+      }).join(' ');
+      document.getElementById('mTags').innerHTML = tags || '<span style="color:var(--muted)">—</span>';
+    }
+
+    function setComm(id, text) {
+      var el = document.getElementById(id);
+      var t = (text||'').trim();
+      if (t) { el.textContent = t; el.className = 'comm-txt'; }
+      else   { el.textContent = 'Aucun commentaire'; el.className = 'comm-txt empty'; }
+    }
+
+    function closeModal() {
+      document.getElementById('modalOv').classList.remove('open');
+      document.getElementById('modalPdfHost').innerHTML = '';
+      if (_pdfObjectUrl) { URL.revokeObjectURL(_pdfObjectUrl); _pdfObjectUrl = ''; }
+    }
+    function closeModalOv(e) {
+      if (e && e.target === document.getElementById('modalOv')) closeModal();
+    }
+
+    // ── Helpers ──
+    function fmt(v)  { return Math.ceil(v||0); }
+    function fmtD(v) { var n = Math.ceil(v*2)/2; return n === Math.floor(n) ? String(n) : n.toFixed(1); }
+    function esc(s)  {
+      return String(s||'')
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function showPdfError(msg) {
+      var safe = esc(msg || 'Erreur');
+      var html = '<div style="font-family:system-ui,sans-serif;padding:24px;color:#2c3e50;background:#fff;height:100%">'
+        + '<h3 style="margin:0 0 10px">BPV non affichable</h3>'
+        + '<p style="margin:0;color:#6b7b8d">' + safe + '</p>'
+        + '</div>';
+      document.getElementById('modalPdfHost').innerHTML = html;
+    }
+
+    function showPdfLoading() {
+      document.getElementById('modalPdfHost').innerHTML =
+        '<div style="display:flex;align-items:center;justify-content:center;height:100%;font:14px system-ui,sans-serif;color:#cdd7ea">⏳ Chargement du BPV...</div>';
+    }
+
+    function renderPdfBlob(url, linkLabel) {
+      var u = String(url || '').trim();
+      if (!u) { showPdfError('URL BPV vide.'); return; }
+      var safeU = esc(u);
+      var lbl = esc(linkLabel || 'Ouvrir le BPV');
+      var html = '<div style="position:absolute;inset:0;background:#1a1a2e">'
+        + '<object data="' + safeU + '#toolbar=1&navpanes=0&scrollbar=1" type="application/pdf" width="100%" height="100%">'
+        + '<embed src="' + safeU + '#toolbar=1&navpanes=0&scrollbar=1" type="application/pdf" width="100%" height="100%" />'
+        + '<div style="padding:16px;color:#e8eefb;font:13px system-ui,sans-serif">'
+        + 'PDF non supporté par ce navigateur. <a href="' + safeU + '" target="_blank" style="color:#7fc1ff">' + lbl + ' ↗</a>'
+        + '</div>'
+        + '</object>'
+        + '</div>';
+      document.getElementById('modalPdfHost').innerHTML = html;
+    }
+
+    function renderPdfUrl(url, linkLabel) {
+      var u = String(url || '').trim();
+      if (!u) { showPdfError('URL BPV vide.'); return; }
+      var safeU = esc(u);
+      var lbl = esc(linkLabel || 'Ouvrir le BPV');
+      var html = '<div style="position:absolute;inset:0;background:#1a1a2e">'
+        + '<iframe src="' + safeU + '" referrerpolicy="no-referrer" allowfullscreen></iframe>'
+        + '<div style="position:absolute;top:8px;left:8px;z-index:2;background:rgba(16,26,51,.85);color:#cdd7ea;padding:6px 10px;border-radius:6px;font:12px system-ui,sans-serif">'
+        + 'Si besoin: <a href="' + safeU + '" target="_blank" style="color:#7fc1ff">' + lbl + ' ↗</a>'
+        + '</div>'
+        + '</div>';
+      document.getElementById('modalPdfHost').innerHTML = html;
+    }
+
+    function toDrivePreviewUrl(rawUrl) {
+      var s = String(rawUrl || '').trim();
+      if (!s || s === '—' || s.indexOf('#N/A') >= 0) return '';
+      // 1) Même logique que APP par ISP : remplacer /view -> /preview en conservant tout le reste
+      if (/drive\.google\.com/i.test(s)) {
+        if (s.indexOf('/preview') !== -1) return s;
+        if (s.indexOf('/view') !== -1) return s.replace('/view', '/preview');
+        if (s.indexOf('/edit') !== -1) return s.replace('/edit', '/preview');
+
+        // Cas open?id=... (+ éventuel resourcekey)
+        var mOpen = s.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+        if (mOpen && mOpen[1]) {
+          var rk = '';
+          var mRk = s.match(/[?&]resourcekey=([^&]+)/i);
+          if (mRk && mRk[1]) rk = '?resourcekey=' + mRk[1];
+          return 'https://drive.google.com/file/d/' + mOpen[1] + '/preview' + rk;
+        }
+      }
+
+      // Cas fallback par ID brut
+      var m = s.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+      if (m && m[1]) return 'https://drive.google.com/file/d/' + m[1] + '/preview';
+      m = s.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+      if (m && m[1]) return 'https://drive.google.com/file/d/' + m[1] + '/preview';
+
+      // Cas URL PDF externe : viewer embarqué
+      if (/^https?:\/\//i.test(s)) return 'https://docs.google.com/gview?embedded=1&url=' + encodeURIComponent(s);
+      return '';
+    }
+  </script>
+</body>
+</html>

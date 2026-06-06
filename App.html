@@ -152,6 +152,12 @@
         <div class="card">
             <div class="form" id="mainForm">
             
+            <!-- Information supplémentaire colonne T (lecture seule, masquée si vide) -->
+            <div id="infoTBox" style="display:none; margin:6px 6px 0 6px; padding:10px 12px; background:rgba(57,255,20,.08); border:1px solid rgba(57,255,20,.4); border-radius:8px;">
+                <div style="font-size:10px; font-weight:700; color:var(--accent3); margin-bottom:4px; text-transform:uppercase; letter-spacing:0.5px;">ℹ Information</div>
+                <div id="infoTText" style="font-size:13px; color:#e0e0e0; white-space:pre-wrap;"></div>
+            </div>
+
             <div class="group" style="padding:6px;">
                 <div style="display:flex;align-items:center;gap:10px;">
                     <label style="margin:0;">ISP Analyse :</label>
@@ -259,8 +265,26 @@
     function setStatus(t){ document.getElementById("statusPill").textContent=t; }
     function toast(m,t="ok"){ const e=document.getElementById("toast"); e.className="toast "+t; e.textContent=m; e.style.display="block"; setTimeout(()=>e.style.display="none",3500); }
     
-    function extractDriveFileId(u){ if(!u)return ""; const m=String(u).match(/\/file\/d\/([^\/\?]+)/i); return (m&&m[1])?m[1]:""; }
-    function buildPdfEmbed(u){ const id=extractDriveFileId(u); return id ? "https://drive.google.com/file/d/"+id+"/preview" : ""; }
+    function buildPdfEmbed(u) {
+      var s = String(u || '').trim();
+      if (!s || s.indexOf('#N/A') >= 0) return '';
+      if (/drive\.google\.com/i.test(s)) {
+        if (s.indexOf('/preview') !== -1) return s;
+        if (s.indexOf('/view') !== -1) return s.replace('/view', '/preview');
+        if (s.indexOf('/edit') !== -1) return s.replace('/edit', '/preview');
+        // Cas open?id= ou uc?id=
+        var mId = s.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+        if (mId && mId[1]) {
+          var rk = '';
+          var mRk = s.match(/[?&]resourcekey=([^&]+)/i);
+          if (mRk && mRk[1]) rk = '?resourcekey=' + mRk[1];
+          return 'https://drive.google.com/file/d/' + mId[1] + '/preview' + rk;
+        }
+      }
+      var m = s.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+      if (m && m[1]) return 'https://drive.google.com/file/d/' + m[1] + '/preview';
+      return '';
+    }
 
     function setButtons(d){ ["sendBtn","skipBtn"].forEach(i=>document.getElementById(i).disabled=d); }
 
@@ -310,9 +334,19 @@
     }
 
     function renderForm(schema, ispList) {
+       // Afficher le "rajout d'information" (colonne T) en lecture seule si présent
+       const infoTBox = document.getElementById("infoTBox");
+       const infoTText = document.getElementById("infoTText");
+       if(schema.infoT && schema.infoT.trim()) {
+           infoTText.textContent = schema.infoT;
+           infoTBox.style.display = "block";
+       } else {
+           infoTBox.style.display = "none";
+       }
+
        // ISP List
        fillSelect("ispSelect", ispList, schema.ispVal);
-       
+
        // Vérification ISP: comparer le nom de l'infirmier sur la fiche avec l'ISP analyse sélectionné
        function checkIspMismatch() {
            const infName = document.getElementById("iInf").textContent.trim().toLowerCase();

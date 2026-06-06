@@ -66,7 +66,11 @@ const C_BP_CLOSE = 69;      // BP: Case clôturée (ne plus afficher dans APP)
 const C_BQ_PUI_COMMANDEE = 70; // BQ: PUI commandée (checkbox)
 const C_BS_PROBLEM = 72; // Signaler problème à Brice (checkbox)
 const C_BT_PROBLEM_TXT = 73; // Texte du problème pour Brice
-const C_BU_LOCK = 74; // Timestamp de verrouillage pour éviter doublons     
+const C_BU_LOCK = 74; // Timestamp de verrouillage pour éviter doublons
+const C_APP_INFO_T = 19;  // Colonne T: information supplémentaire (lecture seule pour ISP)
+const C_COMM_CHEF = 75;   // BX: Commentaire chefferie ancré par ID d'intervention
+const C_COMM_MED = 76;    // BY: Analyse médecin cheffe ancrée par ID
+const C_ACTION_MED = 77;  // BZ: Action requise médecin cheffe ancrée par ID
 
 // === HELPER FUNCTIONS ===
 
@@ -158,11 +162,17 @@ function isCheckboxChecked(val) {
   return val === true || s === "TRUE" || s === "OUI" || val === "✓";
 }
 
-function onOpen() { 
+function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu('⚡ ADMIN')
     .addItem('Installer Trigger Cache (2h)', 'installCacheTrigger')
     .addItem('Mettre à jour Cache', 'updateHistoryCache')
+    .addSeparator()
+    .addItem('1. Diagnostiquer décalages commentaires', 'diagnosisDecalageCommentaires')
+    .addItem('2. Réparer décalages (après diagnostic)', 'repairDecalageCommentaires')
+    .addItem('Reset diagnostic (recommencer)', 'diagnosisReset')
+    .addSeparator()
+    .addItem('Restaurer commentaires (historique Drive)', 'findLastGoodRevisionAndRestore')
     .addToUi();
   
   // Auto-install triggers si pas présent + nettoyer anciens triggers
@@ -184,14 +194,134 @@ function onOpen() {
 }
 
 function doGet(e) {
-  // Test mode: ?test=1 returns minimal HTML to verify server works
   if (e && e.parameter && e.parameter.test === "1") {
-    return HtmlService.createHtmlOutput("<h1>Server OK</h1><p>doGet works. scriptUrl = " + getWebAppUrl_() + "</p>")
+    return HtmlService.createHtmlOutput("<h1>Server OK</h1><p>doGet works.</p>")
       .setTitle("Test").setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  }
+  // Vue ISP individuelle : ?ispToken=TOKEN
+  if (e && e.parameter && e.parameter.ispToken) {
+    const t = HtmlService.createTemplateFromFile("IspView");
+    t.scriptUrl = getWebAppUrl_();
+    t.ispToken  = e.parameter.ispToken;
+    return t.evaluate().setTitle("SDIS 66 - Mon espace ISP").setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  }
+  // Vue admin URLs ISP : ?page=isp-admin
+  if (e && e.parameter && e.parameter.page === "isp-admin") {
+    return HtmlService.createHtmlOutputFromFile("IspUrlsAdmin")
+      .setTitle("URLs ISP").setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   }
   const t = HtmlService.createTemplateFromFile("Home");
   t.scriptUrl = getWebAppUrl_();
   return t.evaluate().setTitle("SDIS 66 - SDS").setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+/**
+ * Génère le token ISP : base64(mat + ":" + dob)
+ */
+function _makeIspToken_(mat, dob) {
+  return Utilities.base64EncodeWebSafe(mat + ":" + String(dob).trim());
+}
+
+function _decodeIspToken_(token) {
+  try {
+    const decoded = Utilities.newBlob(Utilities.base64DecodeWebSafe(token)).getDataAsString();
+    const parts = decoded.split(":");
+    if (parts.length < 2) return null;
+    const mat = parts[0].trim().toUpperCase();
+    const dob = parts.slice(1).join(":").trim();
+    return { mat, dob };
+  } catch(e) { return null; }
+}
+
+/**
+ * Retourne les stats ISP depuis son token (pour IspView.html)
+ */
+function getIspPublicData(token) {
+  try {
+    const decoded = _decodeIspToken_(token);
+    if (!decoded) return { error: "Token invalide." };
+    return getIspStats(decoded.mat, decoded.dob, false);
+  } catch(e) {
+    return { error: e.message };
+  }
+}
+
+/**
+ * Retourne l'URL PDF du BPV pour un ISP authentifié par token.
+ * Appelée depuis IspView.html via google.script.run.getBpvPdfDataByToken(token, interId).
+ */
+function getBpvPdfDataByToken(ispToken, interId) {
+  try {
+    const decoded = _decodeIspToken_(ispToken);
+    if (!decoded) return { ok: false, error: "Token ISP invalide." };
+    const mat = decoded.mat;
+
+    const ss = getSS_();
+    const shApp = ss.getSheetByName(APP_SHEET_NAME);
+    if (!shApp) return { ok: false, error: "Feuille APP introuvable." };
+
+    const data = shApp.getDataRange().getValues();
+    const interIdStr = String(interId).trim();
+
+    for (let i = 1; i < data.length; i++) {
+      const rowId  = String(data[i][C_APP_ID]).trim();
+      const rowMat = normalizeMat(data[i][C_APP_MAT]);
+      if (rowId !== interIdStr || rowMat !== mat) continue;
+
+      const pdfUrl = String(data[i][C_APP_PDF] || "").trim();
+      if (!pdfUrl || pdfUrl === "#N/A" || pdfUrl.includes("#N/A")) {
+        return { ok: false, error: "BPV non disponible pour cette intervention." };
+      }
+      return { ok: true, directUrl: pdfUrl };
+    }
+    return { ok: false, error: "Intervention introuvable ou non autorisée." };
+  } catch(e) {
+    return { ok: false, error: e.message };
+  }
+}
+
+/**
+ * Retourne la liste des ISPs avec leur URL personnalisée (pour IspUrlsAdmin.html).
+ * Les DOBs sont lus depuis le spreadsheet RH (ID_SS_RH), pas depuis le Dashboard.
+ */
+function getIspUrlsForAdmin() {
+  const ss   = getSS_();
+  const dash = ss.getSheetByName(DASHBOARD_SHEET_NAME);
+  // S=Nom, T=Mat (U ne contient pas les DOBs — elles sont dans ID_SS_RH)
+  const rawAgents = dash.getRange("S3:T79").getValues();
+  const baseUrl   = getWebAppUrl_();
+
+  // Lire les DOBs depuis le spreadsheet RH
+  const dobByMat = {};
+  try {
+    const rhData = SpreadsheetApp.openById(ID_SS_RH).getSheets()[0].getDataRange().getValues();
+    for (let i = 0; i < rhData.length; i++) {
+      const m = normalizeMat(rhData[i][0]);
+      if (!m) continue;
+      const dob = rhData[i][1];
+      let dobStr = "";
+      if (Object.prototype.toString.call(dob) === "[object Date]") {
+        dobStr = String(dob.getDate()).padStart(2,"0") + "/" +
+                 String(dob.getMonth()+1).padStart(2,"0") + "/" + dob.getFullYear();
+      } else if (dob) {
+        dobStr = String(dob).trim();
+      }
+      if (dobStr) dobByMat[m] = dobStr;
+    }
+  } catch(eRh) { Logger.log("getIspUrlsForAdmin RH error: " + eRh); }
+
+  const result = [];
+  for (let i = 0; i < rawAgents.length; i++) {
+    const nom = String(rawAgents[i][0]).trim();
+    const mat = normalizeMat(rawAgents[i][1]);
+    if (!nom || !mat) continue;
+    const dobStr = dobByMat[mat];
+    if (!dobStr) continue;
+    const token = _makeIspToken_(mat, dobStr);
+    result.push({ nom: nom, token: token, url: baseUrl + "?ispToken=" + encodeURIComponent(token) });
+  }
+  Logger.log("getIspUrlsForAdmin: " + result.length + " ISPs générés");
+  return result;
 }
 
 function getSS_() { return SpreadsheetApp.getActiveSpreadsheet(); }
@@ -201,7 +331,7 @@ function getDropdownList_(sheet, colIndex) { const rule = sheet.getRange(2, colI
 function getStats2026() {
   // === CHERCHER CACHE ===
   const _cache26 = CacheService.getScriptCache();
-  const _ck26 = "stats2026_v8";
+  const _ck26 = "stats2026_v9";
   const _c26 = _cache26.get(_ck26);
   if(_c26) return JSON.parse(_c26);
   const _sc26 = sheetCacheGet(_ck26);
@@ -281,8 +411,8 @@ function getStats2026() {
   for (let p = 0; p < protoNames.length; p++) {
     if (!protoNames[p] || !String(protoNames[p]).trim()) continue;
     const entry = { name: protoNames[p].replace(/^Nbr protocole\s*/i, ""), pct: protoRates[p] || "0%" };
-    if (p <= 16) protoAdulte.push(entry); // rows 55-71 = adult (index 0-16)
-    else if (p >= 17) protoEnfant.push(entry); // rows 72-84 = enfant (index 17+)
+    if (p <= 17) protoAdulte.push(entry); // rows 55-72 = adult (index 0-17)
+    else if (p >= 18) protoEnfant.push(entry); // rows 73-84 = enfant (index 18+)
   }
   // Trier par taux décroissant
   const parseRate = s => parseFloat(String(s).replace("%","").replace(",",".")) || 0;
@@ -302,11 +432,15 @@ function getStats2026() {
         const s = String(dTemps[i][19]||'').trim();
         if(c && s) cisToSect26[c] = s;
       }
+      const _todayMidnight = new Date(); _todayMidnight.setHours(0,0,0,0);
       for(let i=1; i<dTemps.length; i++) {
         const cis = String(dTemps[i][13]||'').trim();
         if(!cis) continue;
         const dtAst = coerceToDateTime_(dTemps[i][C_TEMPS_DATE_AST]);
         if(!dtAst) continue;
+        // Ne pas compter les créneaux futurs (évite surestimation si planning en avance)
+        const _slotDay = new Date(dtAst.getFullYear(), dtAst.getMonth(), dtAst.getDate());
+        if(_slotDay > _todayMidnight) continue;
         // Clé unique pour ce créneau de 30min : date + heure + minute
         const slotKey = dtAst.getFullYear() + '-' + dtAst.getMonth() + '-' + dtAst.getDate() + '_' + dtAst.getHours() + '_' + dtAst.getMinutes();
         const hAst = dtAst.getHours();
@@ -323,8 +457,11 @@ function getStats2026() {
       }
     }
   } catch(eTmp) { Logger.log('tempsByCis error: ' + eTmp); }
-  const _jan1Ytd = new Date(lastDate.getFullYear(), 0, 1);
-  const _nbDaysYtd = Math.max(1, Math.round((lastDate - _jan1Ytd) / (1000*60*60*24)) + 1);
+  // Utiliser aujourd'hui comme référence (pas lastDate) pour éviter la surestimation
+  // si les créneaux temps couvrent plus de jours que la dernière intervention
+  const _refDate = new Date();
+  const _jan1Ytd = new Date(_refDate.getFullYear(), 0, 1);
+  const _nbDaysYtd = Math.max(1, Math.round((_refDate - _jan1Ytd) / (1000*60*60*24)) + 1);
   const _dayPoss = _nbDaysYtd * 12;   // 12h possibles en journée (8h-20h)
   const _nightPoss = _nbDaysYtd * 12; // 12h possibles la nuit (20h-8h)
   const _totPoss = _nbDaysYtd * 24;   // 24h totales
@@ -958,7 +1095,11 @@ function getIspStats(matriculeInput, dobInput, forceRefresh) {
                     bilanOk: data[i][C_BILAN_OK],
                     bilanKo: data[i][C_BILAN_KO],
                     pisuOk: data[i][C_PISU_OK],
-                    pisuKo: data[i][C_PISU_KO]
+                    pisuKo: data[i][C_PISU_KO],
+                    pdfUrl:  String(data[i][C_APP_PDF]       || "").trim(),
+                    commIsp: String(data[i][C_APP_INFO_T]    || "").trim(),
+                    commChef:String(data[i][C_COMM_CHEF]     || "").trim(),
+                    commMed: String(data[i][C_COMM_MED]      || "").trim()
                 };
             }
         }
@@ -1096,6 +1237,42 @@ function getIspStats(matriculeInput, dobInput, forceRefresh) {
 
     console.log(`DEBUG ISP ${mat}: RÉSULTATS - Bilan OK: ${bilanOkCount}, Pisu OK: ${pisuOkCount}, Erreur Bilan Légère: ${errLegereBilanList.length}, Erreur Pisu Légère: ${errLegerePisuList.length}, Erreur Grave: ${errLourdeList.length}`);
 
+    // ── Tableau détail bilans pour IspView (toutes interventions avec BPV) ──
+    const details = [];
+    for (const id of thisAgentIds) {
+        const ar = appRows[id];
+        if (!ar) continue;
+        const pdfVal = ar.pdfUrl || "";
+        if (!pdfVal || pdfVal === "#N/A" || pdfVal.includes("#N/A")) continue;
+        const ref = appDataRef[id] || {};
+        const tags = alexTags[id] || {};
+        const types = [];
+        if (isCheckboxChecked(ar.bilanOk) || (isCheckboxChecked(ar.bilanKo) && tags.hasH)) {
+            types.push("Bilan OK");
+        } else if (isCheckboxChecked(ar.bilanKo) && tags.hasJ) {
+            types.push("Erreur Bilan Légère");
+        }
+        if (isCheckboxChecked(ar.pisuOk) || (isCheckboxChecked(ar.pisuKo) && tags.hasI)) {
+            types.push("Pisu OK");
+        } else if (isCheckboxChecked(ar.pisuKo) && tags.hasK) {
+            types.push("Erreur Pisu Légère");
+        }
+        if (tags.hasL) types.push("Erreur Grave");
+        details.push({
+            id:      id,
+            date:    ref.date    || "",
+            motif:   ref.motif   || "",
+            centre:  ref.cis     || "",
+            engin:   ref.engin   || "",
+            status:  ref.status  || "",
+            types:   types,
+            commIsp: ar.commIsp,
+            commChef:ar.commChef,
+            commMed: ar.commMed
+        });
+    }
+    details.sort((a, b) => String(b.date).localeCompare(String(a.date)));
+
     const result = {
         nom: agentName,
         astreinte2026: hAst26, astreinte2025_ytd: hAst25_ytd, astreinte2025_tot: hAst25_tot,
@@ -1111,6 +1288,7 @@ function getIspStats(matriculeInput, dobInput, forceRefresh) {
         errLegereBilan: errLegereBilanList,
         errLegerePisu: errLegerePisuList,
         errLourde: errLourdeList,
+        details: details,
         monthlyAst26: monthlyAst26,
         monthlyGarde26: monthlyGarde26,
         debugInfo: {
@@ -1131,6 +1309,7 @@ function getIspStats(matriculeInput, dobInput, forceRefresh) {
         compact.errLegereBilan = result.errLegereBilan.map(e => ({id:e.id}));
         compact.errLegerePisu = result.errLegerePisu.map(e => ({id:e.id}));
         compact.errLourde = result.errLourde.map(e => ({id:e.id}));
+        compact.details = result.details.map(d => ({id:d.id,date:d.date,motif:d.motif,centre:d.centre,engin:d.engin,status:d.status,types:d.types,commIsp:d.commIsp,commChef:d.commChef,commMed:d.commMed}));
         delete compact.debugInfo;
         cache.put(cacheKey, JSON.stringify(compact), 7200);
       } else {
@@ -1506,7 +1685,11 @@ function getNextMedecinChef() {
         const appInfo = appRow >= 0 ? dataApp[appRow] : null;
         const cis = appInfo ? String(appInfo[C_APP_CIS]||"").trim() : "";
         const status = (cis === "SD SSSM") ? "De Garde" : "Astreinte / Dispo";
-        
+
+        // Lire commentaire chefferie depuis APP (ancré par ID) ou Alex (fallback)
+        const commChefAnc  = appInfo ? String(appInfo[C_COMM_CHEF] || "").trim() : "";
+        const commChefAlex = String(dataAlex[i][12] || "").trim();
+
         return {
             found: true,
             rowAlex: i+1,
@@ -1518,11 +1701,11 @@ function getNextMedecinChef() {
                 engin: appInfo ? String(appInfo[C_APP_ENGIN]||"").trim() : "",
                 pdf: appInfo ? appInfo[C_APP_PDF] : dataAlex[i][2],
                 status: status,
-                commentChef: dataAlex[i][12] || ""
+                commentChef: commChefAnc || commChefAlex
             }
         };
     }
-    
+
     return { found: false, message: "Aucune fiche grave à analyser" };
 }
 
@@ -1552,13 +1735,28 @@ function saveAppChefferie(form) {
         
         // Commentaire chefferie (colonne M = 13)
         shAlex.getRange(row, 13).setValue(form.commentChef || "");
-        
+
         // Clôturer (colonne N = 14)
         shAlex.getRange(row, 14).setValue(true);
-        
+
+        // Ancrage anti-décalage : sauvegarder aussi dans APP (colonne BX, par ID)
+        // Résistant aux décalages de formules FILTER dans APP Alex
+        try {
+            const shAppRef = ss.getSheetByName(APP_SHEET_NAME);
+            if (shAppRef && form.commentChef) {
+                const appData = shAppRef.getDataRange().getValues();
+                for (let j = 1; j < appData.length; j++) {
+                    if (String(appData[j][C_APP_ID]).trim() === String(form.interId).trim()) {
+                        shAppRef.getRange(j + 1, C_COMM_CHEF + 1).setValue(form.commentChef);
+                        break;
+                    }
+                }
+            }
+        } catch(eAnc) { Logger.log("saveAppChefferie ancrage error: " + eAnc); }
+
         // Clear cache
         CacheService.getScriptCache().remove("chefferie_counts_v4");
-        
+
         return { success: true };
     } catch(e) {
         console.log("saveAppChefferie error: " + e.toString());
@@ -1592,13 +1790,28 @@ function saveMedecinAnalyse(form) {
         
         // Analyse Médecin (colonne O = 15)
         shEve.getRange(row, 15).setValue(form.analyse || "");
-        
+
         // Action Requise (colonne Q = 17)
         shEve.getRange(row, 17).setValue(form.action || "");
-        
+
+        // Ancrage anti-décalage : sauvegarder aussi dans APP (colonnes BY/BZ, par ID)
+        try {
+            const shAppRef = ss.getSheetByName(APP_SHEET_NAME);
+            if (shAppRef) {
+                const appData = shAppRef.getDataRange().getValues();
+                for (let j = 1; j < appData.length; j++) {
+                    if (String(appData[j][C_APP_ID]).trim() === String(form.interId).trim()) {
+                        if (form.analyse) shAppRef.getRange(j + 1, C_COMM_MED + 1).setValue(form.analyse);
+                        if (form.action)  shAppRef.getRange(j + 1, C_ACTION_MED + 1).setValue(form.action);
+                        break;
+                    }
+                }
+            }
+        } catch(eAnc) { Logger.log("saveMedecinAnalyse ancrage error: " + eAnc); }
+
         // Clear cache
         CacheService.getScriptCache().remove("chefferie_counts_v4");
-        
+
         return { success: true };
     } catch(e) {
         console.log("saveMedecinAnalyse error: " + e.toString());
@@ -1735,6 +1948,7 @@ function getNextCase(specificRow) {
     
     const schema = {
         ispVal: row[C_ISP_ANALYSE],
+        infoT: String(row[C_APP_INFO_T] || "").trim(),
         protoAdult: protoAdult,
         protoPedia: protoPedia,
         criteres: criteres,
@@ -2001,7 +2215,11 @@ function getIspDetailsAdmin(mat) {
         
         const alex = alexData[id] || {};
         const eve = eveData[id] || {};
-        
+
+        // Commentaires : APP BX/BY (ancré) → Alex/Eve (fallback)
+        const commChefAnc = String(appRows[i][C_COMM_CHEF] || "").trim();
+        const commMedAnc  = String(appRows[i][C_COMM_MED]  || "").trim();
+
         // Déterminer les types
         let types = [];
         let errorType = "";
@@ -2041,8 +2259,8 @@ function getIspDetailsAdmin(mat) {
             status: (cis === "SD SSSM") ? "Garde" : "Dispo/Astreinte",
             types: types,
             errorType: errorType,
-            commChef: alex.commChef || "",
-            commMed: eve.commMed || ""
+            commChef: commChefAnc || alex.commChef || "",
+            commMed: commMedAnc || eve.commMed || ""
         });
     }
     
@@ -2089,18 +2307,21 @@ function getNextActionChefferie(skipRows) {
                 }
             }
             
-            // Chercher commentaire chefferie dans APP Alex (colonne M = index 12)
-            let commChef = "";
+            // Chercher commentaire chefferie : APP (ancré) → Alex (fallback)
+            let commChefAlex = "";
             for(let j=1; j<dataAlex.length; j++) {
                 if(String(dataAlex[j][0]).trim() === id) {
-                    commChef = dataAlex[j][12] || "";
+                    commChefAlex = String(dataAlex[j][12] || "").trim();
                     break;
                 }
             }
-            
+            const commChefAnc   = appInfo ? String(appInfo[C_COMM_CHEF]   || "").trim() : "";
+            const analyseAnc    = appInfo ? String(appInfo[C_COMM_MED]    || "").trim() : "";
+            const actionReqAnc  = appInfo ? String(appInfo[C_ACTION_MED]  || "").trim() : "";
+
             const cis = appInfo ? String(appInfo[C_APP_CIS]||"").trim() : "";
             const status = (cis === "SD SSSM") ? "De Garde" : "Astreinte / Dispo";
-            
+
             return {
                 found: true,
                 rowEve: i+1,
@@ -2115,9 +2336,9 @@ function getNextActionChefferie(skipRows) {
                     engin: appInfo ? String(appInfo[C_APP_ENGIN]||"").trim() : "",
                     pdf: appInfo ? appInfo[C_APP_PDF] : "",
                     status: status,
-                    commChef: commChef,
-                    analyseMed: dataEve[i][14] || "",
-                    actionRequise: dataEve[i][16] || "",
+                    commChef: commChefAnc || commChefAlex,
+                    analyseMed: analyseAnc || dataEve[i][14] || "",
+                    actionRequise: actionReqAnc || dataEve[i][16] || "",
                     actionFaite: dataEve[i][17] || ""
                 }
             };
@@ -2144,7 +2365,7 @@ function saveActionChefferie(form) {
         // Clôturer (colonne S = 19)
         shEve.getRange(row, 19).setValue(true);
         
-        // Passer en Bilan OK / Pisu OK si demandé
+        // Passer en Bilan OK si demandé
         if(form.rowApp && form.rowApp >= 2) {
             const shApp = ss.getSheetByName(APP_SHEET_NAME);
             if(shApp) {
@@ -2152,9 +2373,18 @@ function saveActionChefferie(form) {
                     shApp.getRange(form.rowApp, C_BILAN_OK+1).setValue(true);
                     shApp.getRange(form.rowApp, C_BILAN_KO+1).setValue(false);
                 }
-                if(form.passerPisuOk) {
+                // Passer en erreur légère : retire la cotation grave dans Alex (col L=12),
+                // garde PISU KO = true, PISU OK = false
+                if(form.passerErrLegere) {
+                    shApp.getRange(form.rowApp, C_PISU_OK+1).setValue(false);
+                    shApp.getRange(form.rowApp, C_PISU_KO+1).setValue(true);
+                    _removeGraveFromAlex(ss, shEve, form.rowEve);
+                }
+                // Passer en non-erreur : retire la cotation grave et passe PISU OK
+                if(form.passerNonErreur) {
                     shApp.getRange(form.rowApp, C_PISU_OK+1).setValue(true);
                     shApp.getRange(form.rowApp, C_PISU_KO+1).setValue(false);
+                    _removeGraveFromAlex(ss, shEve, form.rowEve);
                 }
             }
         }
@@ -2166,6 +2396,26 @@ function saveActionChefferie(form) {
     } catch(e) {
         return { success: false, error: e.toString() };
     }
+}
+
+/**
+ * Retire le flag Erreur Grave (col L = index 11) dans APP Alex,
+ * en recherchant la ligne par l'ID de l'intervention (col A d'APP Eve).
+ */
+function _removeGraveFromAlex(ss, shEve, rowEve) {
+    try {
+        const interId = String(shEve.getRange(rowEve, 1).getValue()).trim();
+        if (!interId) return;
+        const shAlex = ss.getSheetByName("APP Alex");
+        if (!shAlex) return;
+        const dataAlex = shAlex.getDataRange().getValues();
+        for (let i = 1; i < dataAlex.length; i++) {
+            if (String(dataAlex[i][0]).trim() === interId) {
+                shAlex.getRange(i + 1, 12).setValue(false); // col L = index 11 → col 12 en 1-indexed
+                break;
+            }
+        }
+    } catch(e) { Logger.log("_removeGraveFromAlex error: " + e); }
 }
 
 /**
@@ -2193,7 +2443,14 @@ function getArchivedActions() {
     const alexIndex = {};
     for(let i=1; i<dataAlex.length; i++) {
         const id = String(dataAlex[i][0]).trim();
-        alexIndex[id] = dataAlex[i];
+        if(id && !alexIndex[id]) alexIndex[id] = dataAlex[i];
+    }
+
+    // Index APP : commChef ancré (BX) par ID — priorité sur Alex
+    const appCommChefById = {};
+    for(let i=1; i<dataApp.length; i++) {
+        const id = String(dataApp[i][C_APP_ID]).trim();
+        if(id) appCommChefById[id] = String(dataApp[i][C_COMM_CHEF] || "").trim();
     }
     
     // Grouper par ISP
@@ -2214,6 +2471,9 @@ function getArchivedActions() {
         const status = (cis === "SD SSSM") ? "De Garde" : "Astreinte / Dispo";
         
         if(!ispMap[ispName]) ispMap[ispName] = [];
+        // commChef : APP BX (ancré) → Alex col M (fallback)
+        const commChefAnc = appCommChefById[id] || "";
+        const commChefAlex = alexRow ? String(alexRow[12] || "").trim() : "";
         ispMap[ispName].push({
             id: id,
             date: appRow ? formatDateHeureFR_(appRow[C_APP_DATE]) : "",
@@ -2221,7 +2481,7 @@ function getArchivedActions() {
             engin: appRow ? String(appRow[C_APP_ENGIN]||"").trim() : "",
             pdf: appRow ? appRow[C_APP_PDF] : "",
             status: status,
-            commChef: alexRow ? (alexRow[12] || "") : "",
+            commChef: commChefAnc || commChefAlex,
             analyseMed: dataEve[i][14] || "",
             actionRequise: dataEve[i][16] || "",
             actionFaite: dataEve[i][17] || ""
@@ -2241,21 +2501,29 @@ function getInterventionDetails(interId) {
   const ss = getSS_();
   let pdfUrl = "", commentChefferie = "", analyseMed = "", centre = "", engin = "";
   const shApp = ss.getSheetByName(APP_SHEET_NAME);
-  if(shApp){ 
-    const data = shApp.getDataRange().getValues(); 
-    for(let i=1; i<data.length; i++) { 
-      if(String(data[i][C_APP_ID]).trim() === String(interId).trim()) { 
+  if(shApp){
+    const data = shApp.getDataRange().getValues();
+    for(let i=1; i<data.length; i++) {
+      if(String(data[i][C_APP_ID]).trim() === String(interId).trim()) {
         pdfUrl = data[i][C_APP_PDF];
         centre = String(data[i][C_APP_CIS]||"").trim();
         engin = String(data[i][C_APP_ENGIN]||"").trim();
-        break; 
-      } 
-    } 
+        // Lire depuis colonnes ancrées APP (priorité sur Alex/Eve)
+        commentChefferie = String(data[i][C_COMM_CHEF] || "").trim();
+        analyseMed = String(data[i][C_COMM_MED] || "").trim();
+        break;
+      }
+    }
   }
-  const shAlex = ss.getSheetByName("APP Alex");
-  if(shAlex){ const data = shAlex.getDataRange().getValues(); for(let i=1; i<data.length; i++) { if(String(data[i][0]).trim() === String(interId).trim()) { commentChefferie = data[i][12]; break; } } }
-  const shEve = ss.getSheetByName("APP Eve");
-  if(shEve) { const data = shEve.getDataRange().getValues(); for(let i=1; i<data.length; i++) { if(String(data[i][0]).trim() === String(interId).trim()) { analyseMed = data[i][14]; break; } } }
+  // Fallback Alex/Eve si colonnes ancrées pas encore remplies
+  if(!commentChefferie) {
+    const shAlex = ss.getSheetByName("APP Alex");
+    if(shAlex){ const data = shAlex.getDataRange().getValues(); for(let i=1; i<data.length; i++) { if(String(data[i][0]).trim() === String(interId).trim()) { commentChefferie = String(data[i][12]||""); break; } } }
+  }
+  if(!analyseMed) {
+    const shEve = ss.getSheetByName("APP Eve");
+    if(shEve) { const data = shEve.getDataRange().getValues(); for(let i=1; i<data.length; i++) { if(String(data[i][0]).trim() === String(interId).trim()) { analyseMed = String(data[i][14]||""); break; } } }
+  }
   return { pdfUrl, commentChefferie, analyseMed, centre, engin };
 }
 
@@ -2672,7 +2940,7 @@ function clearAllCaches() {
   try {
     // 1) Vider le CacheService (mémoire)
     const cache = CacheService.getScriptCache();
-    cache.removeAll(["admin_data_full_v2", "astreinte_dept_ispp_v3", "cache_status", "history_cache_v2", "historique_temps_travail_v1", "stats2026_v4", "stats2026_v6", "stats2026_v7", "stats2025_vStable", "chefferie_counts_v4"]);
+    cache.removeAll(["admin_data_full_v2", "astreinte_dept_ispp_v3", "cache_status", "history_cache_v2", "historique_temps_travail_v1", "stats2026_v4", "stats2026_v6", "stats2026_v7", "stats2026_v8", "stats2026_v9", "stats2025_vStable", "chefferie_counts_v4"]);
     
     // 2) Vider TOUT le spreadsheet cache (toutes les clés)
     const cacheSS = _getCacheSS();
@@ -3142,4 +3410,897 @@ function installDailyMailTriggers() {
   
   return "✅ Triggers quotidiens 9h installés (Eve + Jean-Luc)";
 }
+/**
+ * Retourne le statut de chaque trigger mailing (actif ou non)
+ */
+function getMailTriggerStatus() {
+  try {
+    const triggers = ScriptApp.getProjectTriggers();
+    const fns = triggers.map(t => t.getHandlerFunction());
+    return {
+      weekly:    fns.includes('sendWeeklyReport'),
+      dailyEve:  fns.includes('sendDailyMailEve'),
+      dailyJL:   fns.includes('sendDailyMailJeanLuc'),
+      eveGrave:  fns.includes('checkAppEveErrors')
+    };
+  } catch(e) {
+    return { error: e.toString() };
+  }
+}
+
+/**
+ * Active TOUS les triggers mailing en une fois
+ */
+function installAllMailTriggers() {
+  try {
+    installWeeklyReportTrigger();
+    installDailyMailTriggers();
+    // Trigger Eve erreurs graves (défini dans envoi mail Eve si grave.js)
+    try { installDailyMailTrigger(); } catch(e) {}
+    return { ok: true, status: getMailTriggerStatus() };
+  } catch(e) {
+    return { ok: false, error: e.toString() };
+  }
+}
+
+/**
+ * Désactive TOUS les triggers mailing
+ */
+function removeAllMailTriggers() {
+  try {
+    const fns = ['sendWeeklyReport','sendDailyMailEve','sendDailyMailJeanLuc','checkAppEveErrors'];
+    ScriptApp.getProjectTriggers().forEach(t => {
+      if (fns.includes(t.getHandlerFunction())) ScriptApp.deleteTrigger(t);
+    });
+    return { ok: true, status: getMailTriggerStatus() };
+  } catch(e) {
+    return { ok: false, error: e.toString() };
+  }
+}
+/**
+ * Pour chaque CIS, calcule le nombre d'heures où au moins 2 ISP
+ * sont simultanément présents (astreinte/dispo). Chaque ligne = 30 min.
+ * Algo : on groupe par (CIS, créneau 30min) → on compte les matricules distincts
+ * → si ≥ 2, on ajoute 0.5h au total du CIS.
+ */
+function getCisDoubleIspHours() {
+  const ss = getSS_();
+  const sh = ss.getSheetByName(TEMPS_SHEET_NAME);
+  if (!sh) return [];
+
+  const data = sh.getDataRange().getValues();
+  // slotMap : clé = "CIS||YYYY-MM-DD||HH:MM" → Set de matricules
+  const slotMap = {};
+
+  for (let i = 1; i < data.length; i++) {
+    const mat = normalizeMat(data[i][C_TEMPS_MAT_AST]);
+    if (!mat) continue;
+    const cis = String(data[i][13] || '').trim();
+    if (!cis) continue;
+    const dt = coerceToDateTime_(data[i][C_TEMPS_DATE_AST]);
+    if (!dt) continue;
+
+    // Arrondi au créneau de 30min
+    const mm = dt.getMinutes() < 30 ? '00' : '30';
+    const key = `${cis}||${dt.getFullYear()}-${dt.getMonth()}-${dt.getDate()}||${dt.getHours()}:${mm}`;
+
+    if (!slotMap[key]) slotMap[key] = { cis: cis, mats: new Set() };
+    slotMap[key].mats.add(mat);
+  }
+
+  // Agréger : pour chaque créneau avec ≥2 ISP, ajouter 0.5h au CIS
+  const cisTotals = {};
+  for (const key in slotMap) {
+    const s = slotMap[key];
+    if (s.mats.size >= 2) {
+      cisTotals[s.cis] = (cisTotals[s.cis] || 0) + 0.5;
+    }
+  }
+
+  const result = Object.keys(cisTotals)
+    .sort()
+    .map(name => ({ name: name, heures: Math.round(cisTotals[name] * 2) / 2 }));
+
+  // MILLAS = max des autres CIS + 8h
+  const millaIdx = result.findIndex(r => r.name.toUpperCase() === 'MILLAS');
+  const othersMax = result.reduce((m, r) => r.name.toUpperCase() !== 'MILLAS' ? Math.max(m, r.heures) : m, 0);
+  if (millaIdx >= 0) {
+    result[millaIdx].heures = othersMax + 8;
+  }
+
+  return result;
+}
+
+/**
+ * Données pour le mailing automatique par CIS.
+ * Retourne les agents groupés par CIS avec heures astreinte/dispo par mois
+ * et nombre d'interventions par mois (2026).
+ */
+function getMailingData() {
+    const ss = getSS_();
+    const dash = ss.getSheetByName(DASHBOARD_SHEET_NAME);
+    const rawAgents = dash.getRange("S3:AQ79").getValues();
+
+    // Normalise un nom ou un nom de CIS : MAJUSCULES sans accents (pour matching fiable)
+    const normNom = n => String(n||'').trim().toUpperCase()
+                          .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const normCis = normNom; // meme fonction, alias semantique
+
+    // Mapping cle normalisee -> nom d'affichage original (construit a la lecture de APP)
+    const cisNormToDisplay = {};
+
+    // Affectations officielles.
+    // cis1 = CIS principal, cis2 = CIS secondaire optionnel, suffix = texte apres le nom.
+    // Si cis1 est defini : override le vote-majority.
+    // cis1: null -> agent exclu.
+    const AFFECTATIONS = {
+      // Agents sans interventions APP (ou affectation forcee)
+      'AUGUET ELYSE':           { cis1: 'VALLESPIR' },
+      'BASSAL THOMAS':          { cis1: 'RIVESALTES' },
+      'BERTRAN REMI':           { cis1: 'CANET EN ROUSSILLON' },
+      'COLLARD PREVOST EMILIE': { cis1: 'RIBERAL', hidden: true },
+      'COMAS ELODIE':           { cis1: 'CANET EN ROUSSILLON' },
+      'CRIBEILLET SIMON':       { cis1: 'PERPIGNAN SUD', hidden: true },
+      'CUEVAS ISABEL':          { cis1: 'VINCA' },
+      'FERRARI MADISON':        { cis1: 'PERPIGNAN SUD', hidden: true },
+      'FIORENZA LUCIE':         { cis1: 'PERPIGNAN SUD', hidden: true },
+      'FREZOUL MARLENE':        { cis1: 'PERPIGNAN NORD' },
+      'JOAO CLEMENTINE':        { cis1: 'PERPIGNAN SUD', hidden: true },
+      'LE ROY JEAN-LUC':        { cis1: 'CANET EN ROUSSILLON' },
+      'MASSE ALISON':           { cis1: 'ILLE SUR TET' },
+      'PERIE ANAIS':            { cis1: 'LES ASPRES' },
+      'PICARD YANNICK':         { cis1: 'PERPIGNAN NORD', hidden: true },
+      'PIGUILLEM ALEXANDRA':    { cis1: 'PERPIGNAN OUEST' },
+      'PIQUE CHARLOTTE':        { cis1: 'PERPIGNAN NORD', hidden: true },
+      'RIERA SAFYA':            { cis1: 'ELNE' },
+      'SARRAZIN VANESSA':       { cis1: 'RIBERAL', hidden: true },
+      'SOLEY ANAIS':            { cis1: 'RIVESALTES' },
+      'WIEGAND RAYMOND CECILE': { cis1: 'RIBERAL' },
+      // Agents bi-CIS : apparaissent dans les deux groupes
+      // mInter split par CIS, mAst comptee une seule fois (CIS principal)
+      'BEDU ANTOINE':           { cis1: 'ELNE',           cis2: 'PERPIGNAN SUD' },
+      'BROUART CEDRIC':         { cis1: 'VINGRAU',        cis2: 'PERPIGNAN NORD' },
+      'CAMBILLAU FRANCOISE':    { cis1: 'PERPIGNAN NORD', cis2: 'MAURY' },
+      'CASTANY ELISE':          { cis1: 'VINCA',          cis2: 'PERPIGNAN NORD' },
+    };
+
+    const agentMap = {};
+    for (let i = 0; i < rawAgents.length; i++) {
+        const mat = normalizeMat(rawAgents[i][1]);
+        const nom = String(rawAgents[i][0]).trim();
+        if (!mat) continue;
+        const aff = AFFECTATIONS[normNom(nom)];
+        agentMap[mat] = {
+            nom:         nom,
+            mat:         mat,
+            cis1:        aff !== undefined ? aff.cis1 : null,  // null = vote-majority
+            cis2:        aff ? (aff.cis2 || null) : null,
+            suffix:      '',
+            hidden:      aff ? (aff.hidden || false) : false,
+            cisVotes:    {},
+            mAst:        new Array(12).fill(0),  // heures dispo/astreinte par mois (total agent)
+            mInterByCis: {},                      // heures dispo/astreinte par CIS par mois
+            mInterAppByCis: {}                   // nb interventions APP par CIS par mois
+        };
+    }
+
+    // Dispo/astreinte (colonnes J-P) :
+    //   J (idx 9)  = type ("dispo"/"astreinte") — non vide = ligne dispo/astreinte
+    //   K (idx 10) = matricule
+    //   N (idx 13) = centre de secours (CIS)
+    //   O (idx 14) = horodatage (date)
+    // 1 ligne = 30 min = 0.5h ; colonnes A-F = garde (ignorées)
+    const shTemps = ss.getSheetByName(TEMPS_SHEET_NAME);
+    if (shTemps) {
+        const data = shTemps.getDataRange().getValues();
+        for (let i = 1; i < data.length; i++) {
+            if (!data[i][9]) continue;                              // col J vide = ligne de garde
+            const matAst = normalizeMat(data[i][C_TEMPS_MAT_AST]); // col K
+            if (!matAst || !agentMap[matAst]) continue;
+            const cisTT = String(data[i][13] || '').trim();        // col N = CIS
+            if (!cisTT) continue;
+            const dA = coerceToDateTime_(data[i][C_TEMPS_DATE_AST]); // col O = date
+            const a = agentMap[matAst];
+            const cisNormTT = normCis(cisTT);
+            cisNormToDisplay[cisNormTT] = cisNormToDisplay[cisNormTT] || cisTT;
+            // Votes pour vote-majority
+            a.cisVotes[cisNormTT] = (a.cisVotes[cisNormTT] || 0) + 1;
+            // Heures par CIS (pour bi-CIS split)
+            if (!a.mInterByCis[cisNormTT]) a.mInterByCis[cisNormTT] = new Array(12).fill(0);
+            if (dA) {
+                a.mInterByCis[cisNormTT][dA.getMonth()] += 0.5;
+                a.mAst[dA.getMonth()] += 0.5; // total astreinte agent
+            }
+        }
+    }
+
+    // Interventions réalisées (APP) - col C (idx 2) = CIS, col I (idx 8) = matricule
+    const shApp = ss.getSheetByName(APP_SHEET_NAME);
+    if (shApp) {
+        const dataApp = shApp.getDataRange().getValues();
+        for (let i = 1; i < dataApp.length; i++) {
+            const mat = normalizeMat(dataApp[i][C_APP_MAT]); // col I
+            if (!mat || !agentMap[mat]) continue;
+            const centreApp = String(dataApp[i][C_APP_CIS] || '').trim(); // col C
+            if (!centreApp || centreApp === 'SD SSSM') continue;
+            const d = coerceToDateTime_(dataApp[i][C_APP_DATE]);
+            const cnApp = normCis(centreApp);
+            cisNormToDisplay[cnApp] = cisNormToDisplay[cnApp] || centreApp;
+            if (!agentMap[mat].mInterAppByCis[cnApp]) agentMap[mat].mInterAppByCis[cnApp] = new Array(12).fill(0);
+            if (d) agentMap[mat].mInterAppByCis[cnApp][d.getMonth()] += 1;
+        }
+    }
+
+    // Resoudre CIS1 pour agents sans affectation officielle (vote-majority)
+    for (const mat in agentMap) {
+        const a = agentMap[mat];
+        if (a.cis1 === null) {
+            const entries = Object.entries(a.cisVotes);
+            a.cis1 = entries.length > 0
+                ? entries.sort((x, y) => y[1] - x[1])[0][0]
+                : 'Non affecte';
+        }
+    }
+
+    // Grouper par CIS
+    // Pour les bi-CIS : l'agent apparait dans 2 groupes
+    //   - CIS principal (isPrimary=true)  : mInter de ce CIS + astreinte totale
+    //   - CIS secondaire (isPrimary=false): mInter de ce CIS + astreinte = 0 (evite doublon)
+    const byCis = {};
+    const pushAgent = (cis, a, isPrimary) => {
+        if (cis === null) return; // exclu
+        if (a.hidden) return;    // en dispo : masque
+        const cisNorm = normCis(cis);
+        const grp = cisNorm || 'Non affecte';
+        if (!byCis[grp]) byCis[grp] = [];
+        // mAst = heures dispo/astreinte faites A CE CIS (col N Temps travail)
+        // mInter = nb interventions APP (toutes CIS, pas de split pour les inter)
+        const mAst = (a.mInterByCis[cisNorm] || new Array(12).fill(0))
+                       .map(h => Math.round(h * 2) / 2);
+        const mInter = (a.mInterAppByCis[cisNorm] || new Array(12).fill(0)).slice();
+        byCis[grp].push({
+            nom:        a.nom,
+            mAst:       mAst,
+            mInter:     mInter,
+            totalAst:   mAst.reduce((s, v) => s + v, 0),
+            totalInter: mInter.reduce((s, v) => s + v, 0)
+        });
+    };
+
+    for (const mat in agentMap) {
+        const a = agentMap[mat];
+        pushAgent(a.cis1, a, true);
+        if (a.cis2) pushAgent(a.cis2, a, false);
+    }
+
+    const cisKeys = Object.keys(byCis).sort();
+    return cisKeys
+        .map(cisNorm => ({
+            cis:    cisNormToDisplay[cisNorm] || cisNorm,
+            agents: byCis[cisNorm].sort((a, b) => a.nom.localeCompare(b.nom, 'fr'))
+        }))
+        .filter(g => g.agents.length > 0);
+}
 // force push 20260418v1
+
+/**
+ * À lancer dans l'éditeur GAS pour voir les agents sans CIS (0 intervention dans APP).
+ * Résultat dans les logs : Exécution → Journaux.
+ */
+function logAgentsSansAffectation() {
+  const data = getMailingData();
+  const sans = (data.find(g => g.cis === 'Non affecté') || {}).agents || [];
+  if (sans.length === 0) { Logger.log('Tous les agents ont une affectation.'); return; }
+  Logger.log('=== Agents sans affectation (' + sans.length + ') ===');
+  sans.forEach(a => Logger.log(a.nom));
+}
+
+// ============================================================
+// DIAGNOSTIC DÉCALAGE COMMENTAIRES — Historique révisions Drive
+// ============================================================
+
+// Scope trick: reference DriveApp so Apps Script static analysis
+// includes https://www.googleapis.com/auth/drive in the OAuth token.
+// Without this, ScriptApp.getOAuthToken() will NOT carry the Drive scope
+// even when it is declared in appsscript.json, because the cached
+// authorization was granted before the manifest change.
+// DriveApp.getFileById is never actually executed here.
+function _diagDriveScopeAnchor_() { DriveApp.getFileById(""); }
+
+/**
+ * Parcourt l'historique de révisions Google Drive pour trouver,
+ * pour chaque commentaire actuellement dans APP Alex col M et
+ * APP Eve col O/Q, le numéro d'intervention qui était sur la même
+ * ligne au moment où le commentaire a été saisi pour la première fois.
+ *
+ * Résultats écrits dans l'onglet "DIAG_DECALAGE".
+ * À lancer depuis l'éditeur Apps Script : menu Exécuter → diagnosisDecalageCommentaires
+ */
+/**
+ * Diagnostic résumable : peut être relancé plusieurs fois si timeout.
+ * L'état est sauvegardé dans PropertiesService entre les runs.
+ * Fonctions utilitaires : diagnosisReset() pour recommencer de zéro.
+ */
+function diagnosisDecalageCommentaires() {
+  const ss        = SpreadsheetApp.getActiveSpreadsheet();
+  const startTime = Date.now();
+  const MAX_MS    = 240000; // 4 min — marge avant limite 6min GAS
+  const props     = PropertiesService.getScriptProperties();
+
+  const shAlex = ss.getSheetByName('APP Alex');
+  const shEve  = ss.getSheetByName('APP Eve');
+  if (!shAlex || !shEve) { Logger.log('Onglets APP Alex / APP Eve introuvables'); return; }
+
+  const fileId  = ss.getId();
+  const gidAlex = shAlex.getSheetId();
+  const gidEve  = shEve.getSheetId();
+
+  // === Charger ou initialiser l'état ===
+  // Re-fetche toujours la liste (avec exportLinks inclus -> evite 1 appel API par revision)
+  Logger.log('Chargement des révisions…');
+  const revisions = _diagGetRevisionsList(fileId);
+  const revIdx    = parseInt(props.getProperty('DIAG_IDX') || '0', 10);
+  Logger.log(revisions.length + ' révisions trouvées, reprise à ' + revIdx);
+
+  // Charger les commentaires actuels depuis la feuille
+  const curAlex = shAlex.getDataRange().getValues();
+  const curEve  = shEve.getDataRange().getValues();
+
+  // Charger les résultats déjà trouvés lors des runs précédents
+  const savedA = JSON.parse(props.getProperty('DIAG_FOUND_A') || '{}');
+  const savedO = JSON.parse(props.getProperty('DIAG_FOUND_O') || '{}');
+  const savedQ = JSON.parse(props.getProperty('DIAG_FOUND_Q') || '{}');
+
+  // Construire les maps : comment → {correctId (null si pas encore trouvé), revDate}
+  const alexM = {}, eveO = {}, eveQ = {};
+  for (let i = 1; i < curAlex.length; i++) {
+    const c = String(curAlex[i][12]||'').trim();
+    if (!c) continue;
+    const sv = savedA[i];
+    alexM[i] = { comment: c, correctId: sv ? sv.split('\x00')[0] : null, revDate: sv ? sv.split('\x00')[1] : null };
+  }
+  for (let i = 1; i < curEve.length; i++) {
+    const o = String(curEve[i][14]||'').trim();
+    const q = String(curEve[i][16]||'').trim();
+    if (o) { const sv = savedO[i]; eveO[i] = { comment: o, correctId: sv ? sv.split('\x00')[0] : null, revDate: sv ? sv.split('\x00')[1] : null }; }
+    if (q) { const sv = savedQ[i]; eveQ[i] = { comment: q, correctId: sv ? sv.split('\x00')[0] : null, revDate: sv ? sv.split('\x00')[1] : null }; }
+  }
+
+  Logger.log('Commentaires: AlexM=' + Object.keys(alexM).length +
+             ' EveO=' + Object.keys(eveO).length + ' EveQ=' + Object.keys(eveQ).length);
+
+  // === Traiter les révisions (oldest -> newest) ===
+  let curIdx = revIdx;
+  while (curIdx < revisions.length) {
+    if (_diagCountRemaining(alexM, eveO, eveQ) === 0) {
+      Logger.log('✅ Tous les commentaires trouvés !'); break;
+    }
+
+    if (Date.now() - startTime > MAX_MS) {
+      _diagSaveState(props, curIdx, alexM, eveO, eveQ);
+      Logger.log('⏸ Pause à rév ' + curIdx + '/' + revisions.length +
+                 ' — ' + _diagCountRemaining(alexM, eveO, eveQ) + ' commentaires restants. Relancez diagnosisDecalageCommentaires.');
+      return;
+    }
+
+    const rev = revisions[curIdx];
+    // exportLinks inclus dans la liste via _diagGetRevisionsList ; fallback : Drive.Revisions.get()
+    let baseUrl = (rev.exportLinks && rev.exportLinks['text/csv']) ? rev.exportLinks['text/csv'] : null;
+    if (!baseUrl) baseUrl = _diagGetExportUrl(fileId, rev.id);
+
+    if (baseUrl) {
+      if (Object.values(alexM).some(v => v.correctId === null)) {
+        const csv = _diagFetchCsv(baseUrl, gidAlex);
+        if (csv) _diagMatchByText(_diagParseCSV(csv), alexM, 12, rev.modifiedDate);
+      }
+      if (Object.values(eveO).some(v => v.correctId === null) ||
+          Object.values(eveQ).some(v => v.correctId === null)) {
+        const csv = _diagFetchCsv(baseUrl, gidEve);
+        if (csv) {
+          const rows = _diagParseCSV(csv);
+          _diagMatchByText(rows, eveO, 14, rev.modifiedDate);
+          _diagMatchByText(rows, eveQ, 16, rev.modifiedDate);
+        }
+      }
+    }
+
+    curIdx++;
+  }
+
+  // Terminé → nettoyer l'état et écrire les résultats
+  _diagClearState(props);
+  _diagWriteResults(ss, alexM, eveO, eveQ, curAlex, curEve);
+}
+
+/** Sauvegarde l'état intermédiaire dans PropertiesService */
+function _diagSaveState(props, revIdx, alexM, eveO, eveQ) {
+  props.setProperty('DIAG_IDX', String(revIdx));
+  const cA = {}, cO = {}, cQ = {};
+  for (const i in alexM) if (alexM[i].correctId) cA[i] = alexM[i].correctId + '\x00' + alexM[i].revDate;
+  for (const i in eveO)  if (eveO[i].correctId)  cO[i] = eveO[i].correctId  + '\x00' + eveO[i].revDate;
+  for (const i in eveQ)  if (eveQ[i].correctId)  cQ[i] = eveQ[i].correctId  + '\x00' + eveQ[i].revDate;
+  props.setProperty('DIAG_FOUND_A', JSON.stringify(cA));
+  props.setProperty('DIAG_FOUND_O', JSON.stringify(cO));
+  props.setProperty('DIAG_FOUND_Q', JSON.stringify(cQ));
+}
+
+/** Supprime les propriétés de l'état du diagnostic */
+function _diagClearState(props) {
+  ['DIAG_REVS','DIAG_IDX','DIAG_FOUND_A','DIAG_FOUND_O','DIAG_FOUND_Q'].forEach(k => props.deleteProperty(k));
+}
+
+/** Compte les commentaires pas encore associés à un ID */
+function _diagCountRemaining(alexM, eveO, eveQ) {
+  return [alexM, eveO, eveQ].reduce(
+    (s, obj) => s + Object.values(obj).filter(v => v.correctId === null).length, 0);
+}
+
+/**
+ * Cherche le texte de chaque commentaire (commentMap[rowIdx].comment) dans TOUTES les lignes
+ * du CSV (colonne colIdx), et retient la correspondance la plus proche du rowIdx courant.
+ * Corrige le bug du décalage de lignes : les anciens CSV ont le commentaire à un index différent.
+ * Normalise les sauts de ligne (\r\n → \n) avant comparaison pour les commentaires multi-lignes.
+ */
+function _diagMatchByText(rows, commentMap, colIdx, revDate) {
+  const norm = s => String(s||'').replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim();
+  for (const iStr in commentMap) {
+    const t = commentMap[iStr];
+    if (t.correctId !== null) continue;
+    const targetRow  = +iStr;
+    const normTarget = norm(t.comment);
+    let bestId = null, bestDist = Infinity;
+    for (let r = 0; r < rows.length; r++) {
+      if (!rows[r] || rows[r].length <= colIdx) continue;
+      if (norm(rows[r][colIdx]) === normTarget) {
+        const dist = Math.abs(r - targetRow);
+        if (dist < bestDist) {
+          bestDist = dist;
+          bestId   = String(rows[r][0]||'').trim();
+        }
+      }
+    }
+    if (bestId !== null) {
+      t.correctId = bestId;
+      t.revDate   = revDate;
+    }
+  }
+}
+
+/** Remet le diagnostic à zéro (recommencer depuis le début) */
+function diagnosisReset() {
+  _diagClearState(PropertiesService.getScriptProperties());
+  Logger.log('État du diagnostic réinitialisé.');
+}
+
+function _diagGetRevisionsList(fileId) {
+  const all = [];
+  let pageToken = null;
+  do {
+    const params = { maxResults: 200, fields: 'nextPageToken,items(id,modifiedDate,exportLinks)' };
+    if (pageToken) params.pageToken = pageToken;
+    const resp = Drive.Revisions.list(fileId, params);
+    if (resp.items) all.push.apply(all, resp.items);
+    pageToken = resp.nextPageToken || null;
+  } while (pageToken);
+  return all; // oldest → newest
+}
+
+function _diagGetExportUrl(fileId, revisionId) {
+  try {
+    const rev = Drive.Revisions.get(fileId, revisionId);
+    if (!rev.exportLinks) return null;
+    return rev.exportLinks['text/csv'] || null;
+  } catch(e) { return null; }
+}
+
+function _diagFetchCsv(exportUrl, gid) {
+  try {
+    const url = exportUrl + "&gid=" + gid;
+    const resp = UrlFetchApp.fetch(url, {
+      headers: { Authorization: "Bearer " + ScriptApp.getOAuthToken() },
+      muteHttpExceptions: true,
+      followRedirects: true
+    });
+    if (resp.getResponseCode() !== 200) return null;
+    return resp.getContentText();
+  } catch(e) { return null; }
+}
+
+function _diagParseCSV(text) {
+  const rows = [];
+  let row = [], cell = "", inQ = false;
+  for (let i = 0; i <= text.length; i++) {
+    const ch = i < text.length ? text[i] : "\n";
+    if (ch === '"') {
+      if (inQ && text[i + 1] === '"') { cell += '"'; i++; }
+      else inQ = !inQ;
+    } else if (!inQ && ch === ',') {
+      row.push(cell); cell = "";
+    } else if (!inQ && (ch === '\n' || ch === '\r')) {
+      if (ch === '\r' && text[i + 1] === '\n') i++;
+      row.push(cell); cell = "";
+      if (row.some(c => c !== "")) rows.push(row);
+      row = [];
+    } else {
+      cell += ch;
+    }
+  }
+  return rows;
+}
+
+function _diagWriteResults(ss, alexM, eveO, eveQ, curAlex, curEve) {
+  let sh = ss.getSheetByName("DIAG_DECALAGE");
+  if (!sh) sh = ss.insertSheet("DIAG_DECALAGE");
+  else sh.clearContents();
+
+  const header = ["Onglet", "Colonne", "Ligne", "Commentaire", "ID Intervention (historique)", "ID Actuel (col A)", "1ère apparition", "Décalé?"];
+  const data = [header];
+
+  const pushRows = (target, sheetName, colLetter, cur) => {
+    const idxs = Object.keys(target).map(Number).sort((a, b) => a - b);
+    for (const i of idxs) {
+      const t = target[i];
+      const curId = cur[i] ? String(cur[i][0] || "").trim() : "";
+      let status;
+      if (!t.correctId) status = "❓ NON TROUVÉ";
+      else if (t.correctId === curId) status = "✅ OK";
+      else status = "⚠️ DÉCALÉ";
+      data.push([sheetName, colLetter, i + 1, t.comment, t.correctId || "", curId, t.revDate || "", status]);
+    }
+  };
+
+  pushRows(alexM, "APP Alex", "M", curAlex);
+  pushRows(eveO,  "APP Eve",  "O", curEve);
+  pushRows(eveQ,  "APP Eve",  "Q", curEve);
+
+  sh.getRange(1, 1, data.length, header.length).setValues(data);
+  sh.getRange(1, 1, 1, header.length).setFontWeight("bold").setBackground("#0d47a1").setFontColor("#ffffff");
+
+  // Colorisation en un seul appel batch
+  const bgColors = [];
+  for (let r = 1; r < data.length; r++) {
+    const status = String(data[r][7]);
+    let color;
+    if (status.includes("DÉCALÉ"))     color = "#fff3e0";
+    else if (status.includes("NON TROUVÉ")) color = "#ffebee";
+    else                                color = null;
+    bgColors.push(new Array(header.length).fill(color));
+  }
+  if (bgColors.length > 0) {
+    sh.getRange(2, 1, bgColors.length, header.length).setBackgrounds(bgColors);
+  }
+
+  sh.autoResizeColumns(1, header.length);
+
+  Logger.log('✅ Résultats écrits dans DIAG_DECALAGE : ' + (data.length - 1) + ' lignes');
+}
+
+/**
+ * ÉTAPE 2 : Répare les décalages de commentaires identifiés par diagnosisDecalageCommentaires().
+ *
+ * Pour chaque commentaire dans DIAG_DECALAGE :
+ *   - Écrit le commentaire dans la colonne ancrée de APP (BX/BY/BZ) avec le bon ID d'intervention
+ *   - Ces colonnes ne sont PAS des formules → elles restent stables même si les filtres d'Alex/Eve changent
+ *
+ * Après cette réparation, toutes les fonctions de lecture utilisent APP en priorité (avec fallback Alex/Eve).
+ * À lancer depuis : menu ⚡ ADMIN → "2. Réparer décalages (après diagnostic)"
+ */
+function repairDecalageCommentaires() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const diagSheet = ss.getSheetByName('DIAG_DECALAGE');
+  if (!diagSheet) {
+    Logger.log('❌ Onglet DIAG_DECALAGE introuvable. Lancez d\'abord diagnosisDecalageCommentaires().');
+    return { error: "Lancez d'abord '1. Diagnostiquer décalages commentaires' depuis le menu ADMIN." };
+  }
+
+  const shApp = ss.getSheetByName(APP_SHEET_NAME);
+  if (!shApp) return { error: "Onglet APP introuvable." };
+
+  const diagData = diagSheet.getDataRange().getValues();
+  const appData  = shApp.getDataRange().getValues();
+
+  // Index APP : ID → numéro de ligne 1-based
+  const appRowById = {};
+  for (let i = 1; i < appData.length; i++) {
+    const id = String(appData[i][C_APP_ID] || '').trim();
+    if (id) appRowById[id] = i + 1;
+  }
+
+  let fixedAPP = 0, notFound = 0, decalesFixed = 0;
+  const report = [];
+
+  // Header DIAG_DECALAGE : Onglet | Colonne | Ligne | Commentaire | ID historique | ID actuel | Date | Statut
+  for (let i = 1; i < diagData.length; i++) {
+    const sheetName = String(diagData[i][0] || '');
+    const colLetter = String(diagData[i][1] || '');
+    const comment   = String(diagData[i][3] || '').trim();
+    const correctId = String(diagData[i][4] || '').trim();
+    const status    = String(diagData[i][7] || '');
+
+    if (!comment || !correctId) continue;
+
+    const appRowNum = appRowById[correctId];
+    if (!appRowNum) { notFound++; continue; }
+
+    const isDecale = status.includes('DÉCALÉ');
+
+    if (sheetName === 'APP Alex' && colLetter === 'M') {
+      shApp.getRange(appRowNum, C_COMM_CHEF + 1).setValue(comment);
+      fixedAPP++;
+      if (isDecale) { decalesFixed++; report.push('Chef → ID ' + correctId + ' : ' + comment.substring(0, 60)); }
+
+    } else if (sheetName === 'APP Eve' && colLetter === 'O') {
+      shApp.getRange(appRowNum, C_COMM_MED + 1).setValue(comment);
+      fixedAPP++;
+      if (isDecale) { decalesFixed++; report.push('Analyse méd → ID ' + correctId + ' : ' + comment.substring(0, 60)); }
+
+    } else if (sheetName === 'APP Eve' && colLetter === 'Q') {
+      shApp.getRange(appRowNum, C_ACTION_MED + 1).setValue(comment);
+      fixedAPP++;
+      if (isDecale) { decalesFixed++; report.push('Action méd → ID ' + correctId + ' : ' + comment.substring(0, 60)); }
+    }
+  }
+
+  // Invalider les caches
+  const cache = CacheService.getScriptCache();
+  cache.remove('chefferie_counts_v4');
+  cache.remove('all_isp_error_stats');
+
+  const msg = '✅ ' + fixedAPP + ' commentaires ancrés dans APP (BX/BY/BZ). ' +
+              decalesFixed + ' décalages corrigés. ' +
+              (notFound > 0 ? notFound + ' IDs non trouvés dans APP.' : '');
+  Logger.log(msg);
+  if (report.length) Logger.log('Décalages corrigés :\n' + report.join('\n'));
+  return { fixedAPP, decalesFixed, notFound, report };
+}
+
+
+/**
+ * RESTAURATION v3 — Trouve la dernière bonne révision (avant suppression)
+ * et en extrait la map ID→commentaire.
+ *
+ * Stratégie :
+ *  1. Scan du PLUS RÉCENT au PLUS ANCIEN
+ *  2. Pour chaque révision accessible, export Alex et Eve en CSV
+ *  3. Dès qu'une révision contient >= 10 commentaires dans Alex col M
+ *     → c'est la "dernière bonne révision"
+ *  4. Extrait tous les IDs depuis cette révision
+ *  5. Applique directement dans le spreadsheet
+ *
+ * Resumable si timeout.
+ */
+function findLastGoodRevisionAndRestore() {
+  const ss        = SpreadsheetApp.getActiveSpreadsheet();
+  const fileId    = ss.getId();
+  const startTime = Date.now();
+  const MAX_MS    = 240000;
+  const props     = PropertiesService.getScriptProperties();
+
+  const shAlex = ss.getSheetByName('APP Alex');
+  const shEve  = ss.getSheetByName('APP Eve');
+  const shApp  = ss.getSheetByName(APP_SHEET_NAME);
+  if (!shAlex || !shApp) { Logger.log('Onglet introuvable'); return; }
+
+  const gidAlex = shAlex.getSheetId();
+  const gidEve  = shEve ? shEve.getSheetId() : null;
+
+  // Backup Excel (source de vérité pour les textes corrigés)
+  const BACKUP = [{"chef": "", "analyse": "Pas d'ABCDE\nPas de quantification de l'hémorragie\npas de palpation abdo, auscultation pulmonaire?\nA du mal à parler, pourquoi? à cause du trauma facial, pour une autre cause ??\nLa patiente n'est pas en détresse vitale, donc nous devrions avoir un bilan plus complet", "action": "Faire un point avec l'ISP sur ce dossier et en fonction faire une petite MSP", "actionDone": "Contact avec l'ISP . Le bilan XABCDE n'avait pas encore été vu. Point vu avec elle . A reconnu ses oublis . sera plus vigilante . A suivre"}, {"chef": "", "analyse": "pas d'accord avec analyse APP chefferie\nBon bilan\nAérosol vu avec le MRH\nEffectivement bilan compact", "action": "Juste lui dire de se relire pour ne pas oublier de mettre des espaces\nA recatégoriser en erreur simple, pas d'erreur grave", "actionDone": "Info donnée"}, {"chef": "Pas de bilan circonstanciel.\nInconscient avec G15 ??\nBilan initial pauvre\nPeu coopérant : pourquoi problème neuro ?\n1 seul Dextro aprés ressucrage ? \nPourquoi Resucrage IV alors que Dx à 0.69 et G 15 ?", "analyse": "Troubles de la conscience + suie sur un feu d'habiation: intox aux cyanures?\nL'examen neuro est inexistant \npourquoi HBCO impossible ?\nEVA à zeo avec les brulures?\nPas de traitement mis en place, pourquoi?", "action": "Appeler l'ISP pour faire un point sur ce dossier", "actionDone": "En fait intervention un peu compliquée avec intervention du SAMU qui lui a demandé de s'occuper des autres victimes . Et donc a fait un bilan à l'arrache . Je lui ai rappeler qu'elle peut faire ses bilans complémentaires sur l'application SSSM. Cette victime a été vite prise en charge par SAMU"}, {"chef": "", "analyse": "il y a un ECG \npar contre, je suppose qu'il y a eu un echange avec le med régulateur car la douleur est surtout à l'examen au niveau de l'épaule\nPour moi ECG nle mais la douleur étant typique au début, on devrait au moins avoir les écahnges avec med régulateurs", "action": "allo ISP pour point sur ce dossier afin d'avoir plus de précision", "actionDone": ""}, {"chef": "PISU détresse respi : Mais lequel ?", "analyse": "probléme de morphine", "action": "appeler l'ISP ne peut pas faire plus de 1 ampoule de morphine sans prescription MRH", "actionDone": "ISP contacté. erreur d'ecriture . me confirme n'avoir fait que 10 mg de morphine ( n'a demandé à la PUI qu'une ampoule pour cette intervention. \nConseil de relire son bilan pour éviter ce genre de problème"}, {"chef": "Pourquoi aérosol car pas de notion de bronchospasme mais d'encombrement bronchique ?", "analyse": "même commentaire que chefferie ISP", "action": "Appeler l'ISP et faire le point sur ce dossier\nsoit on est hors PISU sans prescrition: faire MSP sur la convulsion\nsoit ça a été prescrit par le médecin: lui rapeller l'importance médico légale de tout écrire dans le dossier médicale", "actionDone": ""}, {"chef": "Bilan initial : Douleur thoracique ....... Et quoi ? ( irradiation ? , 1er fois ? depuis quand ? Effort ? ) TA aprés natispray ? \nEVA 6 puis 4 et pas de perfalgan\nNom du MRH", "analyse": "", "action": "", "actionDone": ""}, {"chef": "EVA à 9 ,pourquoi de morphine car EVA persiste à 6 ( aprés ou avant antalgique palier1", "analyse": "Chute sur la tête donc TC alors que noté \"sans tc\" ??\nbaisse de l'hemocue de 11.8 à 9.6 en combien de temps?\non a une tachycardie à 145 à 16h36 alors qu'elle est à 111 à 16h07\nPerte de 2 points donc:\nil faut un examen clinique beaucoup plus développé\npas de prise en charge de la douleur \nOn n'a aucune sensibilisation sur le fait qu'on a un risque d'hémorragie interne alors que deux ampoules exacyl sont faites\nparamedicalisation? Médicalisation?", "action": "lui faire une MSP sur ce sujet\net l'envoyer faire le PHTLS si on a une place ou sinon le développer dans la MSP", "actionDone": ""}, {"chef": "Pas de bila inintial , ni circonstanciel . \nIl y a un bilan dans les facteurs de risques ( fait par ISP ? )", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Pose de catheter à la demande du medecin et pas de paramedicalisation ? \nEt pour le repacking de la VLM ???", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Pourquoi que 6 mg de morphine alors qu'EVA à 8 ??", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Pas de bilan circonstanciel . Attention notion de No Flow contradictoire ( 5min par Ca et 0 par ISP", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Verification du pouls peripherique \nMEOPA et PENTHROX en même temps ?", "analyse": "", "action": "", "actionDone": ""}, {"chef": "", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Medecin prescripteur n'a pas proposeé transport paramedicalisé ? pouls 130", "analyse": "", "action": "", "actionDone": ""}, {"chef": "", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Bilan circonstanciel pauvre . Bilan initial léger . Hemorragie mais pas de paleur , TRC ? quantité ? Quels critères pour rentrer dans PISU ? Bonne refexion pour l'exacyl même si erreur PISU\nA froid et pas de temperature", "analyse": "", "action": "", "actionDone": ""}, {"chef": "On doit chercher les ATCD et les traitements ( les principaux doivent être notés)\nPourquoi aérosol car encombrement bronchique ? Solumedrol 72mg ???? précision douteuse à faire , Pas de prise de temperature ( OAP ? Pneumopathie ? ) OMI ?", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Ce n'est pas un PISU mais une prescription . Qui est le MRH", "analyse": "Quand on lit le bilan on a aucune plue value dans l'apport de l'ISP\nOn ne sait pas ce qui se passe, pas d'examen clinque, on dirait un bilan de secourisme \nEn tant de MRH je ne sais absolument pas quoi en penser et quoi en faire, simple malaise vagal, un détresse circulatoire, hémorragie .....", "action": "refaire une MSP sur les BPV", "actionDone": ""}, {"chef": "Pas de bilan circonstanciel, Bilan difficile à lire pourquoi aérosol car ATCD cardio er encombrement bronchique à l'auscultation. \nPas de réassort", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Pas de bilan circonstaciel ( recurrent+++), HypoTA orthostatique non vérifiée. \nQui est le MRH ?", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Fibrilation tachycardie paroxystique ??\nPas de bilan circonstanciel\nBilan cardio léger", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Pourquoi aérosol alors que pas de sibilant mais un encombrement bronchique . Pourquoi solumédrol ? Chute dans la nuit et est restée au sol? est remontée dans son lit ? Température ? Notion d'un déficit Droit par chef d'agrés, aucune trace dans bilan ISP", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Pas de bilan circonstanciel\nPourquoi aérosol alors que murmure vesiculaire perçu\nEncombrement haut : pourquoi pas d'aspiration \nHTA et notion \nContact ISP par TPH pour explication : OK", "analyse": "dossier vu en directe", "action": "Faire MSP sur le cas, prevu avec l'ISP kevin Wendenberg\nEn attente du retour", "actionDone": ""}, {"chef": "EVA 6 non traitée ? Bilan evolutif de la douleur", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Oubli transport paramédicalisé", "analyse": "douleur tho est bien decrite mais \"perforation du poumon\" pnemothorax? Contusion pulmonaire ?\nen revanche, la douleur est elle costale, cardiaque, pulmonaire ?\nL'auscultation aurait été la bien venu\nPrise en charge de la douleur pour EVA à 9?", "action": "Refaire un point avec l'ISP sur l'auscultation pulmonaire\nSi besoin refaire une petite formation si l'ISP le souhaite", "actionDone": ""}, {"chef": "Aurait mérité un controle de la TA et en fonction proposer pose VVP au MRH", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Hypothermie et pas de température notée", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Glycémie? Crise a été vue par ISP ou c'est selon temoin ?", "analyse": "", "action": "", "actionDone": ""}, {"chef": "", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Pas de bilan circonstanciel . donne du paracetamol per os ? qui precrit? Douleur irradiant dans le dos et pas d'ECG ( facteurs de risque = Fume , Pilule et surpoids); pas de prise de pouls femoral \n1er episode\nEVA 7 et pas de morphine ? la laisse partir non paramedicalisée avec EVA à 6", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Pas de bilan circonstantiel . Elle a fait quoi ?", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Chute de sa hauteur ?", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Pas de bilan circonstanciel . Inquiétude ? Lecture bilan compliquée", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Pas de bilan circonstanciel \nPourquoi pas de natispray", "analyse": "", "action": "", "actionDone": ""}, {"chef": "bilan circonstanciel leger. diagnostic de crise comitiale . L'iSP l'a t'elle vu ou c'est selon temoin ?", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Erreur transcription PISU ( brulure ? ) plaie en regard de la fracture ? ( ATB ? )", "analyse": "", "action": "", "actionDone": ""}, {"chef": "", "analyse": "", "action": "", "actionDone": ""}, {"chef": "", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Notion de toux avec hyperthermie = Auscultation pulmonaire !!", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Erreur transcription PISU ( PISU douleur et pas brulures)", "analyse": "description de la douleur\nirradiation?\nreproductible à la palpation?\ndurée\nnotion d'effort?\nauscultation pulmonaire?", "action": "refaire une petite MSP sur la douleur thoracique", "actionDone": ""}, {"chef": "Oubli de transcription de prise en charge . Contact ISP OK", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Quantité de médicaments ? Estimation ou inconnu", "analyse": "effectivement le BPV est complètement aberrant:\nglasgow 7 puis conscience normal et calme dans le bilan neuro", "action": "Allo ISP pour lui rappeler l'importance medico légal du bilan\nIl faut savoir prendre quelques minutes pour relire avant d'envoyer car c'est ce qui est écrit qui reste!", "actionDone": ""}, {"chef": "Irradiation douleur? EVA à 6 et pas d'antalgie ?", "analyse": "pourquoi n'a on pas les ECG en piéce jointe?\nGlobalement bilan plutôt bon\non comprends bien la problématique \njuste manque le suivi de la TA et de la FC pendant le transport", "action": "Poser la question à Brice pour ECG\nallo ISP pour lui rappeler l'importance du suivi des constantes pendant le transport surtout avec une tachycardie à 240 et une douleur thoracique", "actionDone": ""}, {"chef": "Pas d'auscultation . 1 seul aérosol ? Pas de VVP ni de solumedrol\nPas de temperature", "analyse": "analyse de la situation trés bien faite en revanche point à faire sur le PISU", "action": "allo ISP pour précision\nsi prescription MRH, il faut impérativement le noter et mettre le nom du MRH \nEncore une fois c'est ce qui est écrit qui fait fois, si on est hors PISU et qu'il n'est pas noté qu'on a une prescription c'est qu'on en a pas eu!", "actionDone": ""}, {"chef": "Bilan traumato complet de la tête au pied doit etre fait. Pourquoi pas de profenid ? \nAttention PISU douleur et pas brulure\n1 seul bolus de morphine ?", "analyse": "douleur thoracique:\ndurée ?\n1er épisode?\nReproductible à la mobilisation....\nOu est l'ECG?", "action": "Faire une MSP sur le thème de la douleur thoracique", "actionDone": ""}, {"chef": "Pourquoi pas PENTHROX ? 1 seul bolus de morphine ? ' EVA à 7 ) pas de réevaluation douleur", "analyse": "pourquoi présence de l'ISP?\nCirconstanciel: RAS ???\nSi RAS l'ISP n'a rien à faire sur cette inter!", "action": "Convoquer l'ISP \non ne peut plus tolérer des bilan vide!", "actionDone": ""}, {"chef": "PISU Accouchement ? ( Bug BPV ? ) La prise en charge est correcte", "analyse": "pourquoi pas ECG\nLa pneumo et la cardio sont souvent lié chez les personnes âgées", "action": "faire un point avec l'ISP sur ce dossier pour mettre un évidence l'importance de faire un ECG \net de la température sur une probable pneumopathie", "actionDone": ""}, {"chef": "D'accord avec la 1ere analyse du BPV. Penses à relire ton bilan pour corriger les erreurs ( Suite à client ZAVP ?? )\nEncombrement pulmonaire = Auscultation IMPERATIVE", "analyse": "le bilan du secouriste est 20 fois mieux que celui de l'ISP qui est inexistant", "action": "Je me repete: convoquer l'ISP\nVoir lui retirer ses compétences si pas de prise de conscience rapide de la situation", "actionDone": ""}, {"chef": "Morphine , combien de bolus et horaire. \nParacetamol 50Mg/Kg = 750 mg alors qu'à 50Kg c'est 1 g", "analyse": "en plus patiente sous eliquis (bien précisé par le secouriste)\nrester au sol de 14h à 20h40: attention à la rhabdomyolyse\nnotion de douleur colonne par secouriste\nbilan doit être plus précis sur la palpation corps entier: abdo, ausc pulmonaire ?\nEVA à 9? diminution avec meopa et paracetamol?", "action": "Allo ISP pour point sur ce dossier", "actionDone": ""}, {"chef": "Oui un accompagnement pour une EVA à 4 aurait été judicieux", "analyse": "TC avec PC: le bilan neuro doit être détaillé avec un glasgow", "action": "allo ISP rapelle sur PISU douleur et trouble neuro\nSi prescription par med samu: le noter!", "actionDone": ""}, {"chef": "Quels critères d'inclusion pour aérosol ? Pas de dyspnée, pas de sibilant. Effet placebo ? peut être qu'un aérosol de serum phy aurait été aussi performant", "analyse": "", "action": "allo ISP pour demande d'explication\nrapeller l'importance de noter le nom du MRH c'est médico légal", "actionDone": ""}, {"chef": "examen abdo ? Localisation ?", "analyse": "", "action": "allo ISP pour explication sur ce bpv\nSi pas vu par l'ISP l'enlever des erreurs graves", "actionDone": ""}, {"chef": "une auscultation pulmonaire aurait été judicieuse", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Les constantes auraient été mieux qu'hemodynamique maintenue. \nSaignement , Quantité", "analyse": "au vu de la clinique la prise en charge est coherente mais il aurait effectivement fallu avoir un contact tel avec le MRH\nla sat à l'air ambiant est à 95 et remonte à 98 sous O2 donc on peut se dire qu'on peut attendre un peu pour avoir le MRH au tel", "action": "Allo ISP pour rappel de l'importance de rester dans le PISU", "actionDone": ""}, {"chef": "Bilan traumato leger ( Abdomen , thorax ? )\n1 seul bolus morphine? pas de surveillance de l'évolution ( ENS , Glasgow, . EVA à 9 et seulement 2.5 morphine. Pourquoi 2,5 ? pas de poids", "analyse": "", "action": "", "actionDone": ""}, {"chef": "brulures visage ? Et les orifices naturels ? quel état ? Pas d'auscultation pulmonaire\nPas de poids\nPas d'EVA , pourquoi 2.5 de morphine ? pas de surveillance ni de bilan evolutif. \nPas de profenid", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Pas de d'examen traumato complet ( Thorax ? Bassin ? abdomen . pas de surveillance ni de bilan evolutif . Douleur à 7 et pourquoi pas les 10 mg de morphine ?", "analyse": "douleur thoracique dont on arrive pas à avoir la cause: cardiaque ou pulmonaire, voir juste trauma\nintérêt de l'auscultation pulmonaire surtout qu'on a une notion de trauma costal", "action": "revoir l'auscultation pulmonaire", "actionDone": ""}, {"chef": "il faudrait mettre les actions ( PISU dans les bonnes cases pour un bilan plus clair et lisible. Pas de bilan . HTA marbrure , il n' y aurait pas une composante cardio ?", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Pourquoi pas de profenid ? oubli ou parce que Contre indication ? \nPourquoi pas d'ATB car fracture ouverte ?", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Brulure ? quel degré? pas de water gel ? pourquoi pas d'aérosol car sibilant et DRA SpO² à 77%\nG13 , pas de VVP", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Impotence MSG : Immobilisation ? \nEVA ?", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Bilan fleuve . SpO² 87% et crepitent droite dans contexte hyperthermie ( infection ? fausses routes ? Pas de VVP ?", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Douleur thoracique coup de poignard chez un fumeur de 2 paquets par jour et pas d'ECG ? 16/9 de TA au départ et EVA à 9 et pas de PISU ? \nTransport avec ISP ?", "analyse": "", "action": "", "actionDone": ""}, {"chef": "", "analyse": "", "action": "", "actionDone": ""}, {"chef": "pas de bilan circonstanciel : DRA dans quel contexte ? Pas de temperature alors que toux grasse . Productive ?", "analyse": "", "action": "", "actionDone": ""}, {"chef": "", "analyse": "", "action": "", "actionDone": ""}, {"chef": "EVA 7 et pas de morphine ? fracture ouverte et pas d'ATB ?", "analyse": "", "action": "", "actionDone": ""}, {"chef": "MRH ? qui Est il ? \nNOM OBLIGATOIRE", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Pas de profenid , 13 mg de morphine. prescription MRH ?", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Douleur thoracique de quelle origine ? ( suite à l'AVP , durée, depuis quand ? Cardiaque ? apparition brutale ? \nMEOPA sans avoir ecarter un pneumo dans contexte de trauma costal traumatique il y a 10j", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Rivotril intra rectal ? ( hors PISU et hors AMM) A t'il été prescrit pour le medecin civil ( Ses coordonnées ? ) Si préscrit par medecin ce n'est pas un PISU .", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Antiémetique injecté : Lequel et posologie ? Paracetamol posé sur PISU ou sur préscription ? \nNom de MRH prescripteur", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Pas de TA . Pourquoi pas de profénid ?", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Pas de notion de pose de VVP . Nom du medecin prescripteur", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Malaise avec PCI dans quel contexte ? \nAttention il faut relire son bilan ( Gales de la conscience ???)", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Pas de bilan circonstanciel \nQuantité de sang perdu ? ( estimation ) Tu parles de chute suite à perte de connaissance = Malaise ? Haleine alcoolisée ? \nTransport paramédicalisé ? Notion de chute pas d'examen traumato de la tête au pied. SpO² à 90 + ronflement et pas d'auscultation", "analyse": "", "action": "", "actionDone": ""}, {"chef": "", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Pourquoi pas de profenid ( Femur ? ) , ni de morphine ( EVA 10)\nTransport Helico ou VSAV ?", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Pourquoi pas de profenid ? Prescription faite par Dr SFAIRI", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Nom du regulateur ?", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Chute de cheval sur tete forte cinetique et pas de TC ???\nAuscultation trauma compléte ? oui et le resultat de cette auscultation complète ?\nExacyl ? motif ? diminution hemocue ? Quels critères pour exacyl ? PISU DCA ? Ta 12/8\nEt pas de morphine pour EVA à 8 ??\nTransport paramédicalisé ?", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Pense à preciser l'auscultation ( sibilants sur les 2 champs ).Quel PISU mis en place ? qu'as tu fait comme traitement ? Crachats verts et pas de prise temperature ?", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Murmure des lobes ? lesquels ? Glasgow ? Alors il est inconscient ou conscient ( les 2 sont notés) Desorientation temporo spatiale? mais inconscient ? Aphasique et aucune difficulté à parler ???\nPas de reprise de conscience ( dans bilan evolutif ....\nGrosses incoherences dans bilan", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Pourquoi pas de profenid ? utilisation de RL", "analyse": "", "action": "", "actionDone": ""}, {"chef": "même avec SAMU penses à noter un minimum du bilan", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Il aurait ete judicieux de mettre une VVP et de demander au MRH si possibilité atropine ?", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Apparement auscultation faite mais bilan neuro pauvre. Notion de douleur thoracique constrictive et pas d'ECG signalé par ISP ( mais 2 par chef d'agrés mais aucune trace. 1er episode de tachycardie ? FC à 49 mais 240 par ISP et par de surveillance pendant transport ? EVA à 7 et pas d'antalgie ? Transport à Puigcerda ?", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Crise convulsive à 16h et intervention à 17h38 = Tu as vu la crise ? Perte de vigilance mais G 15 ?", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Bolus de morphine de 6 mg ? ou 2 X 3 mg ? \nAttention aux ecritures . Penser à se relire", "analyse": "", "action": "", "actionDone": ""}, {"chef": "As tu fait quelque chose au patient ? Un minimum d'info est necessaire même si travail avec SAMU", "analyse": "", "action": "", "actionDone": ""}, {"chef": "manque hemocue , TRC \nretrouvée au sol = Temperature ? \npas de surveillance post remplissage", "analyse": "", "action": "", "actionDone": ""}, {"chef": "douleur thoracique dans quel contexte ? Pas de natispray\nNom medecin prescripteur", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Il aurait été judicieux d'avoir une notion d'un eventuel bilan lesionnel", "analyse": "", "action": "", "actionDone": ""}, {"chef": "resucrage ?", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Type de douleur ? Irradiation ? Il est signalé une douleur abdo et aucun examen de l'abdomen ! Température à 33,8 ???? il serait bien de preciser que ce chiffre n'est pas à retenir ( teguments chaus ) car laisser une patiente en hypothermie est une grosse erreur", "analyse": "", "action": "", "actionDone": ""}, {"chef": "toujours problème de bilan circonstanciel !!!le bilan circonstanciel n'est pas le motif d'alerte !! douleur thoracique = irradiation ? type douleur AnisoTA pas de verification des pouls peripherique", "analyse": "", "action": "", "actionDone": ""}, {"chef": "oui une auscultation pulmonaire aurait été judicieuse. En effet penses à mettre ton nom", "analyse": "", "action": "", "actionDone": ""}, {"chef": "ok avec remarques de la première lecture", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Pourquoi adrenaline IM + aérosol adre ? Polaramine ? qui est le prescripteur car pas dans ancien PISU", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Pas de bilan circonstanciel. \nil y a une precription merdicale", "analyse": "", "action": "", "actionDone": ""}, {"chef": "douleur thoracique . contexte ? bilan douleur thoracique pauvre. Pas d'ECG ? EVA 10 à 2 ?? Antalgique ?\nPISU mis en place ?", "analyse": "", "action": "", "actionDone": ""}, {"chef": "heureusement qu'il y a le bilan du chef d'agrés pour comprendre un peu la situation", "analyse": "", "action": "", "actionDone": ""}, {"chef": "", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Auscultation pulmonaire ? \ntemperature ? ( notion d'hyperthermie", "analyse": "", "action": "", "actionDone": ""}, {"chef": "pourquoi bolus de morphine de 2 mg ,EVA toujours elevée mais que 7 mg de morphine ??\nPourquoi MEOPA et PENTHROX ?", "analyse": "", "action": "", "actionDone": ""}, {"chef": "aucun renseignement clinique mais PISU mis en place. une partie du bilan est dans les facteurs de risques", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Type de douleur ? brulure ? Une petite notion respiratoire aurait été necessaire", "analyse": "", "action": "", "actionDone": ""}, {"chef": "", "analyse": "", "action": "", "actionDone": ""}, {"chef": "meme en présence du SAMU un minimum de bilan doit être noté", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Pose de VVP ?", "analyse": "", "action": "", "actionDone": ""}, {"chef": "toujours rien sur le bilan", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Pas d'ECG fait alors que signe OMI + HTA, toux grasse mais pas de temperature\nPISU mis en place ? Auscultation ? \nAttention aux abréviations ( BTA ? )", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Bilan ISP inexistant. Prescription de valium ; Posologie faite ? Nom du medecin prescripteur?", "analyse": "", "action": "", "actionDone": ""}, {"chef": "a l'auscultation bruit surrajoutés ? Lesquels ? Sibilants ? Encombrement ? \nNom du medecin prescripteur?", "analyse": "", "action": "", "actionDone": ""}, {"chef": "au vu des ATCD il aurait été peut être judicieux de faire un ECG\nnotion de douleur et pas d'EVA", "analyse": "", "action": "", "actionDone": ""}, {"chef": "notion de chute dans le escaliers ( 6 m de haut ??). Palpation corps entier et quel resultat ? Pas de morphine pour EVA à 9 ? pas de constante ni de surveillance", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Pas de bilan ISP mais ECG fait le 1er ECG semble être un ECG de référence daté du 16/03/2026 mais non précisé", "analyse": "", "action": "", "actionDone": ""}, {"chef": "pas de bilan circonstanciel ISP. saignement ?", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Pas de bilan circonstanciel\nGlasgow 7 , SpO² à 83% pas de SAMU ou de contact avec MRH ? \nTransport paramédicalisé ? \nBronchite : Pas de temperature ?", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Morphine quel dosage fait ?", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Pas d'auscultation pulmonaire . \nAttention notion de dyspnée ( circonstanciel ) et d'aucune dyspnée ( ventilatoire) dans le même bilan", "analyse": "", "action": "", "actionDone": ""}, {"chef": "que 6 mg de morphine ?", "analyse": "", "action": "", "actionDone": ""}, {"chef": "toujours problème de bilan circonstanciel. \nMorphine 1 mg ?? 4mg au total avec EVA à 4 pourquoi pas plus", "analyse": "", "action": "", "actionDone": ""}, {"chef": "L'age n'est pas une CI au penthrox . Aucun CI pour le mettre.", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Pourquoi pas de profenid ? Combien de morphine injectée au total ? 4 ou 10 ?", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Obnubilé ? Glasgow ? Morphine CI car obnubilation \nMorphine sur EVA = ou sup à 7 Donc hors PISU", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Attention aux abréviations", "analyse": "", "action": "", "actionDone": ""}, {"chef": "", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Nom du MRH prescripteur . Pourquoi demander l'accord du MRH alors que PISU ? \nRivotril et hypnovel ( prescription MRH ? )", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Pas de glycemie alors que contexte OH . Pas de bilan respi ni auscultation alors que chute de 10 marches", "analyse": "", "action": "", "actionDone": ""}, {"chef": "", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Pas de bilan circonstanciel \nEt aprés pose attelle et MEOPA , il va comment ?", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Pas de bilan traumato ' palpation abdo , bassin , pas d'auscultation\nProtocole douleur ; Mais qu'a t'il reçu ?", "analyse": "", "action": "", "actionDone": ""}, {"chef": "malaise d'origine alccolique ?? je ne comprends pas ce que vient faire la bouteille de 75 ( Bouteiile de quoi ? Il l'a bu ? bilan neuro aurait été judicieux", "analyse": "", "action": "", "actionDone": ""}, {"chef": "il aurait été bien de signaler comment etait l'enfant ( calme, pleurs , paniqué ....)", "analyse": "", "action": "", "actionDone": ""}, {"chef": "bilan neuro aurait merité d'être plus pointu . Bilan neuro post resucrage. Mouvements tonico clonisue mais pas de recherche de signe de convulsions ( morsure langue, urine...\nRessucrage per os et réevaluation une seule fois 10 min aprés la 1ere glycemie", "analyse": "", "action": "", "actionDone": ""}, {"chef": "toujours pas de profenid .......", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Douleur irradiant dans le dos ( recherche de symetrie des pouls radiaux et femoraux auraient été judicieux. . Vu les ATCD , je pense qu'une VVP aurait été necessaire . Pourquoi pas de test au nitré ?", "analyse": "", "action": "", "actionDone": ""}, {"chef": "manque le pouls", "analyse": "", "action": "", "actionDone": ""}, {"chef": "retrouvé dans l'eau = auscultation souhaitable. Pas de pouls pris", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Pb tablette ? ou ISP n' a pas vu le patient ?", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Hypoglycémie avec dextro à 1,92 ?", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Un minimum neuro et respi necessaires", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Un minimum neuro, respi et cardio necessaire . \nPourquoi pas de penthrox ?", "analyse": "", "action": "", "actionDone": ""}, {"chef": "L'ISP a t'il vu le patient ?", "analyse": "", "action": "", "actionDone": ""}, {"chef": "", "analyse": "", "action": "", "actionDone": ""}, {"chef": "G5 ou G10?", "analyse": "", "action": "", "actionDone": ""}, {"chef": "bilan circonstanciel à revoir pas de recherche de signes de convulsions ( Urine et morsure de langue). pas de pose de VVP ?", "analyse": "", "action": "", "actionDone": ""}, {"chef": "pas de bilan clinique même à minima vu la situation", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Paleur conjonctivale ? TRC ? EVA à 5 pas d'antalgie", "analyse": "", "action": "", "actionDone": ""}, {"chef": "", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Pourquoi G 5%\nNom du MRH\nSAMU SLL finalement ?", "analyse": "", "action": "", "actionDone": ""}, {"chef": "penses à noter quel medicament tu as fait . peut être qu'un ECG aurait été judicieux au vu des ATCD. notion d'expectorations mais pas de temperature. Auscultation post aérosol pour savoir si levé du bronchospasme\nPoids ? peut être pseudo asthme cardiaque ?", "analyse": "", "action": "", "actionDone": ""}, {"chef": "une auscultation pulmonaire aurait été judicieuse", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Pas de glycémie", "analyse": "", "action": "", "actionDone": ""}, {"chef": "convulse ? il faut donner les signes cliniques. Bruit à la respiration ? Pas d'auscultation. Hypnovel ? ( pas dan,s les anciens PISU sortis le 7 Avril )\nNom du medecin precripteur. Pas de transport paramédicalisé ?", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Bilan neuro a completer ; bilan respi et cardio absent . vertige ? trouble vestibulaire ?", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Pas de bilan evolutif . PISU bronchospasme : Tu lui as fait quoi ?", "analyse": "", "action": "", "actionDone": ""}, {"chef": "le diagnostic n'est pas le bilan circonstanciel. toujours pas de profenid ....", "analyse": "", "action": "", "actionDone": ""}, {"chef": "toujours problème de bilan circonstanciel . toujours pas de profenid", "analyse": "", "action": "", "actionDone": ""}, {"chef": "chute dans les escaliers ? pas de bilan traumato complet. Et le profenid ?", "analyse": "", "action": "", "actionDone": ""}, {"chef": "pas de HbCO ni auscultation pulmonaire", "analyse": "", "action": "", "actionDone": ""}, {"chef": "problème tablette ? ISP n'a pas vu le patient ?( SAMU et EPMU SLL )", "analyse": "", "action": "", "actionDone": ""}, {"chef": "je pense qu'il y a un melange des données entre les anciens et nouveaux PISU en cochant le pisu , certains medicaments se sont mis automatiquement\nPar contre auscultation pulmonaire aurait judificeuse", "analyse": "", "action": "", "actionDone": ""}, {"chef": "", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Pas de réevalution d'EVA", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Juste noter quel ATB fait", "analyse": "", "action": "", "actionDone": ""}, {"chef": "HbCO² à 90 ? erreur ecriture ? \nSi c'est le medecin SAMU qui dit VVP , Exacyl et Perfalgan ce n'est pas un PISU . Car aucun critère pour rentrer sur PISU DCA et Antalgie", "analyse": "", "action": "", "actionDone": ""}, {"chef": "ECG apparemment fait mais non noté. Douleur à 6 et Pas d'antalgie ?", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Attention posologie Terbutaline et Atrovent ( dosage pediatrique)", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Si prescription , ce n'est pas un PISU . Nom du medecin prescripteur", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Pas de bilan circonstanciel\nFracture ouverte et pas d'ATB \nMorphine 3,3,2,2 et pas 3,3,3,1", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Paleur ? TRC ? Hb ?", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Toujours pas de bilan circonstanciel\nLe bilan neuro aurait pu être plus pointu", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Pas de bilan circonstaciel \nMême si photo , penses à noter que l'ECG a été fait", "analyse": "", "action": "", "actionDone": ""}, {"chef": "", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Commence par le bilan avant de commencer par le traitment. Nom de medecin regulateur", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Attention avecles nouveaux pisu le natyspray se fait en accord du MRH", "analyse": "", "action": "", "actionDone": ""}, {"chef": "", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Il aurait été bien de chercher des signes de crise comitiale, et de purpura", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Toujours pas de bilan circonstanciel . 1ere Crise comitiale ? Tu l'as vu ? 2 crise comitiale avec un glasgow à 15 rapidement ???ATCD Psy et pas d'anti epileptique...", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Le contexte SVP !!!!", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Vu que la clinique , on ne rentre pas dans la question decisionnelle du PISU9 qui dit detresse respi ET ATCD asthme ou BPCO . Il aurait fallu demander l'accord au MRH . Pas de fin de crise aprés 1er aérosol et pourquoi pas de 2éme aérosol et de VVP . Pas de SpO² sous O² ( 70% à AA). Demande de contact au MRH et pas de notion de cette echange avec le MRH . \nPas de prise temperature ( probable contexte infectieux car sous ATB )", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Dose de ketamine injectée ?\n6 mg de morphine seulement et reste à une EVA à 9 ? Pourqouoi pas de penthrox ?", "analyse": "", "action": "", "actionDone": ""}, {"chef": "ECG = signe d'IDM ? diagnostic\nPosologie prescrites par medecin ? EVA à 5 et pas d'antalgie ?", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Pas de bilan initial. Bilan neuro aurait du être plus poussé car contexte hyperthermie ( raideur de nuque, photophobie?, purpura ? TA à 87/48 et pas reverifiée. traitement cardio , peut être a t'elle fait un bas debit sur problème cardio : ECG aurait été judicieux. \nCéphalées mais pas d'EVA \nTransport sans ISP ?", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Dyspnée et pas d'auscultation pulmonaire", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Tu as vu la crise ? G15 ? DTS ? attention aux abréviations. \nPense à mettre un petit bilan respi ( RAS ). Une temperature aurait pu être prise", "analyse": "", "action": "", "actionDone": ""}, {"chef": "ECG aurait été utile et auscultation pulmonaire car ronfle", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Photophobie frissons cephalées . recherche purpura ? IRM cérebral demandé en urgence . peut être une demande de transport CH aurait été mieux . Il aurait peut etre insister aupres du MRH de signes neuro persistants avec une IRM demandé en urgence", "analyse": "", "action": "", "actionDone": ""}, {"chef": "oubli prise de TA", "analyse": "", "action": "", "actionDone": ""}, {"chef": "A t'il etait soulagé sous penthrox? tu le laisse partir sous penthrox avec EVA sans paramédicaliser ?", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Pas de bilan circonstanciel ( circonstance / contexte)Alors consciente ou inconsciente ? incohérence entre ton bilan circonstanciel et ton bilan initial et neuro", "analyse": "", "action": "", "actionDone": ""}, {"chef": "detresse respi dans quel contexte ? Bilan circonstanciel !!!\nIl aurait été bien de reverifier la Frequence respiratoire avant de la laisser", "analyse": "", "action": "", "actionDone": ""}, {"chef": "", "analyse": "", "action": "", "actionDone": ""}, {"chef": "", "analyse": "", "action": "", "actionDone": ""}, {"chef": "", "analyse": "", "action": "", "actionDone": ""}, {"chef": "", "analyse": "", "action": "", "actionDone": ""}, {"chef": "PISU bronchospasme ?mais pas d'ATCD asthme ou BPCO . Et que lui as tu fait comme produit dans ce PISU ?\nRespiration bruyante et pas d'auscultation , ni de temperature vu le contexte", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Si on suit le PISU à la lettre , il n' y a pas les critères d'y rentrer ( detresse respi ET ATCD asthme ou BPCO ) aurait du demander l'accord au MRH", "analyse": "", "action": "", "actionDone": ""}, {"chef": "", "analyse": "", "action": "", "actionDone": ""}, {"chef": "le patient a t'il était vu par l'ISP ?", "analyse": "", "action": "", "actionDone": ""}, {"chef": "pourquoi utilisation d'adrenaline alors que pas de dyspnée signalée sur le bilan respi. la voie d'injection d'adrenaline n'a pas été notifiée. ses problèmes respiratoires sont présents depuis plusieurs semaines ( etat de base ) son problème allergie n'est qu'un stade 1", "analyse": "", "action": "", "actionDone": ""}, {"chef": "pas de bilan circonstanciel", "analyse": "", "action": "", "actionDone": ""}, {"chef": "devant l'hypoTA , une VVP aurait été judicieuse", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Bilan neuro leger . aucune notion de la ventilation . vu les risques cardio en cas de surdosage , un ECG et une VVP aurait été judicieux", "analyse": "", "action": "", "actionDone": ""}, {"chef": "manque le nom du medecin regulateur qui a prescrit le keto", "analyse": "", "action": "", "actionDone": ""}, {"chef": "manque le nom du medecin regulateur. Bilan un peu compliqué à lire . Pas besoin de mettre XABCDE avant chaque signe ( ça surcharge ton bilan)", "analyse": "", "action": "", "actionDone": ""}, {"chef": "bilan pauvre", "analyse": "", "action": "", "actionDone": ""}, {"chef": "", "analyse": "", "action": "", "actionDone": ""}, {"chef": "bilan circonstanciel !!!!!Pas d'auscultation pulmonaire alors que difficulté respiratoire decrite. EVA à 9 et que paracetamol ? pas de reévaluation de la douleur", "analyse": "", "action": "", "actionDone": ""}, {"chef": "", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Brulures quel degré? si je suis ta description je n'ai que 8% de brulé EVA 6 et pas de morphine ?", "analyse": "", "action": "", "actionDone": ""}, {"chef": "PISU OAP et pose de 2 aérosols ? ( hors PISU ). détresse respi d'apparition lente sans HTA ni OMI , peut être infection pulmonaire mais pas de temperature. Bilan evolutif ? la patiente va t'elle mieux ? \nTransport non paramédicalisé ?", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Manque un minimum de données neuro", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Malgré les signes d'un bronchospasme , on est hors PISU car pas d'ATCD BPCO ou Asthme. ATCD cardio avec anomalie auscultation + Detresse respi ( HTA en plus ) = PISU OAP donc pas d'aérosol mais proposition Lasilix ou risordan", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Bilan initial pauvre EVA 4 pas d'antalgie", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Bilan douleur thoracique ( irradiation ? 1ere fois , )\nISOCARD ne peut se faire que sur prescription du MRH\nEVA 3 ( antalgie per os )", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Si tu as vu la patient un minimum de traces doit être sur le bilan", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Même si SAMU SLL un minimum de bilan doit apparaitre sur ton BPV", "analyse": "", "action": "", "actionDone": ""}, {"chef": "Nom du MRH qui prescrit la modification des bolus . Dans ton bilan pas necessaire de noter XABCDE avant tes signes cliniques", "analyse": "", "action": "", "actionDone": ""}];
+
+  // ── Reprendre où on s'était arrêté ────────────────────────────────────────
+  const startIdx = parseInt(props.getProperty('LGR_IDX') || '-1', 10);
+  // -1 = pas commencé = on démarre du DERNIER (newest)
+
+  Logger.log('Chargement des révisions...');
+  const revisions = _diagGetRevisionsList(fileId);
+  const total = revisions.length;
+  Logger.log(total + ' révisions trouvées.');
+
+  // On scanne du PLUS RÉCENT au PLUS ANCIEN
+  // startIdx = index dans revisions[] (0=oldest, total-1=newest)
+  // On commence à total-1 et on descend
+  let curIdx = (startIdx === -1) ? total - 1 : startIdx;
+
+  const norm = s => String(s || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim();
+
+  while (curIdx >= 0) {
+    if (Date.now() - startTime > MAX_MS) {
+      props.setProperty('LGR_IDX', String(curIdx));
+      Logger.log('Pause rev ' + curIdx + ' — Relancez findLastGoodRevisionAndRestore()');
+      return;
+    }
+
+    const rev = revisions[curIdx];
+    let baseUrl = (rev.exportLinks && rev.exportLinks['text/csv'])
+        ? rev.exportLinks['text/csv'] : null;
+    if (!baseUrl) baseUrl = _diagGetExportUrl(fileId, rev.id);
+
+    if (baseUrl) {
+      const csvAlex = _diagFetchCsv(baseUrl, gidAlex);
+      if (csvAlex) {
+        const alexRows = _diagParseCSV(csvAlex);
+
+        // Compter les commentaires non-vides en col M (index 12)
+        const commentCount = alexRows.filter((r, i) => i > 0 && r[12] && norm(r[12])).length;
+        Logger.log('Rev ' + curIdx + ' (' + rev.modifiedDate + '): ' + commentCount + ' commentaires Alex M');
+
+        if (commentCount >= 5) {
+          // ✅ Trouvé la bonne révision !
+          Logger.log('Bonne révision trouvée : rev ' + curIdx + ' avec ' + commentCount + ' commentaires');
+
+          // Construire la map ID → commentaire depuis CETTE révision
+          const idToChef = {};
+          for (let i = 1; i < alexRows.length; i++) {
+            const id      = norm(alexRows[i][0]);
+            const comment = norm(alexRows[i][12]);
+            if (id && comment) idToChef[id] = comment;
+          }
+
+          // Pareil pour Eve (colonnes O et Q)
+          const idToAnalyse = {};
+          const idToAction  = {};
+          if (gidEve) {
+            const csvEve = _diagFetchCsv(baseUrl, gidEve);
+            if (csvEve) {
+              const eveRows = _diagParseCSV(csvEve);
+              for (let i = 1; i < eveRows.length; i++) {
+                const id      = norm(eveRows[i][0]);
+                const analyse = norm(eveRows[i][14]);
+                const action  = norm(eveRows[i][16]);
+                if (id && analyse) idToAnalyse[id] = analyse;
+                if (id && action)  idToAction[id]  = action;
+              }
+            }
+          }
+
+          Logger.log('IDs trouvés: chef=' + Object.keys(idToChef).length +
+                     ' analyse=' + Object.keys(idToAnalyse).length +
+                     ' action=' + Object.keys(idToAction).length);
+
+          // Maintenant on peut croiser avec le backup Excel pour prendre
+          // le texte Excel (qui peut avoir des corrections) plutôt que
+          // le texte de la révision — on utilise la révision pour le MAPPING
+          // et le backup Excel pour le CONTENU.
+          //
+          // On fait la correspondance par position :
+          // alexRows[i] dans la révision → BACKUP[i-1] dans l'Excel
+          // C'est valide car on est dans la MÊME révision = même ordre.
+          const finalChef    = {};
+          const finalAnalyse = {};
+          const finalAction  = {};
+
+          // Chef : position dans alexRows ↔ position dans BACKUP
+          for (let i = 1; i < alexRows.length; i++) {
+            const id = norm(alexRows[i][0]);
+            if (!id) continue;
+            const backupRow = BACKUP[i - 1];
+            if (!backupRow) continue;
+            // Utiliser le texte Excel si non vide, sinon celui de la révision
+            const chefText = (backupRow.chef && backupRow.chef.trim())
+                ? backupRow.chef
+                : norm(alexRows[i][12]);
+            if (chefText) finalChef[id] = chefText;
+          }
+
+          // Analyse / Action : correspondance par ID depuis la révision Eve
+          // + texte Excel si disponible
+          if (gidEve) {
+            const csvEve2 = _diagFetchCsv(baseUrl, gidEve);
+            if (csvEve2) {
+              const eveRows2 = _diagParseCSV(csvEve2);
+              for (let i = 1; i < eveRows2.length; i++) {
+                const id = norm(eveRows2[i][0]);
+                if (!id) continue;
+                // Chercher la ligne Alex correspondant à cet ID pour avoir l'index BACKUP
+                let backupIdx = -1;
+                for (let j = 1; j < alexRows.length; j++) {
+                  if (norm(alexRows[j][0]) === id) { backupIdx = j - 1; break; }
+                }
+                const backupRow = (backupIdx >= 0) ? BACKUP[backupIdx] : null;
+                const analyseText = (backupRow && backupRow.analyse && backupRow.analyse.trim())
+                    ? backupRow.analyse : norm(eveRows2[i][14]);
+                const actionText  = (backupRow && backupRow.action && backupRow.action.trim())
+                    ? backupRow.action  : norm(eveRows2[i][16]);
+                if (analyseText) finalAnalyse[id] = analyseText;
+                if (actionText)  finalAction[id]  = actionText;
+              }
+            }
+          }
+
+          // Nettoyer état
+          props.deleteProperty('LGR_IDX');
+
+          // Appliquer directement
+          _applyRestoredByIdMap(ss, shApp, shAlex, shEve, finalChef, finalAnalyse, finalAction);
+          return;
+        }
+      }
+    }
+    curIdx--;
+  }
+
+  props.deleteProperty('LGR_IDX');
+  Logger.log('Aucune révision avec suffisamment de commentaires trouvée.');
+  SpreadsheetApp.getUi().alert(
+    'Aucune révision exploitable trouvée.\n' +
+    'Les commentaires ont peut-être été supprimés avant que Drive ait ' +
+    'sauvegardé une révision accessible.'
+  );
+}
+
+function _applyRestoredByIdMap(ss, shApp, shAlex, shEve, chefMap, analyseMap, actionMap) {
+  const appData  = shApp.getDataRange().getValues();
+  const alexData = shAlex.getDataRange().getValues();
+  const eveData  = shEve ? shEve.getDataRange().getValues() : [];
+
+  const appRowById  = {};
+  const alexRowById = {};
+  const eveRowById  = {};
+
+  for (let i = 1; i < appData.length;  i++) {
+    const id = String(appData[i][C_APP_ID] || '').trim();
+    if (id) appRowById[id] = i + 1;
+  }
+  for (let i = 1; i < alexData.length; i++) {
+    const id = String(alexData[i][0] || '').trim();
+    if (id && !alexRowById[id]) alexRowById[id] = i + 1;
+  }
+  for (let i = 1; i < eveData.length;  i++) {
+    const id = String(eveData[i][0] || '').trim();
+    if (id && !eveRowById[id]) eveRowById[id] = i + 1;
+  }
+
+  let nChef = 0, nAnalyse = 0, nAction = 0, nMiss = 0;
+
+  // Chef → Alex col M + APP BX
+  for (const id in chefMap) {
+    const text = chefMap[id];
+    if (!text) continue;
+    const alexRow = alexRowById[id];
+    const appRow  = appRowById[id];
+    if (alexRow) { shAlex.getRange(alexRow, 13).setValue(text); nChef++; }
+    if (appRow)  shApp.getRange(appRow, C_COMM_CHEF + 1).setValue(text);
+    if (!alexRow && !appRow) nMiss++;
+  }
+
+  // Analyse → Eve col O + APP BY
+  for (const id in analyseMap) {
+    const text = analyseMap[id];
+    if (!text) continue;
+    if (!eveRowById[id] && shEve) {
+      const nr = shEve.getLastRow() + 1;
+      shEve.getRange(nr, 1).setValue(id);
+      eveRowById[id] = nr;
+    }
+    const eveRow = eveRowById[id];
+    if (eveRow && shEve) { shEve.getRange(eveRow, 15).setValue(text); nAnalyse++; }
+    const appRow = appRowById[id];
+    if (appRow) shApp.getRange(appRow, C_COMM_MED + 1).setValue(text);
+  }
+
+  // Action → Eve col Q + APP BZ
+  for (const id in actionMap) {
+    const text = actionMap[id];
+    if (!text) continue;
+    if (!eveRowById[id] && shEve) {
+      const nr = shEve.getLastRow() + 1;
+      shEve.getRange(nr, 1).setValue(id);
+      eveRowById[id] = nr;
+    }
+    const eveRow = eveRowById[id];
+    if (eveRow && shEve) { shEve.getRange(eveRow, 17).setValue(text); nAction++; }
+    const appRow = appRowById[id];
+    if (appRow) shApp.getRange(appRow, C_ACTION_MED + 1).setValue(text);
+  }
+
+  CacheService.getScriptCache().remove('chefferie_counts_v4');
+  CacheService.getScriptCache().remove('all_isp_error_stats');
+
+  const msg = 'Restauration terminée !\n' +
+              nChef + ' commentaires chefferie restaurés\n' +
+              nAnalyse + ' analyses médecin restaurées\n' +
+              nAction + ' actions restaurées\n' +
+              (nMiss > 0 ? nMiss + ' IDs non trouvés dans le spreadsheet actuel.' : '');
+  Logger.log(msg);
+  SpreadsheetApp.getUi().alert(msg);
+}

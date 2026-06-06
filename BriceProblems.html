@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', sans-serif; background: #1a1a2e; color: #e0e0e0; height: 100vh; display: flex; flex-direction: column; }
+  #header { padding: 14px 20px; background: #16213e; border-bottom: 1px solid #2d3561; display: flex; align-items: center; justify-content: space-between; }
+  #header h2 { font-size: 16px; color: #fff; }
+  #counter { font-size: 13px; color: #aaa; }
+  #nav { padding: 10px 20px; background: #16213e; display: flex; gap: 10px; align-items: center; border-bottom: 1px solid #2d3561; }
+  .nav-btn { padding: 6px 16px; border-radius: 6px; border: 1px solid #444; background: #0f3460; color: #ccc; cursor: pointer; font-size: 13px; }
+  .nav-btn:hover { background: #1a4a8a; }
+  .nav-btn:disabled { opacity: 0.4; cursor: default; }
+  #content { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 0; overflow: hidden; }
+  #pdfPane { border-right: 1px solid #2d3561; position: relative; }
+  #pdfPane iframe { width: 100%; height: 100%; border: none; }
+  #infoPane { overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+  .info-block { background: #0f3460; border-radius: 8px; padding: 14px; }
+  .info-block h3 { font-size: 13px; color: #7ec8e3; margin-bottom: 10px; text-transform: uppercase; letter-spacing: .5px; }
+  .info-row { display: flex; gap: 8px; margin-bottom: 6px; font-size: 13px; }
+  .info-label { color: #aaa; min-width: 90px; }
+  .info-val { color: #fff; }
+  .comment-box { background: rgba(255,107,107,0.12); border: 1px solid rgba(255,107,107,0.4); border-radius: 6px; padding: 12px; font-size: 13px; color: #ff9999; line-height: 1.5; }
+  .actions { display: flex; gap: 10px; margin-top: 6px; }
+  .btn-block { flex: 1; padding: 12px; border-radius: 8px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; background: #444; color: #ccc; }
+  .btn-block:hover { background: #555; }
+  .btn-send { flex: 1; padding: 12px; border-radius: 8px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; background: #2ecc71; color: #000; }
+  .btn-send:hover { background: #27ae60; }
+  #empty { display: flex; align-items: center; justify-content: center; flex: 1; font-size: 18px; color: #7ec8e3; }
+  #loading { display: flex; align-items: center; justify-content: center; flex: 1; color: #aaa; font-size: 14px; }
+</style>
+</head>
+<body>
+<div id="header">
+  <h2>🚨 Problèmes signalés à Brice</h2>
+  <span id="counter"></span>
+</div>
+<div id="nav" style="display:none;">
+  <button class="nav-btn" id="btnPrev" onclick="navigate(-1)">◀ Précédent</button>
+  <span id="posLabel" style="font-size:13px; color:#ccc;"></span>
+  <button class="nav-btn" id="btnNext" onclick="navigate(1)">Suivant ▶</button>
+</div>
+<div id="mainArea" style="flex:1; display:flex; overflow:hidden;">
+  <div id="loading" style="flex:1;">Chargement des fiches...</div>
+</div>
+
+<script>
+  var fiches = [];
+  var idx = 0;
+
+  google.script.run
+    .withSuccessHandler(function(data) {
+      fiches = data;
+      if (fiches.length === 0) {
+        document.getElementById('loading').innerHTML = '<div id="empty">✅ Aucun problème signalé à Brice !</div>';
+        return;
+      }
+      document.getElementById('counter').textContent = fiches.length + ' fiche(s)';
+      document.getElementById('nav').style.display = 'flex';
+      document.getElementById('loading').style.display = 'none';
+      
+      // Créer la zone de contenu
+      var mainArea = document.getElementById('mainArea');
+      mainArea.innerHTML = '<div id="content"><div id="pdfPane"><iframe id="pdfFrame" src=""></iframe></div><div id="infoPane"></div></div>';
+      
+      render();
+    })
+    .withFailureHandler(function(e) {
+      document.getElementById('loading').textContent = 'Erreur: ' + e.message;
+    })
+    .getBriceProblems();
+
+  function render() {
+    if (!fiches.length) return;
+    var f = fiches[idx];
+    
+    // Navigation
+    document.getElementById('posLabel').textContent = (idx + 1) + ' / ' + fiches.length;
+    document.getElementById('btnPrev').disabled = idx === 0;
+    document.getElementById('btnNext').disabled = idx === fiches.length - 1;
+    
+    // PDF
+    var pdfUrl = (f.pdf || '').replace('/view', '/preview').replace('/edit', '/preview');
+    document.getElementById('pdfFrame').src = pdfUrl;
+    
+    // Info
+    var info = document.getElementById('infoPane');
+    info.innerHTML = '<div class="info-block"><h3>📋 Fiche</h3>'
+      + row('ID', f.interId)
+      + row('Date', f.date)
+      + row('ISP', f.infName)
+      + row('CIS', f.cis)
+      + row('Motif', f.motif)
+      + row('Engin', f.engin)
+      + '</div>'
+      + (f.commentaire ? '<div class="info-block"><h3>⚠️ Commentaire Brice</h3><div class="comment-box">' + escHtml(f.commentaire) + '</div></div>' : '')
+      + '<div class="info-block"><h3>Actions</h3><div class="actions">'
+      + '<button class="btn-block" onclick="doBlock(' + f.row + ')">🚫 Bloquer<br><span style="font-size:11px;font-weight:400;color:#aaa">Ne plus montrer,<br>pas de retour analyse</span></button>'
+      + '<button class="btn-send" onclick="doSendBack(' + f.row + ')">✅ Valider et renvoyer<br><span style="font-size:11px;font-weight:400">Remet en analyse ISP</span></button>'
+      + '</div></div>';
+  }
+
+  function row(label, val) {
+    return '<div class="info-row"><span class="info-label">' + label + '</span><span class="info-val">' + escHtml(String(val || '—')) + '</span></div>';
+  }
+
+  function escHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function navigate(dir) {
+    idx = Math.max(0, Math.min(fiches.length - 1, idx + dir));
+    render();
+  }
+
+  function doBlock(rowNum) {
+    if (!confirm('Bloquer cette fiche ? Elle ne sera plus présentée ici, mais ne reviendra pas dans l\'analyse ISP.')) return;
+    google.script.run
+      .withSuccessHandler(function() {
+        fiches.splice(idx, 1);
+        document.getElementById('counter').textContent = fiches.length + ' fiche(s)';
+        if (fiches.length === 0) { document.getElementById('mainArea').innerHTML = '<div id="empty" style="flex:1;display:flex;align-items:center;justify-content:center;color:#7ec8e3;font-size:18px;">✅ Aucun problème signalé à Brice !</div>'; document.getElementById('nav').style.display = 'none'; return; }
+        idx = Math.min(idx, fiches.length - 1);
+        render();
+      })
+      .withFailureHandler(function(e) { alert('Erreur: ' + e.message); })
+      .blockBriceProblem(rowNum);
+  }
+
+  function doSendBack(rowNum) {
+    if (!confirm('Valider et renvoyer en analyse ISP ? La fiche sera déclôturée et reviendra dans la queue d\'analyse.')) return;
+    google.script.run
+      .withSuccessHandler(function() {
+        fiches.splice(idx, 1);
+        document.getElementById('counter').textContent = fiches.length + ' fiche(s)';
+        if (fiches.length === 0) { document.getElementById('mainArea').innerHTML = '<div id="empty" style="flex:1;display:flex;align-items:center;justify-content:center;color:#7ec8e3;font-size:18px;">✅ Aucun problème signalé à Brice !</div>'; document.getElementById('nav').style.display = 'none'; return; }
+        idx = Math.min(idx, fiches.length - 1);
+        render();
+      })
+      .withFailureHandler(function(e) { alert('Erreur: ' + e.message); })
+      .sendBackToIspAnalysis(rowNum);
+  }
+</script>
+</body>
+</html>
