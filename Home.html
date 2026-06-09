@@ -331,15 +331,25 @@
       <div id="todayInfoBox" style="padding:12px;background:rgba(255,255,255,0.05);border-top:1px solid rgba(255,255,255,.1);font-size:10px;color:#8899b3;margin-top:15px;">
         <div style="font-weight:bold;color:#e0e8f0;margin-bottom:8px;" id="todayDate">-</div>
         <div style="line-height:1.6;">
-          <div><span style="color:#8899b3;">ISP Garde Matin:</span> <span id="todayGardeMatin" style="color:#e0e8f0;font-weight:bold;">-</span></div>
-          <div><span style="color:#8899b3;">ISP Garde AM:</span> <span id="todayGardeAm" style="color:#e0e8f0;font-weight:bold;">-</span></div>
+          <div><span style="color:#8899b3;">ISP PSUD Matin:</span> <span id="today_isp_matin" style="color:#e0e8f0;font-weight:bold;">-</span></div>
+          <div><span style="color:#8899b3;">ISP PSUD AM:</span> <span id="today_isp_am" style="color:#e0e8f0;font-weight:bold;">-</span></div>
+          <div><span style="color:#8899b3;">ISP PSUD Nuit:</span> <span id="today_isp_nuit" style="color:#e0e8f0;font-weight:bold;">-</span></div>
           <div style="margin-top:6px;"></div>
-          <div><span style="color:#8899b3;">Conducteur:</span> <span id="todayConduct" style="color:#e0e8f0;font-weight:bold;">-</span></div>
+          <div><span style="color:#8899b3;">Conducteur Jour:</span> <span id="today_conducteur_jour" style="color:#e0e8f0;font-weight:bold;">-</span></div>
+          <div><span style="color:#8899b3;">Conducteur Nuit:</span> <span id="today_conducteur_nuit" style="color:#e0e8f0;font-weight:bold;">-</span></div>
           <div style="margin-top:6px;"></div>
-          <div><span style="color:#8899b3;">MaD jour:</span> <span id="todayMadJour" style="color:#e0e8f0;font-weight:bold;">-</span></div>
-          <div><span style="color:#8899b3;">MaD nuit:</span> <span id="todayMadNuit" style="color:#e0e8f0;font-weight:bold;">-</span></div>
+          <div><span style="color:#8899b3;">Doublure Matin:</span> <span id="today_doublure_matin" style="color:#e0e8f0;font-weight:bold;">-</span></div>
+          <div><span style="color:#8899b3;">Doublure AM:</span> <span id="today_doublure_am" style="color:#e0e8f0;font-weight:bold;">-</span></div>
+          <div><span style="color:#8899b3;">Doublure Nuit:</span> <span id="today_doublure_nuit" style="color:#e0e8f0;font-weight:bold;">-</span></div>
           <div style="margin-top:6px;"></div>
-          <div><span style="color:#8899b3;">Infirmier astreinte pro:</span> <span id="todayInfirmier" style="color:#e0e8f0;font-weight:bold;">-</span></div>
+          <div><span style="color:#8899b3;">Médecin garde PSud:</span> <span id="today_medecin_garde" style="color:#e0e8f0;font-weight:bold;">-</span></div>
+          <div style="margin-top:6px;"></div>
+          <div><span style="color:#8899b3;">MaD Jour:</span> <span id="today_mad_jour" style="color:#e0e8f0;font-weight:bold;">-</span></div>
+          <div><span style="color:#8899b3;">MaD Nuit:</span> <span id="today_mad_nuit" style="color:#e0e8f0;font-weight:bold;">-</span></div>
+          <div style="margin-top:6px;"></div>
+          <div><span style="color:#8899b3;">IAD:</span> <span id="today_iad" style="color:#e0e8f0;font-weight:bold;">-</span></div>
+          <div><span style="color:#8899b3;">Pharmacien Jour:</span> <span id="today_pharma_jour" style="color:#e0e8f0;font-weight:bold;">-</span></div>
+          <div><span style="color:#8899b3;">Pharmacien Nuit:</span> <span id="today_pharma_nuit" style="color:#e0e8f0;font-weight:bold;">-</span></div>
         </div>
       </div>
     </aside>
@@ -376,6 +386,11 @@
             <div><div style="font-size:11px;color:var(--muted)">Total 2025</div><div class="badge" id="hrs2025Badge">...</div></div>
         </div></div>
 
+        <!-- Tuile SSO -->
+        <div class="panel" style="margin-bottom:20px;width:fit-content;"><div class="panelBody" style="display:flex;align-items:center;gap:40px;">
+            <div><div style="font-size:11px;color:var(--muted)">SSO</div><div style="font-size:32px;font-weight:900" id="sso2026">...</div><div style="font-size:9px;color:var(--muted);margin-top:4px;">Intitulés APP commençant par FU_</div></div>
+        </div></div>
+
         <!-- Tuile Qualité Bilan / PISU -->
         <div style="display:flex;gap:15px;margin-bottom:20px;flex-wrap:wrap;">
           <div class="panel" style="flex:1;min-width:220px;"><div class="panelBody" style="text-align:center;">
@@ -408,6 +423,7 @@
         <div style="display:flex;gap:20px;margin-bottom:20px;flex-wrap:wrap;">
             <div class="panel"><div class="panelHead">Sorties par CIS</div><div class="panelScrollWrapper"><table id="tableCis" class="compact"><thead><tr><th onclick="sortTable('tableCis',0)" style="cursor:pointer">CIS <span class="sort-icon">↕</span></th><th onclick="sortTable('tableCis',1)" class="num" style="cursor:pointer">2026 <span class="sort-icon">↕</span></th><th onclick="sortTable('tableCis',2)" class="num" style="cursor:pointer">2025 (Date) <span class="sort-icon">↕</span></th><th onclick="sortTable('tableCis',3)" class="num" style="cursor:pointer">2025 (Total) <span class="sort-icon">↕</span></th></tr></thead><tbody></tbody></table></div></div>
             <div class="panel"><div class="panelHead">Sorties par Secteur</div><div class="panelScrollWrapper"><table id="tableSect" class="compact"><thead><tr><th onclick="sortTable('tableSect',0)" style="cursor:pointer">Secteur <span class="sort-icon">↕</span></th><th onclick="sortTable('tableSect',1)" class="num" style="cursor:pointer">2026 <span class="sort-icon">↕</span></th><th onclick="sortTable('tableSect',2)" class="num" style="cursor:pointer">2025 (Date) <span class="sort-icon">↕</span></th><th onclick="sortTable('tableSect',3)" class="num" style="cursor:pointer">2025 (Total) <span class="sort-icon">↕</span></th></tr></thead><tbody></tbody></table></div></div>
+            <div class="panel"><div class="panelHead">SSO par Cis</div><div class="panelScrollWrapper"><table id="tableSsoCis" class="compact"><thead><tr><th onclick="sortTable('tableSsoCis',0)" style="cursor:pointer">CIS <span class="sort-icon">↕</span></th><th onclick="sortTable('tableSsoCis',1)" class="num" style="cursor:pointer">SSO <span class="sort-icon">↕</span></th></tr></thead><tbody></tbody></table></div></div>
             <div class="panel"><div class="panelHead">⏱ H. Dispo/Astreinte par CIS (2026)</div><div class="panelScrollWrapper"><table id="tableTemps" class="compact"><thead><tr><th onclick="sortTable('tableTemps',0)" style="cursor:pointer">CIS <span class="sort-icon">↕</span></th><th onclick="sortTable('tableTemps',1)" class="num" style="cursor:pointer">Heures <span class="sort-icon">↕</span></th><th onclick="sortTable('tableTemps',2)" class="num" style="cursor:pointer">H moy/mois <span class="sort-icon">↕</span></th><th onclick="sortTable('tableTemps',3)" class="num" style="cursor:pointer">H/inter <span class="sort-icon">↕</span></th><th onclick="sortTable('tableTemps',4)" class="num" style="cursor:pointer">Taux Jour ☀️ <span class="sort-icon">↕</span></th><th onclick="sortTable('tableTemps',5)" class="num" style="cursor:pointer">Taux Nuit 🌙 <span class="sort-icon">↕</span></th><th onclick="sortTable('tableTemps',6)" class="num" style="cursor:pointer">Taux Global <span class="sort-icon">↕</span></th></tr></thead><tbody></tbody></table></div></div>
             <div class="panel"><div class="panelHead">⏱ H. Dispo/Astreinte par Secteur (2026)</div><div class="panelScrollWrapper"><table id="tableTemplSect" class="compact"><thead><tr><th onclick="sortTable('tableTemplSect',0)" style="cursor:pointer">Secteur <span class="sort-icon">↕</span></th><th onclick="sortTable('tableTemplSect',1)" class="num" style="cursor:pointer">Heures <span class="sort-icon">↕</span></th><th onclick="sortTable('tableTemplSect',2)" class="num" style="cursor:pointer">Taux Jour ☀️ <span class="sort-icon">↕</span></th><th onclick="sortTable('tableTemplSect',3)" class="num" style="cursor:pointer">Taux Nuit 🌙 <span class="sort-icon">↕</span></th><th onclick="sortTable('tableTemplSect',4)" class="num" style="cursor:pointer">Taux Global <span class="sort-icon">↕</span></th></tr></thead><tbody></tbody></table></div></div>
         </div>
@@ -740,6 +756,7 @@
                     <label style="margin:0;">ISP Analyse :</label>
                     <select id="ispSelect" style="flex:1;"><option value="">Chargement...</option></select>
                 </div>
+                <div style="margin-top:6px; padding:5px 8px; background:rgba(255,193,7,0.08); border-left:3px solid rgba(255,193,7,0.5); border-radius:3px; font-size:11px;"><span style="color:#ffc107;font-weight:700;">Commentaire ajouté à postériori&nbsp;:</span> <span id="infoTContent">—</span></div>
             </div>
 
             <div class="group">
@@ -966,6 +983,7 @@
             setText("cutoffCompAst", d.date);
             setText("psud2026", d.psud); setText("total2026", d.total);
             setText("secteur2026", d.sect); setText("hrs2026", d.ast+" h");
+            setText("sso2026", d.ssoTotal || 0);
             
             // Tuiles qualité + motifs + protocoles
             setText("tileBilanOk", d.bilanOkPct || "—");
@@ -982,6 +1000,7 @@
 
             document.querySelector("#tableCis tbody").innerHTML = (d.cis||[]).map(x=>`<tr id="cis_${x.name}"><td>${x.name}</td><td class="num">${x.v26}</td><td class="num v25">...</td><td class="num" style="color:gray">${x.v25tot}</td></tr>`).join('');
             document.querySelector("#tableSect tbody").innerHTML = (d.secteurs||[]).map(x=>`<tr id="sect_${x.name}"><td>${x.name}</td><td class="num">${x.v26}</td><td class="num v25">...</td><td class="num" style="color:gray">${x.v25tot}</td></tr>`).join('');
+            document.querySelector("#tableSsoCis tbody").innerHTML = (d.ssoByCis||[]).map(x=>`<tr><td>${x.name}</td><td class="num">${x.count}</td></tr>`).join('');
 
             // Tableaux dispo/astreinte avec taux de couverture
             const _now = new Date();
@@ -1113,8 +1132,26 @@
     }
 
     function setStatus(t){ document.getElementById("statusPill").textContent=t; }
-    function extractDriveFileId(u){ if(!u)return ""; const m=String(u).match(/\/file\/d\/([^\/\?]+)/i); return (m&&m[1])?m[1]:""; }
-    function buildPdfEmbed(u){ const id=extractDriveFileId(u); return id ? "https://drive.google.com/file/d/"+id+"/preview" : ""; }
+    function extractDriveFileId(u){
+      if(!u) return "";
+      var s = String(u);
+      // Format /file/d/ID
+      var m = s.match(/\/file\/d\/([a-zA-Z0-9_-]+)/i);
+      if(m && m[1]) return m[1];
+      // Format ?id=ID ou &id=ID (open?id=, uc?id=, etc.)
+      m = s.match(/[?&]id=([a-zA-Z0-9_-]+)/i);
+      if(m && m[1]) return m[1];
+      return "";
+    }
+    function buildPdfEmbed(u){
+      var id = extractDriveFileId(u);
+      if(!id) return "";
+      // Conserver le resourcekey si présent (nécessaire pour certains fichiers Drive)
+      var rk = "";
+      var m = String(u).match(/[?&]resourcekey=([^&]+)/i);
+      if(m && m[1]) rk = "?resourcekey=" + m[1];
+      return "https://drive.google.com/file/d/" + id + "/preview" + rk;
+    }
     function setButtons(d){ ["sendBtn","skipBtn"].forEach(i=>document.getElementById(i).disabled=d); }
 
     document.getElementById("pbCheck").addEventListener("change", (e)=>{
@@ -1179,6 +1216,12 @@
 
     function renderForm(schema, ispList) {
        fillSelect("ispSelect", ispList, schema.ispVal);
+
+       // Commentaire ajouté à postériori (col T)
+       var infoTEl = document.getElementById("infoTContent");
+       if (infoTEl) {
+         infoTEl.textContent = schema.infoT || "aucun";
+       }
 
        const mkCb = (boxId, items) => {
          const box = document.getElementById(boxId);
@@ -1819,11 +1862,11 @@
         const div = document.getElementById('chefAppContent');
         const info = data.info;
         
-        div.innerHTML = `
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; height:calc(100vh - 200px);">
+        div.innerHTML = `<button class="btn" style="margin-bottom:14px;background:var(--bg3);border:1px solid var(--border);color:var(--text);" onclick="renderActionList()">← Retour à la liste</button>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; height:calc(100vh - 240px);">
                 <!-- PDF à gauche -->
                 <div style="border:1px solid var(--border); border-radius:12px; overflow:hidden;">
-                    <iframe src="${(info.pdf||'').replace('/view','/preview')}" style="width:100%; height:100%; border:none; position:relative;"></iframe>
+                    <iframe src="${buildPdfEmbed(info.pdf)}" style="width:100%; height:100%; border:none; position:relative;"></iframe>
                 </div>
                 
                 <!-- Formulaire à droite -->
@@ -1837,6 +1880,7 @@
                             <div style="margin-bottom:10px;"><strong>Statut:</strong> ${info.status}</div>
                             <div style="margin-bottom:10px;"><strong>Motif:</strong> ${info.motif}</div>
                             <div style="margin-bottom:10px;"><strong>Engin:</strong> ${info.engin}</div>
+                            <div style="margin-top:6px; padding:5px 8px; background:rgba(255,193,7,0.08); border-left:3px solid rgba(255,193,7,0.5); border-radius:3px; font-size:11px;"><span style="color:#ffc107;font-weight:700;">Commentaire ajouté à postériori :</span> ${info.infoT || 'aucun'}</div>
                         </div>
                     </div>
                     
@@ -1883,8 +1927,8 @@
                                 <textarea id="txtCommentChef" style="width:100%; min-height:80px;">${data.commentChef}</textarea>
                             </div>
                             
-                            <div style="margin-top:20px; display:flex; gap:10px;">
-                                <button class="btn ok" style="flex:1;" onclick="saveAndNextAppChef()">💾 Clôturer et Suivant</button>
+                            <div style="margin-top:20px;">
+                                <button class="btn ok" style="width:100%;" onclick="saveAndNextAppChef()">💾 Clôturer</button>
                             </div>
                         </div>
                     </div>
@@ -1941,7 +1985,7 @@
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; height:calc(100vh - 200px);">
                 <!-- PDF à gauche -->
                 <div style="border:1px solid var(--border); border-radius:12px; overflow:hidden;">
-                    <iframe src="${(info.pdf||'').replace('/view','/preview')}" style="width:100%; height:100%; border:none; position:relative;"></iframe>
+                    <iframe src="${buildPdfEmbed(info.pdf)}" style="width:100%; height:100%; border:none; position:relative;"></iframe>
                 </div>
                 
                 <!-- Formulaire à droite -->
@@ -1955,6 +1999,7 @@
                             <div style="margin-bottom:10px;"><strong>Statut:</strong> ${info.status}</div>
                             <div style="margin-bottom:10px;"><strong>Motif:</strong> ${info.motif}</div>
                             <div style="margin-bottom:10px;"><strong>Engin:</strong> ${info.engin}</div>
+                            <div style="margin-top:6px; padding:5px 8px; background:rgba(255,193,7,0.08); border-left:3px solid rgba(255,193,7,0.5); border-radius:3px; font-size:11px;"><span style="color:#ffc107;font-weight:700;">Commentaire ajouté à postériori :</span> ${info.infoT || 'aucun'}</div>
                         </div>
                     </div>
                     
@@ -2007,21 +2052,58 @@
         }).saveMedecinAnalyse(form);
     }
 
-    // === ACTION CHEFFERIE ===
+    // === ACTION CHEFFERIE — VUE LISTE ===
+    var _actionList = [];
+
     function loadActionChefferie() {
-        const div = document.getElementById('chefActionContent');
+        var div = document.getElementById('chefActionContent');
         div.innerHTML = '<div style="text-align:center;padding:40px;color:gray;">Chargement...</div>';
-        
-        google.script.run.withSuccessHandler(res => {
-            if(!res.found) {
-                div.innerHTML = `<div style="text-align:center;padding:40px;color:var(--accent3);">${res.message}</div>`;
-                return;
-            }
-            currentChefData = res;
-            renderActionChefferie(res);
-        }).getNextActionChefferie();
+        google.script.run
+            .withSuccessHandler(function(items) {
+                _actionList = items || [];
+                renderActionList();
+            })
+            .withFailureHandler(function(e) {
+                div.innerHTML = '<div style="color:red;padding:20px;">Erreur : ' + (e&&e.message?e.message:e) + '</div>';
+            })
+            .getAllActionsChefferie();
     }
-    
+
+    function renderActionList() {
+        var div = document.getElementById('chefActionContent');
+        if(!_actionList.length) {
+            div.innerHTML = '<div style="text-align:center;padding:40px;color:var(--accent3);">✅ Aucune action à traiter</div>';
+            return;
+        }
+        var html = '<div style="margin-bottom:14px;color:var(--muted);font-size:13px;">🎯 ' + _actionList.length + ' fiche(s) à traiter</div>';
+        html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;">';
+        _actionList.forEach(function(item, idx) {
+            var info = item.info;
+            var graveCls = info.analyseMed ? 'border-color:rgba(255,107,107,.5);' : (info.actionRequise ? 'border-color:rgba(255,165,0,.5);' : '');
+            html += '<div class="panel" style="cursor:pointer;' + graveCls + '" onclick="openActionFiche(' + idx + ')">';
+            html += '<div class="panelHead" style="font-size:12px;display:flex;justify-content:space-between;align-items:center;">';
+            html += '<span>N°' + String(info.interId) + '</span>';
+            html += '<span style="font-size:10px;font-weight:400;opacity:0.8;">' + String(info.date) + '</span>';
+            html += '</div>';
+            html += '<div class="panelBody" style="font-size:12px;">';
+            html += '<div style="margin-bottom:4px;font-weight:600;">' + String(info.infName) + '</div>';
+            html += '<div style="color:var(--muted);margin-bottom:4px;">' + String(info.motif||'—') + '</div>';
+            html += '<div style="font-size:11px;color:var(--muted);">' + String(info.engin) + '</div>';
+            if(info.analyseMed) html += '<div style="margin-top:6px;font-size:10px;color:var(--red);">🔴 Analyse médecin</div>';
+            if(info.actionRequise && !info.analyseMed) html += '<div style="margin-top:6px;font-size:10px;color:var(--orange);">⚠️ Action requise</div>';
+            html += '</div></div>';
+        });
+        html += '</div>';
+        div.innerHTML = html;
+    }
+
+    function openActionFiche(idx) {
+        var item = _actionList[idx];
+        if(!item) return;
+        currentChefData = item;
+        renderActionChefferie(item);
+    }
+
     function renderActionChefferie(data) {
         const div = document.getElementById('chefActionContent');
         const info = data.info;
@@ -2029,7 +2111,7 @@
         div.innerHTML = `
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; height:calc(100vh - 200px);">
                 <div style="border:1px solid var(--border); border-radius:12px; overflow:hidden;">
-                    <iframe src="${(info.pdf||'').replace('/view','/preview')}" style="width:100%; height:100%; border:none; position:relative;"></iframe>
+                    <iframe src="${buildPdfEmbed(info.pdf)}" style="width:100%; height:100%; border:none; position:relative;"></iframe>
                 </div>
                 <div style="overflow-y:auto; padding:15px;">
                     <div class="panel">
@@ -2041,6 +2123,7 @@
                             <div style="margin-bottom:10px;"><strong>Statut:</strong> ${info.status}</div>
                             <div style="margin-bottom:10px;"><strong>Motif:</strong> ${info.motif}</div>
                             <div style="margin-bottom:10px;"><strong>Engin:</strong> ${info.engin}</div>
+                            <div style="margin-top:6px; padding:5px 8px; background:rgba(255,193,7,0.08); border-left:3px solid rgba(255,193,7,0.5); border-radius:3px; font-size:11px;"><span style="color:#ffc107;font-weight:700;">Commentaire ajouté à postériori :</span> ${info.infoT || 'aucun'}</div>
                         </div>
                     </div>
                     
@@ -2071,9 +2154,8 @@
                             <textarea id="txtActionFaite" style="width:100%; min-height:100px;" placeholder="Décrivez l'action réalisée...">${info.actionFaite || ''}</textarea>
                             ${data.bilanKo ? '<div style="margin-top:10px;"><label style="cursor:pointer;"><input type="checkbox" id="chkPasserBilanOk"> ✅ Passer en Bilan OK</label></div>' : ''}
                             ${data.pisuKo ? '<div style="margin-top:6px;"><label style="cursor:pointer;"><input type="checkbox" id="chkPasserPisuOk"> ✅ Passer en PISU OK</label></div>' : ''}
-                            <div style="margin-top:20px; display:flex; gap:10px;">
-                                <button class="btn ok" style="flex:1;" onclick="saveAndNextAction()">💾 Clôturer et Suivant</button>
-                                <button class="btn" style="flex:1; background:var(--bg3); color:var(--text); border:1px solid var(--border);" onclick="skipToNextAction()">⏭️ Voir suivant</button>
+                            <div style="margin-top:20px;">
+                                <button class="btn ok" style="width:100%;" onclick="saveAndNextAction()">💾 Clôturer</button>
                             </div>
                         </div>
                     </div>
@@ -2108,24 +2190,6 @@
             toast("Erreur: " + e.message, "err");
             loadActionChefferie();
         }).saveActionChefferie(form);
-    }
-    
-    var chefSkipRows = [];
-    
-    function skipToNextAction() {
-        if(currentChefData && currentChefData.rowEve) {
-            chefSkipRows.push(currentChefData.rowEve);
-        }
-        const div = document.getElementById('chefActionContent');
-        div.innerHTML = '<div style="text-align:center;padding:40px;color:gray;">Chargement...</div>';
-        google.script.run.withSuccessHandler(res => {
-            if(!res.found) {
-                div.innerHTML = `<div style="text-align:center;padding:40px;color:var(--accent3);">${res.message}</div>`;
-                return;
-            }
-            currentChefData = res;
-            renderActionChefferie(res);
-        }).getNextActionChefferie(chefSkipRows);
     }
     
     function refreshChefferieBadges() {
@@ -2163,7 +2227,7 @@
                 <div class="info-banner-row"><span>Motif: <b>${i.motif || '—'}</b></span> <span>${i.date}</span></div>
             </div>
             <div class="chef-layout">
-                <div class="chef-pdf"><iframe src="${(i.pdf||'').replace('/view','/preview')}" style="width:100%;height:100%;border:0"></iframe></div>
+                <div class="chef-pdf"><iframe src="${buildPdfEmbed(i.pdf)}" style="width:100%;height:100%;border:0"></iframe></div>
                 <div class="chef-form">
                     ${s.mode==='app_isp' ? `
                        <div><label>Commentaire ISP</label><div class="static-box">${i.commBN||"-"}</div></div>
@@ -2410,7 +2474,7 @@
         startLoad();
         google.script.run.withSuccessHandler(res => {
             stopLoad();
-            document.getElementById("modalPdf").src = (res.pdfUrl||'').replace('/view','/preview');
+            document.getElementById("modalPdf").src = buildPdfEmbed(res.pdfUrl);
             setText("detailId", id);
             setText("detailDate", date || "-");
             setText("detailCentre", status || "-");
@@ -2432,7 +2496,7 @@
         document.getElementById("modalList").style.display = "none";
         
         // Remplir le modal directement avec les données déjà chargées
-        const pdfUrl = String(x.pdf||"").replace('/view','/preview');
+        const pdfUrl = buildPdfEmbed(x.pdf);
         document.getElementById("modalPdf").src = pdfUrl;
         setText("detailId", x.id || "-");
         setText("detailDate", x.date || "-");
@@ -2495,12 +2559,10 @@
         // Afficher les infos du jour
         if (data.todayInfo) {
           document.getElementById("todayDate").textContent = "Date du jour: " + (data.todayInfo.date || "-");
-          document.getElementById("todayGardeMatin").textContent = data.todayInfo.garde_matin || "-";
-          document.getElementById("todayGardeAm").textContent = data.todayInfo.garde_am || "-";
-          document.getElementById("todayConduct").textContent = data.todayInfo.conducteur || "-";
-          document.getElementById("todayMadJour").textContent = data.todayInfo.mad_jour || "-";
-          document.getElementById("todayMadNuit").textContent = data.todayInfo.mad_nuit || "-";
-          document.getElementById("todayInfirmier").textContent = data.todayInfo.infirmier_ast || "-";
+          ["isp_matin","isp_am","isp_nuit","conducteur_jour","conducteur_nuit","doublure_matin","doublure_am","doublure_nuit","medecin_garde","mad_jour","mad_nuit","iad","pharma_jour","pharma_nuit"].forEach(function(k) {
+            var el = document.getElementById("today_"+k);
+            if(el) el.textContent = data.todayInfo[k] || "-";
+          });
         }
       }).getPlanningMois();
     }

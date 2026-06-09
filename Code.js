@@ -247,40 +247,6 @@ function getIspPublicData(token) {
 }
 
 /**
- * Retourne l'URL PDF du BPV pour un ISP authentifié par token.
- * Appelée depuis IspView.html via google.script.run.getBpvPdfDataByToken(token, interId).
- */
-function getBpvPdfDataByToken(ispToken, interId) {
-  try {
-    const decoded = _decodeIspToken_(ispToken);
-    if (!decoded) return { ok: false, error: "Token ISP invalide." };
-    const mat = decoded.mat;
-
-    const ss = getSS_();
-    const shApp = ss.getSheetByName(APP_SHEET_NAME);
-    if (!shApp) return { ok: false, error: "Feuille APP introuvable." };
-
-    const data = shApp.getDataRange().getValues();
-    const interIdStr = String(interId).trim();
-
-    for (let i = 1; i < data.length; i++) {
-      const rowId  = String(data[i][C_APP_ID]).trim();
-      const rowMat = normalizeMat(data[i][C_APP_MAT]);
-      if (rowId !== interIdStr || rowMat !== mat) continue;
-
-      const pdfUrl = String(data[i][C_APP_PDF] || "").trim();
-      if (!pdfUrl || pdfUrl === "#N/A" || pdfUrl.includes("#N/A")) {
-        return { ok: false, error: "BPV non disponible pour cette intervention." };
-      }
-      return { ok: true, directUrl: pdfUrl };
-    }
-    return { ok: false, error: "Intervention introuvable ou non autorisée." };
-  } catch(e) {
-    return { ok: false, error: e.message };
-  }
-}
-
-/**
  * Retourne la liste des ISPs avec leur URL personnalisée (pour IspUrlsAdmin.html).
  * Les DOBs sont lus depuis le spreadsheet RH (ID_SS_RH), pas depuis le Dashboard.
  */
@@ -318,7 +284,7 @@ function getIspUrlsForAdmin() {
     const dobStr = dobByMat[mat];
     if (!dobStr) continue;
     const token = _makeIspToken_(mat, dobStr);
-    result.push({ nom: nom, token: token, url: baseUrl + "?ispToken=" + encodeURIComponent(token) });
+    result.push({ nom: nom, token: token, url: baseUrl + "&ispToken=" + encodeURIComponent(token) });
   }
   Logger.log("getIspUrlsForAdmin: " + result.length + " ISPs générés");
   return result;
@@ -862,21 +828,45 @@ function getPlanningMois(moisParam) {
   const fontColors = range.getFontColors();
   const fontWeights = range.getFontWeights();
   
-  // Chercher la ligne d'aujourd'hui et extraire les infos (colonnes C-H = index 2-7)
-  let todayInfo = { date: "", garde_matin: "", garde_am: "", conducteur: "", mad_jour: "", mad_nuit: "", infirmier_ast: "" };
+  // Construire un index des colonnes depuis la ligne d'en-tête (ligne 0)
+  const headerRow = values[0];
+  const colIdx = {};
+  for (let c = 0; c < headerRow.length; c++) {
+    colIdx[String(headerRow[c]).trim().toLowerCase()] = c;
+  }
+
+  // Colonnes souhaitées : [titre exact, clé dans todayInfo]
+  const PLANNING_COLS = [
+    ["isp vli psud matin",        "isp_matin"],
+    ["isp vli psud am",           "isp_am"],
+    ["conducteur jour",           "conducteur_jour"],
+    ["doublure / etudiant matin", "doublure_matin"],
+    ["doublure / etudiant am",    "doublure_am"],
+    ["médecin garde psud",        "medecin_garde"],
+    ["isp vli psud nuit",        "isp_nuit"],
+    ["conducteur nuit",           "conducteur_nuit"],
+    ["doublure / etudiant nuit",  "doublure_nuit"],
+    ["mad jour",                  "mad_jour"],
+    ["mad nuit",                  "mad_nuit"],
+    ["iad",                       "iad"],
+    ["pharmacien astreinte jour", "pharma_jour"],
+    ["pharmacien astreinte nuit", "pharma_nuit"]
+  ];
+
+  let todayInfo = { date: "" };
+  PLANNING_COLS.forEach(function(c) { todayInfo[c[1]] = "-"; });
+
   for (let i = 1; i < values.length; i++) {
     const dateVal = values[i][1]; // colonne B (index 1)
     if (dateVal) {
       const cellDate = new Date(dateVal);
       if (cellDate.getDate() === todayDay && moisIndex === todayMonth) {
-        // Format JJ/MM/AAAA
         todayInfo.date = String(cellDate.getDate()).padStart(2,"0") + "/" + String(cellDate.getMonth()+1).padStart(2,"0") + "/" + cellDate.getFullYear();
-        todayInfo.garde_matin = String(values[i][2]||"");     // C
-        todayInfo.garde_am = String(values[i][3]||"");         // D
-        todayInfo.conducteur = String(values[i][4]||"");       // E
-        todayInfo.mad_jour = String(values[i][5]||"");         // F
-        todayInfo.mad_nuit = String(values[i][6]||"");         // G
-        todayInfo.infirmier_ast = String(values[i][7]||"");    // H
+        PLANNING_COLS.forEach(function(c) {
+          const idx = colIdx[c[0]];
+          const val = (idx !== undefined) ? String(values[i][idx]||"").trim() : "";
+          todayInfo[c[1]] = val || "-";
+        });
         break;
       }
     }
@@ -1095,11 +1085,7 @@ function getIspStats(matriculeInput, dobInput, forceRefresh) {
                     bilanOk: data[i][C_BILAN_OK],
                     bilanKo: data[i][C_BILAN_KO],
                     pisuOk: data[i][C_PISU_OK],
-                    pisuKo: data[i][C_PISU_KO],
-                    pdfUrl:  String(data[i][C_APP_PDF]       || "").trim(),
-                    commIsp: String(data[i][C_APP_INFO_T]    || "").trim(),
-                    commChef:String(data[i][C_COMM_CHEF]     || "").trim(),
-                    commMed: String(data[i][C_COMM_MED]      || "").trim()
+                    pisuKo: data[i][C_PISU_KO]
                 };
             }
         }
@@ -1237,42 +1223,6 @@ function getIspStats(matriculeInput, dobInput, forceRefresh) {
 
     console.log(`DEBUG ISP ${mat}: RÉSULTATS - Bilan OK: ${bilanOkCount}, Pisu OK: ${pisuOkCount}, Erreur Bilan Légère: ${errLegereBilanList.length}, Erreur Pisu Légère: ${errLegerePisuList.length}, Erreur Grave: ${errLourdeList.length}`);
 
-    // ── Tableau détail bilans pour IspView (toutes interventions avec BPV) ──
-    const details = [];
-    for (const id of thisAgentIds) {
-        const ar = appRows[id];
-        if (!ar) continue;
-        const pdfVal = ar.pdfUrl || "";
-        if (!pdfVal || pdfVal === "#N/A" || pdfVal.includes("#N/A")) continue;
-        const ref = appDataRef[id] || {};
-        const tags = alexTags[id] || {};
-        const types = [];
-        if (isCheckboxChecked(ar.bilanOk) || (isCheckboxChecked(ar.bilanKo) && tags.hasH)) {
-            types.push("Bilan OK");
-        } else if (isCheckboxChecked(ar.bilanKo) && tags.hasJ) {
-            types.push("Erreur Bilan Légère");
-        }
-        if (isCheckboxChecked(ar.pisuOk) || (isCheckboxChecked(ar.pisuKo) && tags.hasI)) {
-            types.push("Pisu OK");
-        } else if (isCheckboxChecked(ar.pisuKo) && tags.hasK) {
-            types.push("Erreur Pisu Légère");
-        }
-        if (tags.hasL) types.push("Erreur Grave");
-        details.push({
-            id:      id,
-            date:    ref.date    || "",
-            motif:   ref.motif   || "",
-            centre:  ref.cis     || "",
-            engin:   ref.engin   || "",
-            status:  ref.status  || "",
-            types:   types,
-            commIsp: ar.commIsp,
-            commChef:ar.commChef,
-            commMed: ar.commMed
-        });
-    }
-    details.sort((a, b) => String(b.date).localeCompare(String(a.date)));
-
     const result = {
         nom: agentName,
         astreinte2026: hAst26, astreinte2025_ytd: hAst25_ytd, astreinte2025_tot: hAst25_tot,
@@ -1288,7 +1238,6 @@ function getIspStats(matriculeInput, dobInput, forceRefresh) {
         errLegereBilan: errLegereBilanList,
         errLegerePisu: errLegerePisuList,
         errLourde: errLourdeList,
-        details: details,
         monthlyAst26: monthlyAst26,
         monthlyGarde26: monthlyGarde26,
         debugInfo: {
@@ -1309,7 +1258,6 @@ function getIspStats(matriculeInput, dobInput, forceRefresh) {
         compact.errLegereBilan = result.errLegereBilan.map(e => ({id:e.id}));
         compact.errLegerePisu = result.errLegerePisu.map(e => ({id:e.id}));
         compact.errLourde = result.errLourde.map(e => ({id:e.id}));
-        compact.details = result.details.map(d => ({id:d.id,date:d.date,motif:d.motif,centre:d.centre,engin:d.engin,status:d.status,types:d.types,commIsp:d.commIsp,commChef:d.commChef,commMed:d.commMed}));
         delete compact.debugInfo;
         cache.put(cacheKey, JSON.stringify(compact), 7200);
       } else {
@@ -1628,7 +1576,8 @@ function getNextAppChefferie() {
                     motifBilan: dataApp[i][C_TXTBILAN_KO] || "",
                     motifPisu: dataApp[i][C_TXTPISU_KO] || "",
                     bilanKo: bilanKo,
-                    pisuKo: pisuKo
+                    pisuKo: pisuKo,
+                    infoT: String(dataApp[i][C_APP_INFO_T] || "").trim()
                 },
                 checks: {
                     H: alexData ? isCheckboxChecked(alexData[7]) : false,
@@ -1701,7 +1650,8 @@ function getNextMedecinChef() {
                 engin: appInfo ? String(appInfo[C_APP_ENGIN]||"").trim() : "",
                 pdf: appInfo ? appInfo[C_APP_PDF] : dataAlex[i][2],
                 status: status,
-                commentChef: commChefAnc || commChefAlex
+                commentChef: commChefAnc || commChefAlex,
+                infoT: appInfo ? String(appInfo[C_APP_INFO_T] || "").trim() : ""
             }
         };
     }
@@ -2339,7 +2289,8 @@ function getNextActionChefferie(skipRows) {
                     commChef: commChefAnc || commChefAlex,
                     analyseMed: analyseAnc || dataEve[i][14] || "",
                     actionRequise: actionReqAnc || dataEve[i][16] || "",
-                    actionFaite: dataEve[i][17] || ""
+                    actionFaite: dataEve[i][17] || "",
+                    infoT: appInfo ? String(appInfo[C_APP_INFO_T] || "").trim() : ""
                 }
             };
         }
@@ -2416,6 +2367,71 @@ function _removeGraveFromAlex(ss, shEve, rowEve) {
             }
         }
     } catch(e) { Logger.log("_removeGraveFromAlex error: " + e); }
+}
+
+/**
+ * Retourne toutes les fiches "Réaliser actions" (non clôturées) sous forme de liste plate
+ */
+function getAllActionsChefferie() {
+    const ss = getSS_();
+    const shEve = ss.getSheetByName("APP Eve");
+    const shAlex = ss.getSheetByName("APP Alex");
+    const shApp = ss.getSheetByName(APP_SHEET_NAME);
+    if(!shEve) return [];
+
+    const dataEve = shEve.getDataRange().getValues();
+    const dataAlex = shAlex ? shAlex.getDataRange().getValues() : [];
+    const dataApp = shApp ? shApp.getDataRange().getValues() : [];
+
+    // Index APP Alex par ID
+    const alexMap = {};
+    for(let j=1; j<dataAlex.length; j++) {
+        const id = String(dataAlex[j][0]).trim();
+        if(id && !alexMap[id]) alexMap[id] = String(dataAlex[j][12] || "").trim();
+    }
+    // Index APP par ID
+    const appMap = {};
+    for(let j=1; j<dataApp.length; j++) {
+        const id = String(dataApp[j][C_APP_ID]).trim();
+        if(id) appMap[id] = dataApp[j];
+    }
+
+    const result = [];
+    for(let i=1; i<dataEve.length; i++) {
+        const hasAnalyse = !!dataEve[i][14];
+        const hasAction  = !!dataEve[i][16];
+        const isClosed   = isCheckboxChecked(dataEve[i][18]);
+        if((!hasAnalyse && !hasAction) || isClosed) continue;
+
+        const id = String(dataEve[i][0]).trim();
+        const appInfo = appMap[id] || null;
+        const commChefAnc  = appInfo ? String(appInfo[C_COMM_CHEF]  || "").trim() : "";
+        const analyseAnc   = appInfo ? String(appInfo[C_COMM_MED]   || "").trim() : "";
+        const actionReqAnc = appInfo ? String(appInfo[C_ACTION_MED] || "").trim() : "";
+        const cis = appInfo ? String(appInfo[C_APP_CIS]||"").trim() : "";
+
+        result.push({
+            rowEve: i+1,
+            rowApp: appInfo ? (dataApp.indexOf(appInfo)+1) : -1,
+            bilanKo: appInfo ? isCheckboxChecked(appInfo[C_BILAN_KO]) : false,
+            pisuKo:  appInfo ? isCheckboxChecked(appInfo[C_PISU_KO])  : false,
+            info: {
+                interId:       id,
+                date:          appInfo ? formatDateHeureFR_(appInfo[C_APP_DATE]) : "",
+                infName:       appInfo ? String(appInfo[C_APP_NOM]||"") : "",
+                motif:         appInfo ? String(appInfo[C_APP_MOTIF]||"") : "",
+                engin:         appInfo ? String(appInfo[C_APP_ENGIN]||"").trim() : "",
+                pdf:           appInfo ? appInfo[C_APP_PDF] : "",
+                status:        (cis === "SD SSSM") ? "De Garde" : "Astreinte / Dispo",
+                commChef:      commChefAnc || alexMap[id] || "",
+                analyseMed:    analyseAnc  || String(dataEve[i][14]||""),
+                actionRequise: actionReqAnc || String(dataEve[i][16]||""),
+                actionFaite:   String(dataEve[i][17]||""),
+                infoT:         appInfo ? String(appInfo[C_APP_INFO_T]||"").trim() : ""
+            }
+        });
+    }
+    return result;
 }
 
 /**

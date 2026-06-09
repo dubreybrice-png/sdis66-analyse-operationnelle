@@ -2,7 +2,7 @@
 @echo off
 
 REM Deployment ID fixe - ne change jamais, l'URL reste stable
-set DEPLOY_ID=AKfycbyik6jhOVdBWnQCsmuUn2E6FGyPFDlQC2mp5zGDWUIwKoNGNIbcGU6uhbVp6fza06F93Q
+set DEPLOY_ID=AKfycbx1_TpQBnqA_Z-tDtq2OyAbnYFI0uKXVz7e9f5-0GuDAaOiCpSfgKsd0IKv45C_mS5CVw
 
 REM Usage: clasp-helper.bat [push|deploy|pull|open|pushdeploy]
 
