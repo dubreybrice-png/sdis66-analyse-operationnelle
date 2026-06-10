@@ -2152,8 +2152,6 @@
                         <div class="panelHead">Action Réalisée</div>
                         <div class="panelBody">
                             <textarea id="txtActionFaite" style="width:100%; min-height:100px;" placeholder="Décrivez l'action réalisée...">${info.actionFaite || ''}</textarea>
-                            ${data.bilanKo ? '<div style="margin-top:10px;"><label style="cursor:pointer;"><input type="checkbox" id="chkPasserBilanOk"> ✅ Passer en Bilan OK</label></div>' : ''}
-                            ${data.pisuKo ? '<div style="margin-top:6px;"><label style="cursor:pointer;"><input type="checkbox" id="chkPasserPisuOk"> ✅ Passer en PISU OK</label></div>' : ''}
                             <div style="margin-top:20px;">
                                 <button class="btn ok" style="width:100%;" onclick="saveAndNextAction()">💾 Clôturer</button>
                             </div>
@@ -2168,9 +2166,7 @@
         const form = {
             rowEve: currentChefData.rowEve,
             rowApp: currentChefData.rowApp || -1,
-            actionFaite: document.getElementById('txtActionFaite').value,
-            passerBilanOk: document.getElementById('chkPasserBilanOk') ? document.getElementById('chkPasserBilanOk').checked : false,
-            passerPisuOk: document.getElementById('chkPasserPisuOk') ? document.getElementById('chkPasserPisuOk').checked : false
+            actionFaite: document.getElementById('txtActionFaite').value
         };
         
         if(!form.actionFaite) { toast("Veuillez décrire l'action réalisée"); return; }
