@@ -166,6 +166,7 @@ function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu('⚡ ADMIN')
     .addItem('💾 Créer backup du classeur', 'backupClasseur')
+    .addItem('🏷️ Taguer commentaires existants', 'taguerCommentairesExistants')
     .addSeparator()
     .addItem('Installer Trigger Cache (2h)', 'installCacheTrigger')
     .addItem('Mettre à jour Cache', 'updateHistoryCache')
