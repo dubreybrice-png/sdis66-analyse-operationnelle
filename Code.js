@@ -13,7 +13,7 @@ const ID_SS_2025 = "112sOp4EAPm3vq0doLWzWlAbsOdutszGKT86USjSqst0";
 const ID_SS_RH   = "1lwQJ6xTET3qpr9-cPGBngdih_bmfrVRMOYcMgMkUVP0"; 
 const ID_PROTOCOLES_CORRESP = "12-7VNgPo7PsoKoRHzm_y24a-2OoDiCvJIyJFTdC9l7c"; 
 const ID_SS_ASTREINTE_DEPT = "1XPyV7-Ulno1f4-TgrtsCprL8c6cs3NU7jt1UNST3oXE"; 
-const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbx1_TpQBnqA_Z-tDtq2OyAbnYFI0uKXVz7e9f5-0GuDAaOiCpSfgKsd0IKv45C_mS5CVw/exec?gbOpenExternal=1";
+const WEBAPP_URL = "https://script.google.com/macros/s/AKfycby8S46IbQdi0Q-ERUavZPgcHGS1AkKvuJ_ybYWgskOK/exec?gbOpenExternal=1";
 
 function getWebAppUrl_() { return WEBAPP_URL; }
 
@@ -173,6 +173,10 @@ function onOpen() {
     .addItem('Reset diagnostic (recommencer)', 'diagnosisReset')
     .addSeparator()
     .addItem('Restaurer commentaires (historique Drive)', 'findLastGoodRevisionAndRestore')
+    .addSeparator()
+    .addItem('Synchroniser workflow APP (BX→Alex/Eve)', 'syncWorkflowAPP')
+    .addItem('Vérifier cohérence workflow APP', 'autoCheckWorkflowAPP')
+    .addItem('Installer trigger onEdit workflow', 'createWorkflowTrigger')
     .addToUi();
   
   // Auto-install triggers si pas présent + nettoyer anciens triggers
@@ -297,7 +301,7 @@ function getDropdownList_(sheet, colIndex) { const rule = sheet.getRange(2, colI
 function getStats2026() {
   // === CHERCHER CACHE ===
   const _cache26 = CacheService.getScriptCache();
-  const _ck26 = "stats2026_v9";
+  const _ck26 = "stats2026_v10";
   const _c26 = _cache26.get(_ck26);
   if(_c26) return JSON.parse(_c26);
   const _sc26 = sheetCacheGet(_ck26);
@@ -388,6 +392,8 @@ function getStats2026() {
   // === Temps disponibilité/astreinte par CIS et Secteur (2026) ===
   let tempsByCis = {};
   let tempsBySect = {};
+  let doubleCisTotals = {};
+  let doubleSectTotals = {};
   try {
     const shTemps26 = ss.getSheetByName(TEMPS_SHEET_NAME);
     if(shTemps26) {
@@ -421,8 +427,40 @@ function getStats2026() {
         tempsBySect[sect].total.add(slotKey);
         if(isDay) tempsBySect[sect].day.add(slotKey); else tempsBySect[sect].night.add(slotKey);
       }
+      // === DOUBLE ISP : Heures avec ≥2 ISP simultanés par CIS et par Secteur ===
+      const doubleIspSlotCis = {};
+      const doubleIspSlotSect = {};
+      for(let i=1; i<dTemps.length; i++) {
+        const mat = normalizeMat(dTemps[i][C_TEMPS_MAT_AST]);
+        if(!mat) continue;
+        const cis = String(dTemps[i][13]||'').trim();
+        if(!cis) continue;
+        const dtAst = coerceToDateTime_(dTemps[i][C_TEMPS_DATE_AST]);
+        if(!dtAst) continue;
+        const _slotDay = new Date(dtAst.getFullYear(), dtAst.getMonth(), dtAst.getDate());
+        if(_slotDay > _todayMidnight) continue;
+        const mm = dtAst.getMinutes() < 30 ? '00' : '30';
+        const slotId = `${dtAst.getFullYear()}-${dtAst.getMonth()}-${dtAst.getDate()}_${dtAst.getHours()}_${mm}`;
+        // Par CIS
+        const ck = cis + '||' + slotId;
+        if(!doubleIspSlotCis[ck]) doubleIspSlotCis[ck] = { name: cis, mats: new Set() };
+        doubleIspSlotCis[ck].mats.add(mat);
+        // Par Secteur
+        const sect = cisToSect26[cis] || 'Non défini';
+        const sk = sect + '||' + slotId;
+        if(!doubleIspSlotSect[sk]) doubleIspSlotSect[sk] = { name: sect, mats: new Set() };
+        doubleIspSlotSect[sk].mats.add(mat);
+      }
+      // Agréger CIS
+      for(const k in doubleIspSlotCis) {
+        if(doubleIspSlotCis[k].mats.size >= 2) doubleCisTotals[doubleIspSlotCis[k].name] = (doubleCisTotals[doubleIspSlotCis[k].name] || 0) + 0.5;
+      }
+      // Agréger Secteur
+      for(const k in doubleIspSlotSect) {
+        if(doubleIspSlotSect[k].mats.size >= 2) doubleSectTotals[doubleIspSlotSect[k].name] = (doubleSectTotals[doubleIspSlotSect[k].name] || 0) + 0.5;
+      }
     }
-  } catch(eTmp) { Logger.log('tempsByCis error: ' + eTmp); }
+  } catch(eTmp) { Logger.log('tempsByCis error: ' + eTmp); doubleCisTotals = {}; doubleSectTotals = {}; }
   // Utiliser aujourd'hui comme référence (pas lastDate) pour éviter la surestimation
   // si les créneaux temps couvrent plus de jours que la dernière intervention
   const _refDate = new Date();
@@ -462,7 +500,9 @@ function getStats2026() {
     bilanOkPct: bilanOkPct, pisuOkPct: pisuOkPct,
     topMotifs: topMotifs, nbPisu: nbPisu,
     protoAdulte: protoAdulte.slice(0, 5), protoEnfant: protoEnfant.slice(0, 5),
-    tempsCis: tempsCisList, tempsSect: tempsSectList
+    tempsCis: tempsCisList, tempsSect: tempsSectList,
+    doubleIspCis: Object.keys(doubleCisTotals).sort().map(n => ({ name: n, heures: Math.round(doubleCisTotals[n]*2)/2 })),
+    doubleIspSect: Object.keys(doubleSectTotals).sort().map(n => ({ name: n, heures: Math.round(doubleSectTotals[n]*2)/2 }))
   };
   // === ÉCRIRE CACHE ===
   try { _cache26.put(_ck26, JSON.stringify(_result26), 7200); sheetCachePut(_ck26, _result26, 7200); } catch(e){}
@@ -1667,37 +1707,44 @@ function saveAppChefferie(form) {
         const ss = getSS_();
         const shAlex = ss.getSheetByName("APP Alex");
         
-        let row = form.rowAlex;
-        
-        // Si pas de ligne APP Alex, créer une nouvelle
-        if(row <= 0) {
-            const dataAlex = shAlex.getDataRange().getValues();
+        // Toujours chercher la ligne par ID — résistant aux décalages de la formule FILTER
+        const dataAlex = shAlex.getDataRange().getValues();
+        let row = -1;
+        for (let j = 1; j < dataAlex.length; j++) {
+            if (String(dataAlex[j][0]).trim() === String(form.interId).trim()) {
+                row = j + 1;
+                break;
+            }
+        }
+        if (row === -1) {
             row = dataAlex.length + 1;
             shAlex.getRange(row, 1).setValue(form.interId);
         }
-        
+
         // Sauvegarder les checkboxes H, I, J, K, L
         shAlex.getRange(row, 8).setValue(form.checks.H ? true : false);  // H
         shAlex.getRange(row, 9).setValue(form.checks.I ? true : false);  // I
         shAlex.getRange(row, 10).setValue(form.checks.J ? true : false); // J
         shAlex.getRange(row, 11).setValue(form.checks.K ? true : false); // K
         shAlex.getRange(row, 12).setValue(form.checks.L ? true : false); // L
-        
-        // Commentaire chefferie (colonne M = 13)
-        shAlex.getRange(row, 13).setValue(form.commentChef || "");
+
+        // Commentaire chefferie avec tag [JL X] (colonne M = 13)
+        const commChefTagged = form.commentChef
+            ? appendOrReplaceTag(form.commentChef, APP_WORKFLOW_CONFIG.tags.chefAlex, form.interId)
+            : "";
+        shAlex.getRange(row, 13).setValue(commChefTagged);
 
         // Clôturer (colonne N = 14)
         shAlex.getRange(row, 14).setValue(true);
 
-        // Ancrage anti-décalage : sauvegarder aussi dans APP (colonne BX, par ID)
-        // Résistant aux décalages de formules FILTER dans APP Alex
+        // Ancrage anti-décalage : sauvegarder dans APP col BX (source de vérité par ID)
         try {
             const shAppRef = ss.getSheetByName(APP_SHEET_NAME);
-            if (shAppRef && form.commentChef) {
+            if (shAppRef && commChefTagged) {
                 const appData = shAppRef.getDataRange().getValues();
                 for (let j = 1; j < appData.length; j++) {
                     if (String(appData[j][C_APP_ID]).trim() === String(form.interId).trim()) {
-                        shAppRef.getRange(j + 1, C_COMM_CHEF + 1).setValue(form.commentChef);
+                        shAppRef.getRange(j + 1, C_COMM_CHEF + 1).setValue(commChefTagged);
                         break;
                     }
                 }
@@ -1738,21 +1785,27 @@ function saveMedecinAnalyse(form) {
             shEve.getRange(row, 1).setValue(form.interId);
         }
         
-        // Analyse Médecin (colonne O = 15)
-        shEve.getRange(row, 15).setValue(form.analyse || "");
+        // Analyse Médecin avec tag [COM CHEF X] (colonne O = 15)
+        const analyseTagged = form.analyse
+            ? appendOrReplaceTag(form.analyse, APP_WORKFLOW_CONFIG.tags.commChef, form.interId)
+            : "";
+        shEve.getRange(row, 15).setValue(analyseTagged);
 
-        // Action Requise (colonne Q = 17)
-        shEve.getRange(row, 17).setValue(form.action || "");
+        // Action Requise avec tag [ACTION CHEF X] (colonne Q = 17)
+        const actionTagged = form.action
+            ? appendOrReplaceTag(form.action, APP_WORKFLOW_CONFIG.tags.actionChef, form.interId)
+            : "";
+        shEve.getRange(row, 17).setValue(actionTagged);
 
-        // Ancrage anti-décalage : sauvegarder aussi dans APP (colonnes BY/BZ, par ID)
+        // Ancrage anti-décalage : sauvegarder dans APP BY/BZ (source de vérité par ID)
         try {
             const shAppRef = ss.getSheetByName(APP_SHEET_NAME);
             if (shAppRef) {
                 const appData = shAppRef.getDataRange().getValues();
                 for (let j = 1; j < appData.length; j++) {
                     if (String(appData[j][C_APP_ID]).trim() === String(form.interId).trim()) {
-                        if (form.analyse) shAppRef.getRange(j + 1, C_COMM_MED + 1).setValue(form.analyse);
-                        if (form.action)  shAppRef.getRange(j + 1, C_ACTION_MED + 1).setValue(form.action);
+                        if (analyseTagged) shAppRef.getRange(j + 1, C_COMM_MED + 1).setValue(analyseTagged);
+                        if (actionTagged)  shAppRef.getRange(j + 1, C_ACTION_MED + 1).setValue(actionTagged);
                         break;
                     }
                 }
@@ -2307,35 +2360,59 @@ function saveActionChefferie(form) {
         const ss = getSS_();
         const shEve = ss.getSheetByName("APP Eve");
         
-        const row = form.rowEve;
-        if(!row || row < 2) return { success: false, error: "Ligne invalide" };
-        
-        // Action faite (colonne R = 18)
-        shEve.getRange(row, 18).setValue(form.actionFaite || "");
-        
+        // Chercher la ligne Eve par ID (résistant aux décalages)
+        const dataEveAct = shEve.getDataRange().getValues();
+        let row = -1;
+        if (form.interId) {
+            for (let j = 1; j < dataEveAct.length; j++) {
+                if (String(dataEveAct[j][0]).trim() === String(form.interId).trim()) {
+                    row = j + 1; break;
+                }
+            }
+        }
+        // Fallback sur rowEve si ID absent ou non trouvé
+        if (row === -1 && form.rowEve >= 2) row = form.rowEve;
+        if (!row || row < 2) return { success: false, error: "Ligne invalide" };
+
+        // Action faite avec tag [ACTION REALISEE X] (colonne R = 18)
+        const actionFaiteTagged = (form.actionFaite && form.interId)
+            ? appendOrReplaceTag(form.actionFaite, APP_WORKFLOW_CONFIG.tags.actionRealisee, form.interId)
+            : (form.actionFaite || "");
+        shEve.getRange(row, 18).setValue(actionFaiteTagged);
+
         // Clôturer (colonne S = 19)
         shEve.getRange(row, 19).setValue(true);
-        
-        // Passer en Bilan OK si demandé
-        if(form.rowApp && form.rowApp >= 2) {
-            const shApp = ss.getSheetByName(APP_SHEET_NAME);
-            if(shApp) {
-                if(form.passerBilanOk) {
-                    shApp.getRange(form.rowApp, C_BILAN_OK+1).setValue(true);
-                    shApp.getRange(form.rowApp, C_BILAN_KO+1).setValue(false);
+
+        // Mettre à jour APP par ID (résistant aux décalages)
+        const shApp = ss.getSheetByName(APP_SHEET_NAME);
+        if (shApp) {
+            let appRow = -1;
+            if (form.interId) {
+                const appDataAct = shApp.getDataRange().getValues();
+                for (let j = 1; j < appDataAct.length; j++) {
+                    if (String(appDataAct[j][C_APP_ID]).trim() === String(form.interId).trim()) {
+                        appRow = j + 1; break;
+                    }
                 }
-                // Passer en erreur légère : retire la cotation grave dans Alex (col L=12),
-                // garde PISU KO = true, PISU OK = false
-                if(form.passerErrLegere) {
-                    shApp.getRange(form.rowApp, C_PISU_OK+1).setValue(false);
-                    shApp.getRange(form.rowApp, C_PISU_KO+1).setValue(true);
-                    _removeGraveFromAlex(ss, shEve, form.rowEve);
+            }
+            if (appRow === -1 && form.rowApp >= 2) appRow = form.rowApp;
+
+            if (appRow >= 2) {
+                if (form.passerBilanOk) {
+                    shApp.getRange(appRow, C_BILAN_OK+1).setValue(true);
+                    shApp.getRange(appRow, C_BILAN_KO+1).setValue(false);
                 }
-                // Passer en non-erreur : retire la cotation grave et passe PISU OK
-                if(form.passerNonErreur) {
-                    shApp.getRange(form.rowApp, C_PISU_OK+1).setValue(true);
-                    shApp.getRange(form.rowApp, C_PISU_KO+1).setValue(false);
-                    _removeGraveFromAlex(ss, shEve, form.rowEve);
+                // Passer en erreur légère
+                if (form.passerErrLegere) {
+                    shApp.getRange(appRow, C_PISU_OK+1).setValue(false);
+                    shApp.getRange(appRow, C_PISU_KO+1).setValue(true);
+                    _removeGraveFromAlex(ss, shEve, row);
+                }
+                // Passer en non-erreur
+                if (form.passerNonErreur) {
+                    shApp.getRange(appRow, C_PISU_OK+1).setValue(true);
+                    shApp.getRange(appRow, C_PISU_KO+1).setValue(false);
+                    _removeGraveFromAlex(ss, shEve, row);
                 }
             }
         }
