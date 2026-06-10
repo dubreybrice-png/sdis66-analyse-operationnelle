@@ -165,6 +165,8 @@ function isCheckboxChecked(val) {
 function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu('⚡ ADMIN')
+    .addItem('💾 Créer backup du classeur', 'backupClasseur')
+    .addSeparator()
     .addItem('Installer Trigger Cache (2h)', 'installCacheTrigger')
     .addItem('Mettre à jour Cache', 'updateHistoryCache')
     .addSeparator()
