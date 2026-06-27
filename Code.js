@@ -1,4 +1,4 @@
-﻿/****************************************************
+/****************************************************
  * SDIS 66 - SDS | WebApp Dashboard
  * CACHE SÉQUENTIEL + FIXES + LOCK SYSTEM + ANTI-DOUBLE-COUNT
  * Version: v1.73 | 2026-03-23
@@ -13,9 +13,12 @@ const ID_SS_2025 = "112sOp4EAPm3vq0doLWzWlAbsOdutszGKT86USjSqst0";
 const ID_SS_RH   = "1lwQJ6xTET3qpr9-cPGBngdih_bmfrVRMOYcMgMkUVP0"; 
 const ID_PROTOCOLES_CORRESP = "12-7VNgPo7PsoKoRHzm_y24a-2OoDiCvJIyJFTdC9l7c"; 
 const ID_SS_ASTREINTE_DEPT = "1XPyV7-Ulno1f4-TgrtsCprL8c6cs3NU7jt1UNST3oXE"; 
-const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbx1_TpQBnqA_Z-tDtq2OyAbnYFI0uKXVz7e9f5-0GuDAaOiCpSfgKsd0IKv45C_mS5CVw/exec?gbOpenExternal=1";
+const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbxcBF8FoEHFtRuWF5wMEcyLJuIukj44fg2zCIstkev5FMUw_vc4IjkSCDJLU8Rgpfqe/exec";
+const APP_VERSION = "v1.84";
 
-function getWebAppUrl_() { return WEBAPP_URL; }
+function getWebAppUrl_() {
+  try { return ScriptApp.getService().getUrl(); } catch(e) { return WEBAPP_URL; }
+}
 
 const DASH_LASTDATE_CELL = "D2";
 const DASH_PSUD_2026_CELL = "B3";
@@ -162,11 +165,123 @@ function isCheckboxChecked(val) {
   return val === true || s === "TRUE" || s === "OUI" || val === "✓";
 }
 
+/**
+ * Ajoute ou remplace un tag [PREFIX id] à la fin d'un commentaire, pour ancrer
+ * visuellement chaque commentaire à son numéro d'intervention (sécurise le circuit
+ * APP Alex / APP Eve contre tout décalage de ligne).
+ */
+function appendOrReplaceTag_(commentaire, prefix, id, legacyPrefixes) {
+  let comm = String(commentaire || "").trim();
+  if (!comm) return comm;
+  // Supprimer les anciens tags devenus obsolètes (migration automatique, sans intervention manuelle)
+  if (legacyPrefixes) {
+    legacyPrefixes.forEach(function(lp) {
+      const esc = lp.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      comm = comm.replace(new RegExp("\\n?\\[" + esc + " [^\\]]+\\]", "g"), "").trim();
+    });
+  }
+  const tag = "[" + prefix + " " + String(id).trim() + "]";
+  const escaped = prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const pattern = new RegExp("\\[" + escaped + " [^\\]]+\\]");
+  if (pattern.test(comm)) return comm.replace(pattern, tag);
+  return comm + "\n" + tag;
+}
+
+/**
+ * Maintient APP Alex à jour SANS jamais réordonner les lignes existantes :
+ * ajoute en fin de tableau les fiches APP (bilanKo / pisuKo) qui n'y figurent
+ * pas encore. Si la formule FILTER historique est encore active en A2, ne fait
+ * rien (elle gère déjà l'ajout automatique) — s'active seule après migration
+ * via migrateAppAlexToStatic().
+ */
+function ensureAppAlexSynced_(ss) {
+  try {
+    const shApp = ss.getSheetByName(APP_SHEET_NAME);
+    const shAlex = ss.getSheetByName("APP Alex");
+    if (!shApp || !shAlex) return;
+    if (shAlex.getRange(2, 1).getFormula()) return; // FILTER encore actif : rien à faire
+
+    const dataApp = shApp.getDataRange().getValues();
+    const lastAlexRow = shAlex.getLastRow();
+    const existingIds = new Set();
+    if (lastAlexRow >= 2) {
+      shAlex.getRange(2, 1, lastAlexRow - 1, 1).getValues().forEach(r => {
+        const id = String(r[0]).trim();
+        if (id) existingIds.add(id);
+      });
+    }
+
+    const newRows = [];
+    for (let i = 1; i < dataApp.length; i++) {
+      const bilanKo = isCheckboxChecked(dataApp[i][C_BILAN_KO]);
+      const pisuKo = isCheckboxChecked(dataApp[i][C_PISU_KO]);
+      if (!bilanKo && !pisuKo) continue;
+      const id = String(dataApp[i][C_APP_ID]).trim();
+      if (!id || existingIds.has(id)) continue;
+      existingIds.add(id);
+      newRows.push([
+        id,
+        dataApp[i][C_APP_MOTIF],
+        dataApp[i][C_APP_PDF],
+        dataApp[i][C_APP_INFO_T],
+        dataApp[i][C_APP_NOM],
+        dataApp[i][C_TXTBILAN_KO],
+        dataApp[i][C_TXTPISU_KO]
+      ]);
+    }
+
+    if (newRows.length > 0) {
+      const startRow = Math.max(2, shAlex.getLastRow() + 1);
+      shAlex.getRange(startRow, 1, newRows.length, 7).setValues(newRows);
+    }
+  } catch (e) { Logger.log("ensureAppAlexSynced_ error: " + e); }
+}
+
+/**
+ * MIGRATION UNIQUE (menu ADMIN) : convertit la formule FILTER volatile d'APP Alex
+ * (A2) en valeurs statiques figées. APP Alex devient alors une table append-only
+ * comme APP Eve, ce qui supprime la cause racine du décalage des lignes H-N.
+ * Ne touche à AUCUNE valeur : capture l'état actuel puis le réécrit identique,
+ * juste sans formule. Crée un backup du classeur avant toute opération.
+ */
+function migrateAppAlexToStatic() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const shAlex = ss.getSheetByName("APP Alex");
+  if (!shAlex) { SpreadsheetApp.getUi().alert("Onglet APP Alex introuvable."); return; }
+
+  const formulaA2 = shAlex.getRange(2, 1).getFormula();
+  if (!formulaA2) {
+    SpreadsheetApp.getUi().alert("A2 ne contient déjà plus de formule. Migration déjà effectuée ?");
+    return;
+  }
+
+  const confirm = SpreadsheetApp.getUi().alert(
+    "Migration APP Alex",
+    "Ceci va figer la formule FILTER de A2 en valeurs statiques (aucune donnée modifiée), après avoir créé un backup du classeur. Continuer ?",
+    SpreadsheetApp.getUi().ButtonSet.YES_NO
+  );
+  if (confirm !== SpreadsheetApp.getUi().Button.YES) return;
+
+  backupClasseur();
+
+  const lastRow = shAlex.getLastRow();
+  const lastCol = Math.max(7, shAlex.getLastColumn());
+  if (lastRow < 2) { SpreadsheetApp.getUi().alert("APP Alex n'a aucune ligne de données."); return; }
+
+  const values = shAlex.getRange(2, 1, lastRow - 1, lastCol).getValues();
+
+  shAlex.getRange(2, 1).clearContent();
+  shAlex.getRange(2, 1, values.length, lastCol).setValues(values);
+
+  SpreadsheetApp.getUi().alert("Migration terminée : " + values.length + " ligne(s) figée(s) en valeurs statiques. APP Alex n'utilise plus de formule volatile.");
+}
+
 function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu('⚡ ADMIN')
     .addItem('💾 Créer backup du classeur', 'backupClasseur')
     .addItem('🏷️ Taguer commentaires existants', 'taguerCommentairesExistants')
+    .addItem('🔧 Migrer APP Alex (FILTER → statique)', 'migrateAppAlexToStatic')
     .addSeparator()
     .addItem('Installer Trigger Cache (2h)', 'installCacheTrigger')
     .addItem('Mettre à jour Cache', 'updateHistoryCache')
@@ -213,8 +328,27 @@ function doGet(e) {
     return HtmlService.createHtmlOutputFromFile("IspUrlsAdmin")
       .setTitle("URLs ISP").setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   }
+  // Vue dédiée action de correction : ?correctionId=X
+  if (e && e.parameter && e.parameter.correctionId) {
+    const t2 = HtmlService.createTemplateFromFile("ActionCorrection");
+    t2.scriptUrl = getWebAppUrl_();
+    t2.correctionId = e.parameter.correctionId;
+    return t2.evaluate()
+      .setTitle("SDIS 66 - Action de correction #" + e.parameter.correctionId)
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  }
+  // Vue page temporaire fiches non traitées : ?fichesNonTraitees=TOKEN
+  if (e && e.parameter && e.parameter.fichesNonTraitees) {
+    const t3 = HtmlService.createTemplateFromFile("FichesNonTraitees");
+    t3.scriptUrl = getWebAppUrl_();
+    t3.pageToken = e.parameter.fichesNonTraitees;
+    return t3.evaluate()
+      .setTitle("SDIS 66 - Fiches non traitées")
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  }
   const t = HtmlService.createTemplateFromFile("Home");
   t.scriptUrl = getWebAppUrl_();
+  t.version = APP_VERSION;
   return t.evaluate().setTitle("SDIS 66 - SDS").setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
@@ -250,15 +384,46 @@ function getIspPublicData(token) {
 }
 
 /**
+ * Retourne l'URL du BPV (col D de APP) pour une intervention donnée, après validation du token ISP.
+ * Appelé par IspView.html quand l'ISP clique sur une ligne de son tableau de bilans.
+ */
+function getBpvPdfDataByToken(token, interId) {
+  try {
+    const decoded = _decodeIspToken_(token);
+    if (!decoded) return { error: "Token invalide." };
+    if (!checkAuth_(decoded.mat, decoded.dob)) return { error: "Accès refusé." };
+
+    const ss = getSS_();
+    const shApp = ss.getSheetByName(APP_SHEET_NAME);
+    if (!shApp) return { error: "Feuille APP introuvable." };
+
+    const data = shApp.getDataRange().getValues();
+    const searchId = String(interId).trim();
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][C_APP_ID]).trim() !== searchId) continue;
+      // Vérification sécurité : l'ISP ne peut accéder qu'à ses propres BPVs
+      if (normalizeMat(data[i][C_APP_MAT]) !== decoded.mat) return { error: "Accès non autorisé." };
+      const pdfUrl = String(data[i][C_APP_PDF] || '').trim();
+      if (!pdfUrl || pdfUrl === '#N/A' || pdfUrl.indexOf('#N/A') >= 0) {
+        return { error: "BPV non disponible pour cette intervention." };
+      }
+      return { directUrl: pdfUrl };
+    }
+    return { error: "Intervention introuvable." };
+  } catch(e) {
+    return { error: e.message };
+  }
+}
+
+/**
  * Retourne la liste des ISPs avec leur URL personnalisée (pour IspUrlsAdmin.html).
  * Les DOBs sont lus depuis le spreadsheet RH (ID_SS_RH), pas depuis le Dashboard.
  */
 function getIspUrlsForAdmin() {
-  const ss   = getSS_();
-  const dash = ss.getSheetByName(DASHBOARD_SHEET_NAME);
-  // S=Nom, T=Mat (U ne contient pas les DOBs — elles sont dans ID_SS_RH)
-  const rawAgents = dash.getRange("S3:T79").getValues();
-  const baseUrl   = getWebAppUrl_();
+  const ss      = getSS_();
+  const baseUrl = getWebAppUrl_();
+  // Lire la liste active depuis Config Agents (crée depuis Dashboard si absent)
+  const activeAgents = getActiveAgents_(ss);
 
   // Lire les DOBs depuis le spreadsheet RH
   const dobByMat = {};
@@ -280,14 +445,11 @@ function getIspUrlsForAdmin() {
   } catch(eRh) { Logger.log("getIspUrlsForAdmin RH error: " + eRh); }
 
   const result = [];
-  for (let i = 0; i < rawAgents.length; i++) {
-    const nom = String(rawAgents[i][0]).trim();
-    const mat = normalizeMat(rawAgents[i][1]);
-    if (!nom || !mat) continue;
-    const dobStr = dobByMat[mat];
+  for (const agent of activeAgents) {
+    const dobStr = dobByMat[agent.mat];
     if (!dobStr) continue;
-    const token = _makeIspToken_(mat, dobStr);
-    result.push({ nom: nom, token: token, url: baseUrl + "&ispToken=" + encodeURIComponent(token) });
+    const token = _makeIspToken_(agent.mat, dobStr);
+    result.push({ nom: agent.nom, token: token, url: baseUrl.split('?')[0] + "?ispToken=" + encodeURIComponent(token) });
   }
   Logger.log("getIspUrlsForAdmin: " + result.length + " ISPs générés");
   return result;
@@ -296,16 +458,150 @@ function getIspUrlsForAdmin() {
 function getSS_() { return SpreadsheetApp.getActiveSpreadsheet(); }
 function getDropdownList_(sheet, colIndex) { const rule = sheet.getRange(2, colIndex + 1).getDataValidation(); return rule ? rule.getCriteriaValues()[0] : []; }
 
+// ============================================================
+// GESTION AGENTS — Config Agents sheet (A=Nom, B=Mat, C=Actif)
+// ============================================================
+
+const AGENTS_SHEET_NAME = "Config Agents";
+
+/**
+ * Retourne ou crée l'onglet Config Agents, seedé depuis Dashboard S3:T79.
+ */
+function getOrCreateAgentsSheet_(ss) {
+  let sh = ss.getSheetByName(AGENTS_SHEET_NAME);
+  if (sh) return sh;
+
+  sh = ss.insertSheet(AGENTS_SHEET_NAME);
+  sh.getRange(1, 1, 1, 3).setValues([["Nom", "Matricule", "Actif"]])
+    .setBackground('#1565C0').setFontColor('#FFFFFF').setFontWeight('bold');
+  sh.setFrozenRows(1);
+  sh.setColumnWidth(1, 200);
+  sh.setColumnWidth(2, 120);
+  sh.setColumnWidth(3, 80);
+
+  // Seeder depuis Dashboard S3:T79
+  try {
+    const dash = ss.getSheetByName(DASHBOARD_SHEET_NAME);
+    const rawAgents = dash.getRange("S3:T79").getValues();
+    const rows = [];
+    for (const r of rawAgents) {
+      const nom = String(r[0]).trim();
+      const mat = normalizeMat(r[1]);
+      if (nom && mat) rows.push([nom, mat, true]);
+    }
+    if (rows.length > 0) {
+      sh.getRange(2, 1, rows.length, 3).setValues(rows);
+      const rule = SpreadsheetApp.newDataValidation().requireCheckbox().build();
+      sh.getRange(2, 3, rows.length + 100, 1).setDataValidation(rule);
+    }
+    Logger.log("Config Agents créé : " + rows.length + " agents seedés depuis Dashboard.");
+  } catch(e) {
+    Logger.log("Erreur seeding Config Agents : " + e);
+  }
+  return sh;
+}
+
+/**
+ * Retourne la liste des agents ACTIFS [{nom, mat}].
+ * Si Config Agents n'existe pas, crée la feuille (seed depuis Dashboard).
+ */
+function getActiveAgents_(ss) {
+  const sh = getOrCreateAgentsSheet_(ss);
+  const data = sh.getDataRange().getValues();
+  const result = [];
+  for (let i = 1; i < data.length; i++) {
+    const nom = String(data[i][0]).trim();
+    const mat = normalizeMat(data[i][1]);
+    const actif = data[i][2] === true || String(data[i][2]).toUpperCase() === "TRUE";
+    if (nom && mat && actif) result.push({ nom, mat });
+  }
+  return result;
+}
+
+/** Retourne la liste complète des agents (actifs et inactifs) pour l'admin. */
+function getAgentsListAdmin(password) {
+  if (String(password).trim() !== "0007") throw new Error("Mot de passe incorrect.");
+  const ss = getSS_();
+  const sh = getOrCreateAgentsSheet_(ss);
+  const data = sh.getDataRange().getValues();
+  return data.slice(1)
+    .filter(r => normalizeMat(r[1]))
+    .map(r => ({
+      nom: String(r[0]).trim(),
+      mat: normalizeMat(r[1]),
+      actif: r[2] === true || String(r[2]).toUpperCase() === "TRUE"
+    }))
+    .sort((a, b) => a.nom.localeCompare(b.nom, 'fr'));
+}
+
+/** Active ou désactive un agent (par matricule). */
+function setAgentActiveAdmin(password, mat, actif) {
+  if (String(password).trim() !== "0007") throw new Error("Mot de passe incorrect.");
+  const ss = getSS_();
+  const sh = getOrCreateAgentsSheet_(ss);
+  const data = sh.getDataRange().getValues();
+  const normMat = normalizeMat(mat);
+  for (let i = 1; i < data.length; i++) {
+    if (normalizeMat(data[i][1]) === normMat) {
+      sh.getRange(i + 1, 3).setValue(actif === true || actif === "true");
+      _clearAdminCaches_();
+      return { success: true };
+    }
+  }
+  return { success: false, message: "Matricule non trouvé dans Config Agents." };
+}
+
+/** Ajoute un nouvel agent. */
+function addAgentAdmin(password, nom, mat) {
+  if (String(password).trim() !== "0007") throw new Error("Mot de passe incorrect.");
+  const nomTrim = String(nom).trim();
+  const matTrim = String(mat).trim().toUpperCase();
+  if (!nomTrim || !matTrim) return { success: false, message: "Nom et matricule requis." };
+
+  const ss = getSS_();
+  const sh = getOrCreateAgentsSheet_(ss);
+  const data = sh.getDataRange().getValues();
+  const normNew = normalizeMat(matTrim);
+
+  for (let i = 1; i < data.length; i++) {
+    if (normalizeMat(data[i][1]) === normNew) {
+      return { success: false, message: "Cet agent (matricule " + matTrim + ") existe déjà." };
+    }
+  }
+
+  const lastRow = sh.getLastRow();
+  sh.getRange(lastRow + 1, 1, 1, 3).setValues([[nomTrim, matTrim, true]]);
+  const rule = SpreadsheetApp.newDataValidation().requireCheckbox().build();
+  sh.getRange(lastRow + 1, 3, 1, 1).setDataValidation(rule);
+  _clearAdminCaches_();
+  return { success: true };
+}
+
+/** Vide les caches admin (après modification de la liste agents). */
+function _clearAdminCaches_() {
+  try {
+    const cache = CacheService.getScriptCache();
+    cache.remove("admin_data_full_v2");
+    sheetCacheRemove("admin_data_full_v2");
+  } catch(e) {}
+}
+
 /* --- 1. STATS 2026 (RAPIDE) --- */
 function getStats2026() {
   // === CHERCHER CACHE ===
   const _cache26 = CacheService.getScriptCache();
-  const _ck26 = "stats2026_v9";
-  const _c26 = _cache26.get(_ck26);
-  if(_c26) return JSON.parse(_c26);
-  const _sc26 = sheetCacheGet(_ck26);
-  if(_sc26) { try { _cache26.put(_ck26, JSON.stringify(_sc26), 7200); } catch(e){} return _sc26; }
+  const _ck26 = "stats2026_v11";
+  try {
+    const _c26 = _cache26.get(_ck26);
+    if(_c26) return JSON.parse(_c26);
+    const _sc26 = sheetCacheGet(_ck26);
+    if(_sc26) { try { _cache26.put(_ck26, JSON.stringify(_sc26), 7200); } catch(e){} return _sc26; }
+  } catch(e) {
+    Logger.log("getStats2026 cache read error: " + e);
+    // Continue sans cache
+  }
 
+  try {
   const ss = getSS_();
   const dash = ss.getSheetByName(DASHBOARD_SHEET_NAME);
   
@@ -314,8 +610,24 @@ function getStats2026() {
   const astreintes2026 = Math.ceil(Number(dash.getRange(DASH_ASTREINTES_2026_CELL).getValue())||0);
   const secteur2026 = total2026 - psud2026;
   
-  const lastDateRaw = dash.getRange(DASH_LASTDATE_CELL).getValue();
-  const lastDate = coerceToDate_(lastDateRaw) || new Date();
+  // Calculer la dernière date réelle depuis la feuille Temps travail (ne pas dépendre de D2)
+  let lastDate = null;
+  try {
+    const shTempsCheck = ss.getSheetByName(TEMPS_SHEET_NAME);
+    if(shTempsCheck) {
+      const dCheck = shTempsCheck.getDataRange().getValues();
+      for(let i=1; i<dCheck.length; i++) {
+        const dA = coerceToDateTime_(dCheck[i][C_TEMPS_DATE_AST]);
+        if(dA && (!lastDate || dA > lastDate)) lastDate = dA;
+        const dG = coerceToDateTime_(dCheck[i][C_TEMPS_DATE_GARDE]);
+        if(dG && (!lastDate || dG > lastDate)) lastDate = dG;
+      }
+    }
+  } catch(eLD) {}
+  if(!lastDate) {
+    const lastDateRaw = dash.getRange(DASH_LASTDATE_CELL).getValue();
+    lastDate = coerceToDate_(lastDateRaw) || new Date();
+  }
 
   const cisNames = dash.getRange("E17:E47").getDisplayValues().flat();
   const cisCounts2026 = dash.getRange("F17:F47").getValues().flat();
@@ -465,11 +777,16 @@ function getStats2026() {
     bilanOkPct: bilanOkPct, pisuOkPct: pisuOkPct,
     topMotifs: topMotifs, nbPisu: nbPisu,
     protoAdulte: protoAdulte.slice(0, 5), protoEnfant: protoEnfant.slice(0, 5),
-    tempsCis: tempsCisList, tempsSect: tempsSectList
+    tempsCis: tempsCisList, tempsSect: tempsSectList,
+    doubleIspCis: getCisDoubleIspHours(), doubleIspSect: getSectDoubleIspHours()
   };
   // === ÉCRIRE CACHE ===
   try { _cache26.put(_ck26, JSON.stringify(_result26), 7200); sheetCachePut(_ck26, _result26, 7200); } catch(e){}
   return _result26;
+  } catch(e) {
+    Logger.log("getStats2026 ERROR: " + e + " | stack: " + (e.stack || ""));
+    return { error: "Erreur chargement: " + (e.message || e), date: "", psud: 0, total: 0, sect: 0, ast: 0, cis: [], secteurs: [], cntApp: 0, ssoTotal: 0, ssoByCis: [], cntIspG: 0, cntMed: 0, cntAction: 0, bilanOkPct: "—", pisuOkPct: "—", topMotifs: [], nbPisu: "0", protoAdulte: [], protoEnfant: [], tempsCis: [], tempsSect: [], doubleIspCis: [], doubleIspSect: [] };
+  }
 }
 
 /* --- 2. STATS 2025 (CACHE) --- */
@@ -607,23 +924,30 @@ function getAdminData(password) {
   
   const ss = getSS_();
   const dash = ss.getSheetByName(DASHBOARD_SHEET_NAME);
-  const rawAgents = dash.getRange("S3:AQ79").getValues();
-  const agentMap = {}; 
 
-  for (let i=0; i<rawAgents.length; i++) {
-    const mat = normalizeMat(rawAgents[i][1]); 
-    if (mat) {
-      agentMap[mat] = { 
-        nom: String(rawAgents[i][0]).trim(), mat: mat, 
-        interHg26:0, interG26:0, hAst26:0, hGarde26:0, 
-        interHg25:0, interG25:0, hAst25:0, hGarde25:0,
-        txSoll: Number(rawAgents[i][24]) || 0,
-        mAst: new Array(12).fill(0),
-        mGarde: new Array(12).fill(0)
-      };
-    }
+  // txSoll (taux de sollicitation) est une formule Dashboard — on conserve la lecture
+  // pour les agents existants ; les nouveaux agents auront txSoll=0.
+  const txSollMap = {};
+  try {
+    dash.getRange("S3:AQ79").getValues().forEach(r => {
+      const m = normalizeMat(r[1]);
+      if (m) txSollMap[m] = Number(r[24]) || 0;
+    });
+  } catch(e) {}
+
+  const activeAgents = getActiveAgents_(ss);
+  const agentMap = {};
+  for (const agent of activeAgents) {
+    agentMap[agent.mat] = {
+      nom: agent.nom, mat: agent.mat,
+      interHg26:0, interG26:0, hAst26:0, hGarde26:0,
+      interHg25:0, interG25:0, hAst25:0, hGarde25:0,
+      txSoll: txSollMap[agent.mat] || 0,
+      mAst: new Array(12).fill(0),
+      mGarde: new Array(12).fill(0)
+    };
   }
-  
+
   // 2026
   const shTemps26 = ss.getSheetByName(TEMPS_SHEET_NAME);
   if (shTemps26) {
@@ -712,8 +1036,39 @@ function getAdminData(password) {
     months: s.mAst.map(a => Math.ceil(a)),
     total: Math.ceil(s.hAst26)
   })).sort((a, b) => b.total - a.total);
-  
-  const result = { activity: stats, sollicitation: soll, monthly: monthly };
+
+  // === INÉLIGIBILITÉ À LA GARDE ===
+  // Mois précédent complet : si on est en juin (5), on prend mai (4)
+  const now = new Date();
+  const prevMonthIdx = now.getMonth() === 0 ? 11 : now.getMonth() - 1;
+  const nbMoisPris = prevMonthIdx + 1; // nb de mois du 1er janvier au dernier jour du mois précédent
+  const MONTH_NAMES = ["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"];
+  const ineligibles = [];
+  for (const s of Object.values(agentMap)) {
+    const derMois = (s.mAst[prevMonthIdx] || 0) + (s.mGarde[prevMonthIdx] || 0);
+    let totalAnnee = 0;
+    for (let m = 0; m <= prevMonthIdx; m++) totalAnnee += (s.mAst[m] || 0) + (s.mGarde[m] || 0);
+    const moyenne = nbMoisPris > 0 ? totalAnnee / nbMoisPris : 0;
+    // Affiché uniquement si LES DEUX critères échouent (< 24h)
+    if (derMois < 24 && moyenne < 24) {
+      ineligibles.push({
+        nom: s.nom,
+        derMois: Math.round(derMois * 2) / 2,
+        totalAnnee: Math.round(totalAnnee * 2) / 2,
+        moyenne: Math.round(moyenne * 10) / 10,
+        nbMois: nbMoisPris
+      });
+    }
+  }
+  ineligibles.sort((a, b) => a.nom.localeCompare(b.nom, "fr"));
+  const ineligibilite = {
+    prevMonthLabel: MONTH_NAMES[prevMonthIdx],
+    nbMois: nbMoisPris,
+    refDate: Utilities.formatDate(now, "Europe/Paris", "dd/MM/yyyy"),
+    agents: ineligibles
+  };
+
+  const result = { activity: stats, sollicitation: soll, monthly: monthly, ineligibilite: ineligibilite };
   
   // === METTRE EN CACHE ===
   cache.put("admin_data_full_v2", JSON.stringify(result), 7200);
@@ -918,10 +1273,8 @@ function getIspStats(matriculeInput, dobInput, forceRefresh) {
     // === VALIDER L'AUTHENTIFICATION EN PREMIER (avant le cache!) ===
     if(!checkAuth_(mat, dobInput)) throw new Error("Date de naissance incorrecte.");
     
-    // === CHERCHER CACHE AVEC CLÉ INCLUANT LA DATE ===
     const cache = CacheService.getScriptCache();
-    // Inclure le DOB dans la clé pour isoler les caches par date
-    const cacheKey = "isp_v4_" + mat + "_" + String(dobInput).replace(/\//g, "");
+    const cacheKey = "isp_v4_" + mat;
     if(!forceRefresh) {
       // 1. CacheService (rapide, <100Ko)
       const cached = cache.get(cacheKey);
@@ -942,13 +1295,23 @@ function getIspStats(matriculeInput, dobInput, forceRefresh) {
     
     const ss = getSS_();
     const dash = ss.getSheetByName(DASHBOARD_SHEET_NAME);
-    const matVals = dash.getRange("T3:T79").getDisplayValues().flat(); 
-    const idx = matVals.findIndex(m => normalizeMat(m) === mat);
-    if (idx === -1) throw new Error("Matricule non trouvé.");
-    
-    const agentName = dash.getRange(3 + idx, 19).getValue(); 
-    const rawRow = dash.getRange(3 + idx, 19, 1, 25).getValues()[0] || [];
-    const txSoll = Number(rawRow[24]) || 0;
+
+    // Chercher l'agent dans Config Agents (actif ou inactif, pour que l'ISP puisse voir ses données)
+    const allAgentsSh = getOrCreateAgentsSheet_(ss).getDataRange().getValues();
+    const foundAgentRow = allAgentsSh.slice(1).find(r => normalizeMat(r[1]) === mat);
+    if (!foundAgentRow) throw new Error("Matricule non trouvé.");
+    const agentName = String(foundAgentRow[0]).trim();
+
+    // txSoll : conserver la lecture Dashboard pour les agents déjà présents (formule)
+    let txSoll = 0;
+    try {
+      const matVals = dash.getRange("T3:T79").getDisplayValues().flat();
+      const idx = matVals.findIndex(m => normalizeMat(m) === mat);
+      if (idx !== -1) {
+        const rawRow = dash.getRange(3 + idx, 19, 1, 25).getValues()[0] || [];
+        txSoll = Number(rawRow[24]) || 0;
+      }
+    } catch(e) {}
     let histTempsTravail = null;
     try {
       const rows = getHistoriqueTempsTravailAdmin() || [];
@@ -1088,7 +1451,10 @@ function getIspStats(matriculeInput, dobInput, forceRefresh) {
                     bilanOk: data[i][C_BILAN_OK],
                     bilanKo: data[i][C_BILAN_KO],
                     pisuOk: data[i][C_PISU_OK],
-                    pisuKo: data[i][C_PISU_KO]
+                    pisuKo: data[i][C_PISU_KO],
+                    commIsp:  [String(data[i][C_TXTBILAN_KO]||'').trim(), String(data[i][C_TXTPISU_KO]||'').trim()].filter(Boolean).join('\n'),
+                    commChef: String(data[i][C_COMM_CHEF]||'').trim(),
+                    commMed:  String(data[i][C_COMM_MED]||'').trim()
                 };
             }
         }
@@ -1156,15 +1522,15 @@ function getIspStats(matriculeInput, dobInput, forceRefresh) {
         const appRow = appRows[id];
         if(!appRow) continue; // Fiche n'existe pas dans APP
         
-        if(tags.hasJ && !isCheckboxChecked(appRow.bilanOk)) {
-            // Erreur Bilan Légère (J coché) - SEULEMENT SI BILAN PAS OK
+        if(tags.hasJ && !tags.hasH && !tags.hasL) {
+            // Erreur Bilan Légère — Alex prend le dessus sur BILAN_OK de l'ISP
             const item = { id:id, motif:motif, centre:cis, engin:engin, date:date, status:status, types: ["Erreur Bilan Légère"], errorType: "Erreur Bilan Légère" };
             errLegereBilanList.push(item);
             console.log(`DEBUG ISP ${mat}: ID ${id} → ✅ Ajouté à errLegereBilanList`);
         }
-        
-        if(tags.hasK && !isCheckboxChecked(appRow.pisuOk)) {
-            // Erreur Pisu Légère (K coché) - SEULEMENT SI PISU PAS OK
+
+        if(tags.hasK && !tags.hasI && !tags.hasL) {
+            // Erreur Pisu Légère — Alex prend le dessus sur PISU_OK de l'ISP
             const item = { id:id, motif:motif, centre:cis, engin:engin, date:date, status:status, types: ["Erreur Pisu Légère"], errorType: "Erreur Pisu Légère" };
             errLegerePisuList.push(item);
         }
@@ -1195,29 +1561,26 @@ function getIspStats(matriculeInput, dobInput, forceRefresh) {
         const pisuKo = data[i][C_PISU_KO];
         const tags = alexTags[id] || {};
         
-        // === BILAN ===
-        // Si BI (Bilan OK) coché → OK
-        if(bilanOk) {
+        // === BILAN — Alex (H/J/L) prioritaire sur flags ISP ===
+        if(tags.hasH && !tags.hasJ && !tags.hasL) {
+            bilanOkCount++;
+            countedIds.add(id + "_bilan");
+            okBilanList.push({ id:id, motif:motif, centre:cis, engin:engin, date:date, status:status, types: ["Bilan OK"], errorType: "" });
+        } else if(!tags.hasH && !tags.hasJ && !tags.hasL && bilanOk) {
+            // Aucune classification Alex bilan → fallback ISP
             bilanOkCount++;
             countedIds.add(id + "_bilan");
             okBilanList.push({ id:id, motif:motif, centre:cis, engin:engin, date:date, status:status, types: ["Bilan OK"], errorType: "" });
         }
-        // Si BJ (Bilan incomplet) coché ET H (correction) dans APP Alex → OK
-        else if(bilanKo && tags.hasH) {
-            bilanOkCount++;
-            countedIds.add(id + "_bilan");
-            okBilanList.push({ id:id, motif:motif, centre:cis, engin:engin, date:date, status:status, types: ["Bilan OK"], errorType: "" });
-        }
-        
-        // === PISU ===
-        // Si BK (Pisu OK) coché → OK
-        if(pisuOk) {
+        // J=true ou L=true → erreur, déjà compté plus haut dans errLegereBilanList / errLourdeList
+
+        // === PISU — Alex (I/K/L) prioritaire sur flags ISP ===
+        if(tags.hasI && !tags.hasK && !tags.hasL) {
             pisuOkCount++;
             countedIds.add(id + "_pisu");
             okPisuList.push({ id:id, motif:motif, centre:cis, engin:engin, date:date, status:status, types: ["Pisu OK"], errorType: "" });
-        }
-        // Si BL (Pisu pas ok) coché ET I (correction) dans APP Alex → OK
-        else if(pisuKo && tags.hasI) {
+        } else if(!tags.hasI && !tags.hasK && !tags.hasL && pisuOk) {
+            // Aucune classification Alex pisu → fallback ISP
             pisuOkCount++;
             countedIds.add(id + "_pisu");
             okPisuList.push({ id:id, motif:motif, centre:cis, engin:engin, date:date, status:status, types: ["Pisu OK"], errorType: "" });
@@ -1225,6 +1588,24 @@ function getIspStats(matriculeInput, dobInput, forceRefresh) {
     }
 
     console.log(`DEBUG ISP ${mat}: RÉSULTATS - Bilan OK: ${bilanOkCount}, Pisu OK: ${pisuOkCount}, Erreur Bilan Légère: ${errLegereBilanList.length}, Erreur Pisu Légère: ${errLegerePisuList.length}, Erreur Grave: ${errLourdeList.length}`);
+
+    // Fusionner toutes les listes en un tableau details unique (une ligne par intervention)
+    const detailsById = {};
+    [okBilanList, okPisuList, errLegereBilanList, errLegerePisuList, errLourdeList].forEach(function(lst) {
+        lst.forEach(function(item) {
+            if (!detailsById[item.id]) {
+                detailsById[item.id] = { id:item.id, date:item.date, motif:item.motif, centre:item.centre, engin:item.engin, status:item.status, types:[] };
+            }
+            (item.types || []).forEach(function(t) {
+                if (detailsById[item.id].types.indexOf(t) < 0) detailsById[item.id].types.push(t);
+            });
+        });
+    });
+    const details = Object.values(detailsById).sort(function(a, b) { return String(a.date) < String(b.date) ? 1 : -1; });
+    details.forEach(function(item) {
+        const r = appRows[item.id];
+        if (r) { item.commIsp = r.commIsp || ''; item.commChef = r.commChef || ''; item.commMed = r.commMed || ''; }
+    });
 
     const result = {
         nom: agentName,
@@ -1241,12 +1622,21 @@ function getIspStats(matriculeInput, dobInput, forceRefresh) {
         errLegereBilan: errLegereBilanList,
         errLegerePisu: errLegerePisuList,
         errLourde: errLourdeList,
+        details: details,
         monthlyAst26: monthlyAst26,
         monthlyGarde26: monthlyGarde26,
         debugInfo: {
             totalIds: thisAgentIds.size,
             idsWithTags: Object.keys(alexTags).length,
-            sampleIds: Array.from(thisAgentIds).slice(0, 5)
+            sampleIds: Array.from(thisAgentIds).slice(0, 5),
+            alexTagsList: Array.from(thisAgentIds).map(id => ({
+                id: id,
+                inAlex: !!alexTags[id],
+                hasJ: alexTags[id] ? alexTags[id].hasJ : null,
+                hasH: alexTags[id] ? alexTags[id].hasH : null,
+                hasL: alexTags[id] ? alexTags[id].hasL : null,
+                bilanOk_app: appRows[id] ? isCheckboxChecked(appRows[id].bilanOk) : null
+            }))
         }
     };
     
@@ -1288,12 +1678,13 @@ function getChefferieCounts() {
     if(shCachedChef) { try { cache.put(cacheKey, JSON.stringify(shCachedChef), 7200); } catch(e){} return shCachedChef; }
     
     const ss = getSS_();
+    ensureAppAlexSynced_(ss);
     let isp = 0, med = 0, action = 0;
     try {
         const shApp = ss.getSheetByName(APP_SHEET_NAME);
         const shAlex = ss.getSheetByName("APP Alex");
         const shEve = ss.getSheetByName("APP Eve");
-        
+
         const dApp = shApp.getDataRange().getValues();
         const dAlex = shAlex.getDataRange().getValues();
         const dEve = shEve ? shEve.getDataRange().getValues() : [];
@@ -1344,190 +1735,6 @@ function getChefferieCounts() {
     return result;
 }
 
-function getChefferieNextCase(mode) {
-    const ss = getSS_();
-    let rowToProcess = -1, schema = {};
-
-    if(mode === 'app_isp') {
-        const shApp = ss.getSheetByName(APP_SHEET_NAME);
-        const shAlex = ss.getSheetByName("APP Alex");
-        const dataApp = shApp.getDataRange().getValues();
-        const dataAlex = shAlex.getDataRange().getValues(); 
-
-        // Chercher dans APP Alex les IDs avec erreur confirmée (J, K ou L) et PAS clôturés (N)
-        for(let i=1; i<dataAlex.length; i++) {
-            const id = String(dataAlex[i][0]).trim();
-            const hasJ = isCheckboxChecked(dataAlex[i][9]);   // J = Erreur Bilan légère
-            const hasK = isCheckboxChecked(dataAlex[i][10]);  // K = Erreur Pisu légère
-            const hasL = isCheckboxChecked(dataAlex[i][11]);  // L = Erreur Grave
-            const isClosed = isCheckboxChecked(dataAlex[i][13]); // N = Clôture chef
-            
-            // On traite si erreur confirmée ET pas encore clôturé
-            if((hasJ || hasK || hasL) && !isClosed) {
-                // Trouver les infos dans APP
-                let appRow = -1;
-                for(let j=1; j<dataApp.length; j++) {
-                    if(String(dataApp[j][C_APP_ID]).trim() === id) { appRow = j; break; }
-                }
-                if(appRow === -1) continue; // ID pas trouvé dans APP
-                
-                rowToProcess = i+1;
-                const cis = String(dataApp[appRow][C_APP_CIS]||"").trim();
-                const status = (cis === "SD SSSM") ? "De Garde" : "Astreinte / Dispo";
-                const info = {
-                    interId: id, 
-                    motif: dataApp[appRow][C_APP_MOTIF], 
-                    date: formatDateHeureFR_(dataApp[appRow][C_APP_DATE]),
-                    pdf: dataApp[appRow][C_APP_PDF], 
-                    infName: dataApp[appRow][C_APP_NOM], 
-                    engin: String(dataApp[appRow][C_APP_ENGIN]||"").trim(),
-                    status: status,
-                    commBN: dataApp[appRow][C_TXTBILAN_KO], 
-                    commBO: dataApp[appRow][C_TXTPISU_KO],
-                    commChef: dataAlex[i][12] || ""
-                };
-                const hAlex = shAlex.getRange(1,1,1,20).getValues()[0];
-                
-                // Récupérer les valeurs déjà saisies si elles existent
-                const existingChecks = {
-                    7: isCheckboxChecked(dataAlex[i][7]),   // H
-                    8: isCheckboxChecked(dataAlex[i][8]),   // I
-                    9: isCheckboxChecked(dataAlex[i][9]),   // J
-                    10: isCheckboxChecked(dataAlex[i][10]), // K
-                    11: isCheckboxChecked(dataAlex[i][11])  // L
-                };
-                
-                schema = { 
-                    mode:'app_isp', 
-                    info:info, 
-                    checks:[
-                        {id:7, label:hAlex[7], checked: existingChecks[7]}, 
-                        {id:8, label:hAlex[8], checked: existingChecks[8]}, 
-                        {id:9, label:hAlex[9], checked: existingChecks[9]}, 
-                        {id:10, label:hAlex[10], checked: existingChecks[10]}, 
-                        {id:11, label:hAlex[11], checked: existingChecks[11]}
-                    ],
-                    existingComment: String(dataAlex[i][12]||"")
-                };
-                break;
-            }
-        }
-    }
-    else if(mode === 'med_chef') {
-        const shApp = ss.getSheetByName(APP_SHEET_NAME);
-        const shAlex = ss.getSheetByName("APP Alex");
-        const shEve = ss.getSheetByName("APP Eve");
-        const dataApp = shApp.getDataRange().getValues();
-        const dataAlex = shAlex.getDataRange().getValues();
-        const dataEve = shEve ? shEve.getDataRange().getValues() : [];
-        
-        for(let i=1; i<dataAlex.length; i++) {
-            const hasL = isCheckboxChecked(dataAlex[i][11]);  // L = Erreur Grave
-            if(!hasL) continue;
-            
-            const id = String(dataAlex[i][0]).trim();
-            if(!id) continue;
-            
-            // Vérifier si déjà traité dans APP Eve
-            let alreadyDone = false;
-            for(let j=1; j<dataEve.length; j++) {
-                if(String(dataEve[j][0]).trim() === id && (dataEve[j][14] || dataEve[j][16])) { 
-                    alreadyDone = true; 
-                    break; 
-                }
-            }
-            if(alreadyDone) continue;
-            
-            // Chercher les infos dans APP
-            let appRow = -1;
-            for(let j=1; j<dataApp.length; j++) {
-                if(String(dataApp[j][C_APP_ID]).trim() === id) { appRow = j; break; }
-            }
-            
-            rowToProcess = i+1;
-            const appInfo = (appRow >= 0) ? {
-                motif: dataApp[appRow][C_APP_MOTIF],
-                date: formatDateHeureFR_(dataApp[appRow][C_APP_DATE]),
-                pdf: dataApp[appRow][C_APP_PDF],
-                nom: dataApp[appRow][C_APP_NOM],
-                cis: String(dataApp[appRow][C_APP_CIS]||"").trim(),
-                engin: String(dataApp[appRow][C_APP_ENGIN]||"").trim()
-            } : { motif:"", date:"", pdf:dataAlex[i][2], nom:dataAlex[i][4], cis:"", engin:"" };
-            
-            const status = (appInfo.cis === "SD SSSM") ? "Garde" : "Astreinte / Dispo";
-            schema = { 
-                mode:'med_chef', 
-                info:{ 
-                    interId:id, 
-                    motif:appInfo.motif, 
-                    date:appInfo.date, 
-                    pdf:appInfo.pdf, 
-                    infName:appInfo.nom, 
-                    cis:appInfo.cis, 
-                    engin:appInfo.engin, 
-                    status:status,
-                    errorType:"Erreur Grave"
-                },
-                existingAnalyse: (dataEve.length > 0) ? (dataEve.find(r => String(r[0]).trim() === id) || {}) [14] || "" : ""
-            };
-            break;
-        }
-    }
-    else if(mode === 'valid_final') {
-        const shEve = ss.getSheetByName("APP Eve");
-        const dataEve = shEve.getDataRange().getValues();
-        const shAlex = ss.getSheetByName("APP Alex");
-        const dataAlex = shAlex.getDataRange().getValues();
-        for(let i=1; i<dataEve.length; i++) {
-            if((dataEve[i][14] || dataEve[i][16]) && !dataEve[i][18]) {
-                const id = String(dataEve[i][0]).trim();
-                let pdf = "", nom="", status="Validation";
-                for(let k=1; k<dataAlex.length; k++){ if(String(dataAlex[k][0]).trim() === id) { pdf = dataAlex[k][2]; nom = dataAlex[k][4]; break; } }
-                rowToProcess = i+1;
-                schema = { mode:'valid_final', info:{ interId:id, date:'', pdf:pdf, infName:nom, cis:'', motif:'', engin:'', status:status, analyse:dataEve[i][14], actionReq:dataEve[i][16] } };
-                break;
-            }
-        }
-    }
-    if(rowToProcess === -1) return { done: true, message: "Aucun dossier en attente." };
-    return { done: false, schema: schema, rowNumber: rowToProcess };
-}
-
-function saveChefferie(form) {
-    const ss = getSS_();
-    if(form.mode === 'app_isp') {
-        const shAlex = ss.getSheetByName("APP Alex");
-        const data = shAlex.getDataRange().getValues();
-        let row = -1;
-        for(let i=1; i<data.length; i++) { if(String(data[i][0]).trim() === String(form.info.interId).trim()) { row = i+1; break; } }
-        if(row === -1) { row = shAlex.getLastRow() + 1; shAlex.getRange(row, 1).setValue(form.info.interId); shAlex.getRange(row, 2).setValue(form.info.motif); shAlex.getRange(row, 3).setValue(form.info.pdf); shAlex.getRange(row, 5).setValue(form.info.infName); }
-        shAlex.getRange(row, 8).setValue(form.checks[7]);
-        shAlex.getRange(row, 9).setValue(form.checks[8]);
-        shAlex.getRange(row, 10).setValue(form.checks[9]);
-        shAlex.getRange(row, 11).setValue(form.checks[10]);
-        shAlex.getRange(row, 12).setValue(form.checks[11]);
-        shAlex.getRange(row, 13).setValue(form.comment);
-        shAlex.getRange(row, 14).setValue(true);
-    }
-    else if(form.mode === 'med_chef') {
-        const shEve = ss.getSheetByName("APP Eve");
-        const data = shEve.getDataRange().getValues();
-        let row = -1;
-        for(let i=1; i<data.length; i++) { if(String(data[i][0]).trim() === String(form.info.interId).trim()) { row = i+1; break; } }
-        if(row === -1) { row = shEve.getLastRow() + 1; shEve.getRange(row, 1).setValue(form.info.interId); }
-        shEve.getRange(row, 15).setValue(form.analyse);
-        shEve.getRange(row, 17).setValue(form.action);
-    }
-    else if(form.mode === 'valid_final') {
-        const shEve = ss.getSheetByName("APP Eve");
-        const data = shEve.getDataRange().getValues();
-        let row = -1;
-        for(let i=1; i<data.length; i++) { if(String(data[i][0]).trim() === String(form.info.interId).trim()) { row = i+1; break; } }
-        if(row !== -1) { shEve.getRange(row, 18).setValue(form.finalAction); shEve.getRange(row, 19).setValue(true); }
-    }
-    return { success: true };
-}
-
 // === NOUVELLE INTERFACE CHEFFERIE ===
 
 /**
@@ -1535,65 +1742,66 @@ function saveChefferie(form) {
  */
 function getNextAppChefferie() {
     const ss = getSS_();
+    ensureAppAlexSynced_(ss);
     const shApp = ss.getSheetByName(APP_SHEET_NAME);
     const shAlex = ss.getSheetByName("APP Alex");
     const dataApp = shApp.getDataRange().getValues();
     const dataAlex = shAlex ? shAlex.getDataRange().getValues() : [];
-    
+
+    // Pré-construire alexMap (Fix #6 — O(n) au lieu de O(n²))
+    const alexMap = {};
+    for(let j=1; j<dataAlex.length; j++) {
+        const id = String(dataAlex[j][0]).trim();
+        if(id && !alexMap[id]) alexMap[id] = { row: j, data: dataAlex[j] };
+    }
+
     for(let i=1; i<dataApp.length; i++) {
         const bilanKo = isCheckboxChecked(dataApp[i][C_BILAN_KO]);
-        const pisuKo = isCheckboxChecked(dataApp[i][C_PISU_KO]);
-        
-        if((bilanKo || pisuKo)) {
-            const id = String(dataApp[i][C_APP_ID]).trim();
-            
-            // Chercher dans APP Alex si déjà traité
-            let alexRow = -1;
-            let alexData = null;
-            for(let j=1; j<dataAlex.length; j++) {
-                if(String(dataAlex[j][0]).trim() === id) {
-                    alexRow = j;
-                    alexData = dataAlex[j];
-                    break;
-                }
-            }
-            
-            // Si clôturé dans APP Alex (colonne N), passer au suivant
-            if(alexData && isCheckboxChecked(alexData[13])) continue;
-            
-            const cis = String(dataApp[i][C_APP_CIS]||"").trim();
-            const status = (cis === "SD SSSM") ? "De Garde" : "Astreinte / Dispo";
-            
-            return {
-                found: true,
-                rowApp: i+1,
-                rowAlex: alexRow + 1,
-                info: {
-                    interId: id,
-                    date: formatDateHeureFR_(dataApp[i][C_APP_DATE]),
-                    infName: dataApp[i][C_APP_NOM],
-                    motif: dataApp[i][C_APP_MOTIF],
-                    engin: String(dataApp[i][C_APP_ENGIN]||"").trim(),
-                    pdf: dataApp[i][C_APP_PDF],
-                    status: status,
-                    motifBilan: dataApp[i][C_TXTBILAN_KO] || "",
-                    motifPisu: dataApp[i][C_TXTPISU_KO] || "",
-                    bilanKo: bilanKo,
-                    pisuKo: pisuKo,
-                    infoT: String(dataApp[i][C_APP_INFO_T] || "").trim()
-                },
-                checks: {
-                    H: alexData ? isCheckboxChecked(alexData[7]) : false,
-                    I: alexData ? isCheckboxChecked(alexData[8]) : false,
-                    J: alexData ? isCheckboxChecked(alexData[9]) : false,
-                    K: alexData ? isCheckboxChecked(alexData[10]) : false,
-                    L: alexData ? isCheckboxChecked(alexData[11]) : false
-                },
-                commentChef: alexData ? (alexData[12] || "") : ""
-            };
-        }
+        const pisuKo  = isCheckboxChecked(dataApp[i][C_PISU_KO]);
+        if(!(bilanKo || pisuKo)) continue;
+
+        const id = String(dataApp[i][C_APP_ID]).trim();
+        const alexEntry = alexMap[id] || null;
+        const alexData  = alexEntry ? alexEntry.data : null;
+        const alexRow   = alexEntry ? alexEntry.row  : -1;
+
+        // Si clôturé dans APP Alex (colonne N), passer au suivant
+        if(alexData && isCheckboxChecked(alexData[13])) continue;
+
+        const cis = String(dataApp[i][C_APP_CIS]||"").trim();
+        // Fix #7 — APP BX (C_COMM_CHEF) en priorité, Alex col M en fallback
+        const commChef = String(dataApp[i][C_COMM_CHEF] || "").trim()
+                      || (alexData ? String(alexData[12]||"").trim() : "");
+
+        return {
+            found: true,
+            rowApp: i+1,
+            rowAlex: alexRow + 1,
+            info: {
+                interId: id,
+                date:      formatDateHeureFR_(dataApp[i][C_APP_DATE]),
+                infName:   dataApp[i][C_APP_NOM],
+                motif:     dataApp[i][C_APP_MOTIF],
+                engin:     String(dataApp[i][C_APP_ENGIN]||"").trim(),
+                pdf:       dataApp[i][C_APP_PDF],
+                status:    (cis === "SD SSSM") ? "De Garde" : "Astreinte / Dispo",
+                motifBilan: dataApp[i][C_TXTBILAN_KO] || "",
+                motifPisu:  dataApp[i][C_TXTPISU_KO]  || "",
+                bilanKo:   bilanKo,
+                pisuKo:    pisuKo,
+                infoT:     String(dataApp[i][C_APP_INFO_T] || "").trim()
+            },
+            checks: {
+                H: alexData ? isCheckboxChecked(alexData[7])  : false,
+                I: alexData ? isCheckboxChecked(alexData[8])  : false,
+                J: alexData ? isCheckboxChecked(alexData[9])  : false,
+                K: alexData ? isCheckboxChecked(alexData[10]) : false,
+                L: alexData ? isCheckboxChecked(alexData[11]) : false
+            },
+            commentChef: commChef
+        };
     }
-    
+
     return { found: false, message: "Aucune fiche à traiter" };
 }
 
@@ -1642,6 +1850,10 @@ function getNextMedecinChef() {
         const commChefAnc  = appInfo ? String(appInfo[C_COMM_CHEF] || "").trim() : "";
         const commChefAlex = String(dataAlex[i][12] || "").trim();
 
+        // Commentaire ISP : motif écrit par l'infirmière au moment de sa propre classification (APP BP/BQ)
+        const motifBilan = appInfo ? String(appInfo[C_TXTBILAN_KO] || "").trim() : "";
+        const motifPisu  = appInfo ? String(appInfo[C_TXTPISU_KO]  || "").trim() : "";
+
         return {
             found: true,
             rowAlex: i+1,
@@ -1653,6 +1865,7 @@ function getNextMedecinChef() {
                 engin: appInfo ? String(appInfo[C_APP_ENGIN]||"").trim() : "",
                 pdf: appInfo ? appInfo[C_APP_PDF] : dataAlex[i][2],
                 status: status,
+                commentISP: [motifBilan, motifPisu].filter(Boolean).join("\n"),
                 commentChef: commChefAnc || commChefAlex,
                 infoT: appInfo ? String(appInfo[C_APP_INFO_T] || "").trim() : ""
             }
@@ -1669,25 +1882,30 @@ function saveAppChefferie(form) {
     try {
         const ss = getSS_();
         const shAlex = ss.getSheetByName("APP Alex");
-        
-        let row = form.rowAlex;
-        
-        // Si pas de ligne APP Alex, créer une nouvelle
-        if(row <= 0) {
-            const dataAlex = shAlex.getDataRange().getValues();
+        const interId = String(form.interId).trim();
+
+        // Toujours re-résoudre la ligne par ID d'intervention (jamais faire confiance à form.rowAlex,
+        // qui peut être périmé si APP Alex a bougé entre l'ouverture de la fiche et l'enregistrement).
+        const dataAlex = shAlex.getDataRange().getValues();
+        let row = -1;
+        for(let i=1; i<dataAlex.length; i++) {
+            if(String(dataAlex[i][0]).trim() === interId) { row = i+1; break; }
+        }
+        if(row === -1) {
             row = dataAlex.length + 1;
             shAlex.getRange(row, 1).setValue(form.interId);
         }
-        
+
         // Sauvegarder les checkboxes H, I, J, K, L
         shAlex.getRange(row, 8).setValue(form.checks.H ? true : false);  // H
         shAlex.getRange(row, 9).setValue(form.checks.I ? true : false);  // I
         shAlex.getRange(row, 10).setValue(form.checks.J ? true : false); // J
         shAlex.getRange(row, 11).setValue(form.checks.K ? true : false); // K
         shAlex.getRange(row, 12).setValue(form.checks.L ? true : false); // L
-        
-        // Commentaire chefferie (colonne M = 13)
-        shAlex.getRange(row, 13).setValue(form.commentChef || "");
+
+        // Commentaire chefferie (colonne M = 13), tagué [COM CHEF ISP id] pour sécuriser le circuit
+        const taggedComment = appendOrReplaceTag_(form.commentChef, "COM CHEF ISP", interId, ["JL", "COM CHEF"]);
+        shAlex.getRange(row, 13).setValue(taggedComment);
 
         // Clôturer (colonne N = 14)
         shAlex.getRange(row, 14).setValue(true);
@@ -1699,8 +1917,8 @@ function saveAppChefferie(form) {
             if (shAppRef && form.commentChef) {
                 const appData = shAppRef.getDataRange().getValues();
                 for (let j = 1; j < appData.length; j++) {
-                    if (String(appData[j][C_APP_ID]).trim() === String(form.interId).trim()) {
-                        shAppRef.getRange(j + 1, C_COMM_CHEF + 1).setValue(form.commentChef);
+                    if (String(appData[j][C_APP_ID]).trim() === interId) {
+                        shAppRef.getRange(j + 1, C_COMM_CHEF + 1).setValue(taggedComment);
                         break;
                     }
                 }
@@ -1708,7 +1926,12 @@ function saveAppChefferie(form) {
         } catch(eAnc) { Logger.log("saveAppChefferie ancrage error: " + eAnc); }
 
         // Clear cache
-        CacheService.getScriptCache().remove("chefferie_counts_v4");
+        const cache_ = CacheService.getScriptCache();
+        cache_.remove("chefferie_counts_v4");
+        cache_.remove("all_isp_error_stats");
+        sheetCacheRemove("all_isp_error_stats");
+        const mat_ = _getMat_(ss, interId);
+        if(mat_) { cache_.remove("isp_v4_" + mat_); cache_.remove("isp_detail_" + mat_); sheetCacheRemove("isp_v4_" + mat_); sheetCacheRemove("isp_detail_" + mat_); }
 
         return { success: true };
     } catch(e) {
@@ -1741,11 +1964,14 @@ function saveMedecinAnalyse(form) {
             shEve.getRange(row, 1).setValue(form.interId);
         }
         
-        // Analyse Médecin (colonne O = 15)
-        shEve.getRange(row, 15).setValue(form.analyse || "");
+        // Analyse Médecin (colonne O = 15), taguée [COM MED CHEF id] pour sécuriser le circuit
+        const interIdTrim = String(form.interId).trim();
+        const taggedAnalyse = appendOrReplaceTag_(form.analyse, "COM MED CHEF", interIdTrim, ["COM CHEF"]);
+        shEve.getRange(row, 15).setValue(taggedAnalyse);
 
-        // Action Requise (colonne Q = 17)
-        shEve.getRange(row, 17).setValue(form.action || "");
+        // Action Requise (colonne Q = 17), taguée [COM MED CHEF id]
+        const taggedAction = appendOrReplaceTag_(form.action, "COM MED CHEF", interIdTrim, ["ACTION CHEF"]);
+        shEve.getRange(row, 17).setValue(taggedAction);
 
         // Ancrage anti-décalage : sauvegarder aussi dans APP (colonnes BY/BZ, par ID)
         try {
@@ -1753,9 +1979,9 @@ function saveMedecinAnalyse(form) {
             if (shAppRef) {
                 const appData = shAppRef.getDataRange().getValues();
                 for (let j = 1; j < appData.length; j++) {
-                    if (String(appData[j][C_APP_ID]).trim() === String(form.interId).trim()) {
-                        if (form.analyse) shAppRef.getRange(j + 1, C_COMM_MED + 1).setValue(form.analyse);
-                        if (form.action)  shAppRef.getRange(j + 1, C_ACTION_MED + 1).setValue(form.action);
+                    if (String(appData[j][C_APP_ID]).trim() === interIdTrim) {
+                        if (form.analyse) shAppRef.getRange(j + 1, C_COMM_MED + 1).setValue(taggedAnalyse);
+                        if (form.action)  shAppRef.getRange(j + 1, C_ACTION_MED + 1).setValue(taggedAction);
                         break;
                     }
                 }
@@ -1763,7 +1989,12 @@ function saveMedecinAnalyse(form) {
         } catch(eAnc) { Logger.log("saveMedecinAnalyse ancrage error: " + eAnc); }
 
         // Clear cache
-        CacheService.getScriptCache().remove("chefferie_counts_v4");
+        const cache_ = CacheService.getScriptCache();
+        cache_.remove("chefferie_counts_v4");
+        cache_.remove("all_isp_error_stats");
+        sheetCacheRemove("all_isp_error_stats");
+        const mat_ = _getMat_(ss, interIdTrim);
+        if(mat_) { cache_.remove("isp_v4_" + mat_); cache_.remove("isp_detail_" + mat_); sheetCacheRemove("isp_v4_" + mat_); sheetCacheRemove("isp_detail_" + mat_); }
 
         return { success: true };
     } catch(e) {
@@ -1997,11 +2228,16 @@ function saveCase(form) {
         updates.forEach(u => {
             shApp.getRange(u[0], u[1]).setValue(u[2]);
         });
-        
-        // Clear caches (seulement les caches légers - les lourds seront rafraîchis par le trigger)
+
+        // Si bilan/pisu pas ok, faire apparaître la fiche dans APP Alex (sans jamais réordonner les lignes existantes)
+        if(form.resultats.bj || form.resultats.bl) ensureAppAlexSynced_(ss);
+
+        // Clear caches
         const cache = CacheService.getScriptCache();
         cache.remove("chefferie_counts_v4");
         cache.remove("stats2026_v3");
+        cache.remove("all_isp_error_stats");
+        sheetCacheRemove("all_isp_error_stats");
         
         // Effacer le cache ISP du matricule concerné
         try {
@@ -2044,22 +2280,19 @@ function getAllIspErrorStats() {
     if(shCachedErr) { try { cache.put(cacheKey, JSON.stringify(shCachedErr), 7200); } catch(e){} return shCachedErr; }
     
     const ss = getSS_();
-    const dash = ss.getSheetByName(DASHBOARD_SHEET_NAME);
     const shApp = ss.getSheetByName(APP_SHEET_NAME);
-    const rawAgents = dash.getRange("T3:T79").getDisplayValues().flat();
-    const rawNames = dash.getRange("S3:S79").getDisplayValues().flat();
+    const activeAgents = getActiveAgents_(ss);
     let stats = {};
-    rawAgents.forEach((m, i) => { if(m) stats[normalizeMat(m)] = { nom: rawNames[i], mat: m, bilanOk:0, pisuOk:0, errBilL:0, errPisuL:0, errGrave:0 }; });
+    activeAgents.forEach(a => { stats[a.mat] = { nom: a.nom, mat: a.mat, bilanOk:0, pisuOk:0, errBilL:0, errPisuL:0, errGrave:0 }; });
 
     if(shApp) {
         const dApp = shApp.getDataRange().getValues();
         const shAlex = ss.getSheetByName("APP Alex");
         const dAlex = shAlex.getDataRange().getValues();
         
-        // CHARGER APP ALEX EN MAP - PREMIÈRE OCCURRENCE SEULEMENT (lignes FILTER)
+        // CHARGER APP ALEX EN MAP - PREMIÈRE OCCURRENCE SEULEMENT
         const alexMap = {};
-        const maxSearchRow = Math.min(100, dAlex.length); // Limiter aux 100 premières lignes (zone FILTER)
-        for(let i=1; i<maxSearchRow; i++) {
+        for(let i=1; i<dAlex.length; i++) {
             const id = String(dAlex[i][0]).trim();
             if(!id) continue;
             
@@ -2077,15 +2310,24 @@ function getAllIspErrorStats() {
         
         for(let i=1; i<dApp.length; i++) {
             const m = normalizeMat(dApp[i][C_APP_MAT]);
-            if(stats[m]) {
-                const id = String(dApp[i][C_APP_ID]).trim();
-                const alex = alexMap[id] || {};
-                if(isCheckboxChecked(dApp[i][C_BILAN_OK]) || alex.reqBilOk) stats[m].bilanOk++;
-                if(isCheckboxChecked(dApp[i][C_PISU_OK]) || alex.reqPisuOk) stats[m].pisuOk++;
-                if(alex.errBilL) stats[m].errBilL++;
-                if(alex.errPisuL) stats[m].errPisuL++;
-                if(alex.errGrave) stats[m].errGrave++;
+            if(!m) continue;
+            const id = String(dApp[i][C_APP_ID]).trim();
+            const alex = alexMap[id] || {};
+
+            // Si l'agent n'est pas dans le dashboard, l'ajouter dynamiquement dès qu'il a une erreur
+            if(!stats[m]) {
+                const hasErr = isCheckboxChecked(dApp[i][C_BILAN_OK]) || isCheckboxChecked(dApp[i][C_PISU_OK])
+                             || alex.reqBilOk || alex.reqPisuOk || alex.errBilL || alex.errPisuL || alex.errGrave;
+                if(!hasErr) continue;
+                const nom = String(dApp[i][C_APP_NOM] || dApp[i][C_APP_MAT] || m).trim();
+                stats[m] = { nom: nom, mat: String(dApp[i][C_APP_MAT] || m), bilanOk:0, pisuOk:0, errBilL:0, errPisuL:0, errGrave:0 };
             }
+
+            if(isCheckboxChecked(dApp[i][C_BILAN_OK]) || alex.reqBilOk) stats[m].bilanOk++;
+            if(isCheckboxChecked(dApp[i][C_PISU_OK]) || alex.reqPisuOk) stats[m].pisuOk++;
+            if(alex.errBilL  && !alex.reqBilOk  && !alex.errGrave) stats[m].errBilL++;
+            if(alex.errPisuL && !alex.reqPisuOk && !alex.errGrave) stats[m].errPisuL++;
+            if(alex.errGrave) stats[m].errGrave++;
         }
     }
     
@@ -2116,9 +2358,8 @@ function getIspDetailsAdmin(mat) {
     const alexData = {};
     const alexRows = shAlex.getDataRange().getValues();
     
-    // D'abord charger les 100 premières lignes (zone FILTER - valeurs à jour des checkboxes)
-    const maxSearchRow = Math.min(100, alexRows.length);
-    for(let i=1; i<maxSearchRow; i++) {
+    // Charger toutes les lignes (checkboxes H/I/J/K/L)
+    for(let i=1; i<alexRows.length; i++) {
         const id = String(alexRows[i][0]).trim();
         if(!id) continue;
         
@@ -2173,31 +2414,36 @@ function getIspDetailsAdmin(mat) {
         const commChefAnc = String(appRows[i][C_COMM_CHEF] || "").trim();
         const commMedAnc  = String(appRows[i][C_COMM_MED]  || "").trim();
 
-        // Déterminer les types
+        // Déterminer les types — Alex est toujours prioritaire sur les flags ISP
         let types = [];
         let errorType = "";
-        
-        const biOk = isCheckboxChecked(appRows[i][C_BILAN_OK]) || alex.H;
-        const piOk = isCheckboxChecked(appRows[i][C_PISU_OK]) || alex.I;
-        const biKo = isCheckboxChecked(appRows[i][C_BILAN_KO]);
-        const piKo = isCheckboxChecked(appRows[i][C_PISU_KO]);
-        
-        // OK
-        if(biOk) types.push("Bilan OK");
-        if(piOk) types.push("Pisu OK");
-        
-        // Erreurs confirmées uniquement (J/K/L cochés)
-        if(biKo && !alex.H && (alex.J || alex.L)) {
-            const err = alex.L ? "Erreur Grave" : "Erreur Bilan Légère";
-            types.push(err);
-            if(!errorType) errorType = err;
+
+        if(alex.L) {
+            // Erreur Grave : écrase tout
+            types.push("Erreur Grave");
+            errorType = "Erreur Grave";
+        } else {
+            // Axe bilan : Alex H/J prend le dessus sur BILAN_OK de l'ISP
+            if(alex.H) {
+                types.push("Bilan OK");
+            } else if(alex.J) {
+                types.push("Erreur Bilan Légère");
+                if(!errorType) errorType = "Erreur Bilan Légère";
+            } else if(isCheckboxChecked(appRows[i][C_BILAN_OK])) {
+                types.push("Bilan OK");
+            }
+
+            // Axe pisu : Alex I/K prend le dessus sur PISU_OK de l'ISP
+            if(alex.I) {
+                types.push("Pisu OK");
+            } else if(alex.K) {
+                types.push("Erreur Pisu Légère");
+                if(!errorType) errorType = "Erreur Pisu Légère";
+            } else if(isCheckboxChecked(appRows[i][C_PISU_OK])) {
+                types.push("Pisu OK");
+            }
         }
-        if(piKo && !alex.I && (alex.K || alex.L)) {
-            const err = alex.L ? "Erreur Grave" : "Erreur Pisu Légère";
-            types.push(err);
-            if(!errorType) errorType = err;
-        }
-        
+
         // Ne garder que si on a au moins un type
         if(types.length === 0) continue;
         
@@ -2309,67 +2555,94 @@ function saveActionChefferie(form) {
     try {
         const ss = getSS_();
         const shEve = ss.getSheetByName("APP Eve");
-        
+
         const row = form.rowEve;
         if(!row || row < 2) return { success: false, error: "Ligne invalide" };
-        
-        // Action faite (colonne R = 18)
-        shEve.getRange(row, 18).setValue(form.actionFaite || "");
-        
+
+        const interId = String(shEve.getRange(row, 1).getValue()).trim();
+
+        // Action faite (colonne R = 18), taguée [COM CHEF id] pour sécuriser le circuit
+        const taggedActionFaite = appendOrReplaceTag_(form.actionFaite, "COM CHEF", interId, ["ACTION REALISEE"]);
+        shEve.getRange(row, 18).setValue(taggedActionFaite);
+
         // Clôturer (colonne S = 19)
         shEve.getRange(row, 19).setValue(true);
-        
-        // Passer en Bilan OK si demandé
+
+        // Reclassification : chaque bouton est indépendant (bilan et pisu se traitent séparément)
         if(form.rowApp && form.rowApp >= 2) {
             const shApp = ss.getSheetByName(APP_SHEET_NAME);
             if(shApp) {
-                if(form.passerBilanOk) {
+                if(form.bilanOk) {
                     shApp.getRange(form.rowApp, C_BILAN_OK+1).setValue(true);
                     shApp.getRange(form.rowApp, C_BILAN_KO+1).setValue(false);
+                    _setAlexClassification(ss, interId, { H: true, J: false });
                 }
-                // Passer en erreur légère : retire la cotation grave dans Alex (col L=12),
-                // garde PISU KO = true, PISU OK = false
-                if(form.passerErrLegere) {
-                    shApp.getRange(form.rowApp, C_PISU_OK+1).setValue(false);
-                    shApp.getRange(form.rowApp, C_PISU_KO+1).setValue(true);
-                    _removeGraveFromAlex(ss, shEve, form.rowEve);
+                if(form.bilanErrLegere) {
+                    shApp.getRange(form.rowApp, C_BILAN_OK+1).setValue(false);
+                    shApp.getRange(form.rowApp, C_BILAN_KO+1).setValue(true);
+                    _setAlexClassification(ss, interId, { H: false, J: true });
                 }
-                // Passer en non-erreur : retire la cotation grave et passe PISU OK
-                if(form.passerNonErreur) {
+                if(form.pisuOk) {
                     shApp.getRange(form.rowApp, C_PISU_OK+1).setValue(true);
                     shApp.getRange(form.rowApp, C_PISU_KO+1).setValue(false);
-                    _removeGraveFromAlex(ss, shEve, form.rowEve);
+                    _setAlexClassification(ss, interId, { I: true, K: false });
+                }
+                if(form.pisuErrLegere) {
+                    shApp.getRange(form.rowApp, C_PISU_OK+1).setValue(false);
+                    shApp.getRange(form.rowApp, C_PISU_KO+1).setValue(true);
+                    _setAlexClassification(ss, interId, { I: false, K: true });
                 }
             }
         }
-        
+
         // Clear cache
-        CacheService.getScriptCache().remove("chefferie_counts_v4");
-        
+        const cache_ = CacheService.getScriptCache();
+        cache_.remove("chefferie_counts_v4");
+        cache_.remove("all_isp_error_stats");
+        sheetCacheRemove("all_isp_error_stats");
+        const mat_ = _getMat_(ss, interId);
+        if(mat_) { cache_.remove("isp_v4_" + mat_); cache_.remove("isp_detail_" + mat_); sheetCacheRemove("isp_v4_" + mat_); sheetCacheRemove("isp_detail_" + mat_); }
+
         return { success: true };
     } catch(e) {
         return { success: false, error: e.toString() };
     }
 }
 
+function _getMat_(ss, interId) {
+  try {
+    const d = ss.getSheetByName(APP_SHEET_NAME).getDataRange().getValues();
+    for(let i=1; i<d.length; i++) {
+      if(String(d[i][C_APP_ID]).trim() === interId) return normalizeMat(d[i][C_APP_MAT]);
+    }
+  } catch(e) {}
+  return null;
+}
+
 /**
- * Retire le flag Erreur Grave (col L = index 11) dans APP Alex,
- * en recherchant la ligne par l'ID de l'intervention (col A d'APP Eve).
+ * Met à jour les checkboxes de classification dans APP Alex (H/I/J/K) pour l'ID donné,
+ * et retire systématiquement le flag Erreur Grave (col L) puisqu'une reclassification
+ * vers OK ou erreur légère signifie que ce n'est plus une erreur grave.
  */
-function _removeGraveFromAlex(ss, shEve, rowEve) {
+function _setAlexClassification(ss, interId, flags) {
     try {
-        const interId = String(shEve.getRange(rowEve, 1).getValue()).trim();
         if (!interId) return;
         const shAlex = ss.getSheetByName("APP Alex");
         if (!shAlex) return;
         const dataAlex = shAlex.getDataRange().getValues();
         for (let i = 1; i < dataAlex.length; i++) {
             if (String(dataAlex[i][0]).trim() === interId) {
-                shAlex.getRange(i + 1, 12).setValue(false); // col L = index 11 → col 12 en 1-indexed
+                const r = i + 1;
+                if ('H' in flags) shAlex.getRange(r, 8).setValue(!!flags.H);  // col H
+                if ('I' in flags) shAlex.getRange(r, 9).setValue(!!flags.I);  // col I
+                if ('J' in flags) shAlex.getRange(r, 10).setValue(!!flags.J); // col J
+                if ('K' in flags) shAlex.getRange(r, 11).setValue(!!flags.K); // col K
+                if ('L' in flags) shAlex.getRange(r, 12).setValue(!!flags.L); // col L — optionnel
+                else shAlex.getRange(r, 12).setValue(false); // col L = erreur grave, retirée par défaut
                 break;
             }
         }
-    } catch(e) { Logger.log("_removeGraveFromAlex error: " + e); }
+    } catch(e) { Logger.log("_setAlexClassification error: " + e); }
 }
 
 /**
@@ -2518,32 +2791,156 @@ function getArchivedActions() {
 // HELPERS
 function getInterventionDetails(interId) {
   const ss = getSS_();
-  let pdfUrl = "", commentChefferie = "", analyseMed = "", centre = "", engin = "";
+  const id = String(interId).trim();
+  let pdfUrl="", commentChefferie="", analyseMed="", centre="", engin="",
+      nom="", date="", motif="",
+      commentISP="", commentMedAction="", actionFaite="",
+      bilanOk=false, bilanKo=false, pisuOk=false, pisuKo=false,
+      alexH=false, alexI=false, alexJ=false, alexK=false, alexL=false;
+
   const shApp = ss.getSheetByName(APP_SHEET_NAME);
-  if(shApp){
+  if(shApp) {
     const data = shApp.getDataRange().getValues();
     for(let i=1; i<data.length; i++) {
-      if(String(data[i][C_APP_ID]).trim() === String(interId).trim()) {
-        pdfUrl = data[i][C_APP_PDF];
-        centre = String(data[i][C_APP_CIS]||"").trim();
-        engin = String(data[i][C_APP_ENGIN]||"").trim();
-        // Lire depuis colonnes ancrées APP (priorité sur Alex/Eve)
-        commentChefferie = String(data[i][C_COMM_CHEF] || "").trim();
-        analyseMed = String(data[i][C_COMM_MED] || "").trim();
-        break;
-      }
+      if(String(data[i][C_APP_ID]).trim() !== id) continue;
+      pdfUrl     = data[i][C_APP_PDF];
+      centre     = String(data[i][C_APP_CIS]||"").trim();
+      engin      = String(data[i][C_APP_ENGIN]||"").trim();
+      nom        = String(data[i][C_APP_NOM]||"").trim();
+      date       = formatDateHeureFR_(data[i][C_APP_DATE]);
+      motif      = String(data[i][C_APP_MOTIF]||"").trim();
+      commentChefferie = String(data[i][C_COMM_CHEF]||"").trim();
+      analyseMed       = String(data[i][C_COMM_MED]||"").trim();
+      commentMedAction = String(data[i][C_ACTION_MED]||"").trim();
+      const bp = String(data[i][C_TXTBILAN_KO]||"").trim();
+      const bq = String(data[i][C_TXTPISU_KO]||"").trim();
+      commentISP = [bp, bq].filter(Boolean).join("\n");
+      bilanOk = isCheckboxChecked(data[i][C_BILAN_OK]);
+      bilanKo = isCheckboxChecked(data[i][C_BILAN_KO]);
+      pisuOk  = isCheckboxChecked(data[i][C_PISU_OK]);
+      pisuKo  = isCheckboxChecked(data[i][C_PISU_KO]);
+      break;
     }
   }
-  // Fallback Alex/Eve si colonnes ancrées pas encore remplies
-  if(!commentChefferie) {
+
+  // Alex : classification + fallback commentaire chefferie
+  const shAlex = ss.getSheetByName("APP Alex");
+  if(shAlex) {
+    const data = shAlex.getDataRange().getValues();
+    for(let i=1; i<data.length; i++) {
+      if(String(data[i][0]).trim() !== id) continue;
+      alexH = isCheckboxChecked(data[i][7]);
+      alexI = isCheckboxChecked(data[i][8]);
+      alexJ = isCheckboxChecked(data[i][9]);
+      alexK = isCheckboxChecked(data[i][10]);
+      alexL = isCheckboxChecked(data[i][11]);
+      if(!commentChefferie) commentChefferie = String(data[i][12]||"").trim();
+      break;
+    }
+  }
+
+  // Eve : analyse médecin, action requise (fallback), action faite
+  const shEve = ss.getSheetByName("APP Eve");
+  if(shEve) {
+    const data = shEve.getDataRange().getValues();
+    for(let i=1; i<data.length; i++) {
+      if(String(data[i][0]).trim() !== id) continue;
+      if(!analyseMed)       analyseMed       = String(data[i][14]||"").trim();
+      if(!commentMedAction) commentMedAction = String(data[i][16]||"").trim();
+      actionFaite = String(data[i][17]||"").trim();
+      break;
+    }
+  }
+
+  return {
+    pdfUrl, commentChefferie, analyseMed, centre, engin,
+    nom, date, motif,
+    commentISP, commentMedAction, actionFaite,
+    bilanOk, bilanKo, pisuOk, pisuKo,
+    alexH, alexI, alexJ, alexK, alexL
+  };
+}
+
+function recategoriserIntervention(form) {
+  try {
+    const ss = getSS_();
+    const id = String(form.interId).trim();
+    const shApp = ss.getSheetByName(APP_SHEET_NAME);
     const shAlex = ss.getSheetByName("APP Alex");
-    if(shAlex){ const data = shAlex.getDataRange().getValues(); for(let i=1; i<data.length; i++) { if(String(data[i][0]).trim() === String(interId).trim()) { commentChefferie = String(data[i][12]||""); break; } } }
+
+    // 1. Trouver la ligne APP
+    const dataApp = shApp.getDataRange().getValues();
+    let appRow = -1;
+    for(let i=1; i<dataApp.length; i++) {
+      if(String(dataApp[i][C_APP_ID]).trim() === id) { appRow = i; break; }
+    }
+    if(appRow === -1) return { success: false, error: "Intervention introuvable dans APP" };
+    const appRowSheet = appRow + 1;
+
+    // 2. Mettre à jour APP (bilan axis)
+    if(form.errGrave || form.bilanErrLegere) {
+      shApp.getRange(appRowSheet, C_BILAN_OK+1).setValue(false);
+      shApp.getRange(appRowSheet, C_BILAN_KO+1).setValue(true);
+    } else if(form.bilanOk) {
+      shApp.getRange(appRowSheet, C_BILAN_OK+1).setValue(true);
+      shApp.getRange(appRowSheet, C_BILAN_KO+1).setValue(false);
+    }
+
+    // 2b. APP (pisu axis)
+    if(form.errGrave || form.pisuErrLegere) {
+      shApp.getRange(appRowSheet, C_PISU_OK+1).setValue(false);
+      shApp.getRange(appRowSheet, C_PISU_KO+1).setValue(true);
+    } else if(form.pisuOk) {
+      shApp.getRange(appRowSheet, C_PISU_OK+1).setValue(true);
+      shApp.getRange(appRowSheet, C_PISU_KO+1).setValue(false);
+    }
+
+    // 3. S'assurer qu'une ligne Alex existe (cas : intervention précédemment OK, pas dans Alex)
+    const hasError = form.errGrave || form.bilanErrLegere || form.pisuErrLegere;
+    if(hasError) {
+      const alexData = shAlex.getDataRange().getValues();
+      let foundAlex = false;
+      for(let i=1; i<alexData.length; i++) {
+        if(String(alexData[i][0]).trim() === id) { foundAlex = true; break; }
+      }
+      if(!foundAlex) {
+        const aRow = dataApp[appRow];
+        shAlex.appendRow([
+          id,
+          aRow[C_APP_MOTIF]||"",
+          aRow[C_APP_PDF]||"",
+          aRow[C_APP_INFO_T]||"",
+          aRow[C_APP_NOM]||"",
+          aRow[C_TXTBILAN_KO]||"",
+          aRow[C_TXTPISU_KO]||""
+        ]);
+      }
+    }
+
+    // 4. Mettre à jour les cases Alex (H/I/J/K/L)
+    if(form.errGrave) {
+      _setAlexClassification(ss, id, { H:false, I:false, J:false, K:false, L:true });
+    } else {
+      const flags = {};
+      if(form.bilanOk)      { flags.H=true;  flags.J=false; }
+      if(form.bilanErrLegere) { flags.H=false; flags.J=true;  }
+      if(form.pisuOk)       { flags.I=true;  flags.K=false; }
+      if(form.pisuErrLegere)  { flags.I=false; flags.K=true;  }
+      if(Object.keys(flags).length > 0) _setAlexClassification(ss, id, flags);
+    }
+
+    // 5. Clear caches
+    const cache = CacheService.getScriptCache();
+    cache.remove("chefferie_counts_v4");
+    cache.remove("all_isp_error_stats");
+    sheetCacheRemove("all_isp_error_stats");
+    const mat_ = _getMat_(ss, id);
+    if(mat_) { cache.remove("isp_v4_" + mat_); cache.remove("isp_detail_" + mat_); sheetCacheRemove("isp_v4_" + mat_); sheetCacheRemove("isp_detail_" + mat_); }
+
+    return { success: true };
+  } catch(e) {
+    return { success: false, error: e.toString() };
   }
-  if(!analyseMed) {
-    const shEve = ss.getSheetByName("APP Eve");
-    if(shEve) { const data = shEve.getDataRange().getValues(); for(let i=1; i<data.length; i++) { if(String(data[i][0]).trim() === String(interId).trim()) { analyseMed = String(data[i][14]||""); break; } } }
-  }
-  return { pdfUrl, commentChefferie, analyseMed, centre, engin };
 }
 
 function calcTrend(c,p) { if(!p) return {val:(c>0?"+100%":"0%"), color:"gray", arrow:"="}; const d = ((c-p)/p)*100; return { val: (d>0?"+":"")+d.toFixed(1)+"%", color: d>=0?"#39ff14":"#ff4d4d", arrow: d>=0?"▲":"▼" }; }
@@ -2609,13 +3006,32 @@ function _bulkPreCacheAllIsp() {
   const dash = ss.getSheetByName(DASHBOARD_SHEET_NAME);
   
   // === 1. CHARGER TOUTES LES DONNÉES EN MÉMOIRE (1 seule fois) ===
-  const rawAgents = dash.getRange("S3:AQ79").getValues();
+  // DOBs depuis le registre RH (évite de dépendre de la colonne U du Dashboard)
+  const dobByMatBulk = {};
+  try {
+    const rhData = SpreadsheetApp.openById(ID_SS_RH).getSheets()[0].getDataRange().getValues();
+    for (const row of rhData) {
+      const m = normalizeMat(row[0]);
+      if (!m) continue;
+      const dob = row[1];
+      let dobStr = "";
+      if (Object.prototype.toString.call(dob) === "[object Date]") {
+        dobStr = String(dob.getDate()).padStart(2,"0") + "/" + String(dob.getMonth()+1).padStart(2,"0") + "/" + dob.getFullYear();
+      } else if (typeof dob === "number") {
+        const d2 = new Date((dob - 25569) * 86400000);
+        dobStr = String(d2.getDate()).padStart(2,"0") + "/" + String(d2.getMonth()+1).padStart(2,"0") + "/" + d2.getFullYear();
+      } else if (dob) {
+        dobStr = String(dob).trim();
+      }
+      if (dobStr) dobByMatBulk[m] = dobStr;
+    }
+  } catch(eRhBulk) { Logger.log("_bulkPreCacheAllIsp RH error: " + eRhBulk); }
+
+  const activeAgentsBulk = getActiveAgents_(ss);
   const agents = [];
-  for (let i = 0; i < rawAgents.length; i++) {
-    const mat = normalizeMat(rawAgents[i][1]);
-    const dob = rawAgents[i][2];
-    const nom = String(rawAgents[i][0]).trim();
-    if (mat && dob) agents.push({ mat, dob, nom, nomLower: nom.toLowerCase(), idx: i });
+  for (const a of activeAgentsBulk) {
+    const dob = dobByMatBulk[a.mat];
+    if (dob) agents.push({ mat: a.mat, dob, nom: a.nom, nomLower: a.nom.toLowerCase() });
   }
   Logger.log("Bulk ISP: " + agents.length + " agents à pré-cacher");
   
@@ -2957,11 +3373,28 @@ function installCacheTrigger() {
 
 function clearAllCaches() {
   try {
-    // 1) Vider le CacheService (mémoire)
     const cache = CacheService.getScriptCache();
-    cache.removeAll(["admin_data_full_v2", "astreinte_dept_ispp_v3", "cache_status", "history_cache_v2", "historique_temps_travail_v1", "stats2026_v4", "stats2026_v6", "stats2026_v7", "stats2026_v8", "stats2026_v9", "stats2025_vStable", "chefferie_counts_v4"]);
-    
-    // 2) Vider TOUT le spreadsheet cache (toutes les clés)
+
+    // 1) Clés globales connues
+    cache.removeAll(["admin_data_full_v2", "astreinte_dept_ispp_v3", "cache_status", "history_cache_v2", "historique_temps_travail_v1", "stats2026_v4", "stats2026_v6", "stats2026_v7", "stats2026_v8", "stats2026_v9", "stats2026_v11", "stats2025_vStable", "chefferie_counts_v4", "all_isp_error_stats", "stats2026_v3"]);
+
+    // 2) Clés par agent : isp_v4_MAT et isp_detail_MAT
+    // CacheService.removeAll() ne supporte pas les wildcards — on lit la liste des
+    // matricules depuis le Dashboard et on supprime chaque clé individuellement.
+    try {
+      const ss = getSS_();
+      const allAgents = getActiveAgents_(ss);
+      const agentKeys = [];
+      allAgents.forEach(function(a) {
+        agentKeys.push("isp_v4_" + a.mat);
+        agentKeys.push("isp_detail_" + a.mat);
+      });
+      if(agentKeys.length) cache.removeAll(agentKeys);
+    } catch(e2) {
+      Logger.log("clearAllCaches agent keys error: " + e2);
+    }
+
+    // 3) Vider TOUT le spreadsheet cache (toutes les clés)
     const cacheSS = _getCacheSS();
     const cacheSheet = cacheSS.getSheetByName("Cache");
     if(cacheSheet) {
@@ -2970,7 +3403,7 @@ function clearAllCaches() {
         cacheSheet.deleteRows(2, lastRow - 1);
       }
     }
-    
+
     return "✅ Tous les caches vidés (CacheService + Spreadsheet). La page va se recharger.";
   } catch(e) {
     Logger.log("clearAllCaches error: " + e);
@@ -3480,7 +3913,7 @@ function removeAllMailTriggers() {
  * Pour chaque CIS, calcule le nombre d'heures où au moins 2 ISP
  * sont simultanément présents (astreinte/dispo). Chaque ligne = 30 min.
  * Algo : on groupe par (CIS, créneau 30min) → on compte les matricules distincts
- * → si ≥ 2, on ajoute 0.5h au total du CIS.
+ * → si ≥ 2, on ajoute 0.5h au total du CIS. Idem pour ≥ 3.
  */
 function getCisDoubleIspHours() {
   const ss = getSS_();
@@ -3507,27 +3940,86 @@ function getCisDoubleIspHours() {
     slotMap[key].mats.add(mat);
   }
 
-  // Agréger : pour chaque créneau avec ≥2 ISP, ajouter 0.5h au CIS
-  const cisTotals = {};
+  // Agréger : pour chaque créneau, compter ≥2 et ≥3 ISP
+  const cisH2 = {}, cisH3 = {};
   for (const key in slotMap) {
     const s = slotMap[key];
-    if (s.mats.size >= 2) {
-      cisTotals[s.cis] = (cisTotals[s.cis] || 0) + 0.5;
-    }
+    if (s.mats.size >= 2) cisH2[s.cis] = (cisH2[s.cis] || 0) + 0.5;
+    if (s.mats.size >= 3) cisH3[s.cis] = (cisH3[s.cis] || 0) + 0.5;
   }
 
-  const result = Object.keys(cisTotals)
-    .sort()
-    .map(name => ({ name: name, heures: Math.round(cisTotals[name] * 2) / 2 }));
+  const allCis = new Set([...Object.keys(cisH2), ...Object.keys(cisH3)]);
+  const result = [...allCis].sort().map(name => ({
+    name: name,
+    h2: Math.round((cisH2[name] || 0) * 2) / 2,
+    h3: Math.round((cisH3[name] || 0) * 2) / 2
+  }));
 
   // MILLAS = max des autres CIS + 8h
   const millaIdx = result.findIndex(r => r.name.toUpperCase() === 'MILLAS');
-  const othersMax = result.reduce((m, r) => r.name.toUpperCase() !== 'MILLAS' ? Math.max(m, r.heures) : m, 0);
+  const othersMax2 = result.reduce((m, r) => r.name.toUpperCase() !== 'MILLAS' ? Math.max(m, r.h2) : m, 0);
+  const othersMax3 = result.reduce((m, r) => r.name.toUpperCase() !== 'MILLAS' ? Math.max(m, r.h3) : m, 0);
   if (millaIdx >= 0) {
-    result[millaIdx].heures = othersMax + 8;
+    result[millaIdx].h2 = othersMax2 + 8;
+    result[millaIdx].h3 = othersMax3 + 8;
   }
 
   return result;
+}
+
+/**
+ * Pour chaque Secteur, calcule le nombre d'heures où au moins 2 ISP
+ * sont simultanément présents. Utilise le mapping CIS→Secteur (colonnes S-T)
+ * comme dans getStats2026(), puis agrège par créneau.
+ */
+function getSectDoubleIspHours() {
+  const ss = getSS_();
+  const sh = ss.getSheetByName(TEMPS_SHEET_NAME);
+  if (!sh) return [];
+
+  const data = sh.getDataRange().getValues();
+
+  // Construire le mapping CIS → Secteur (identique à getStats2026)
+  const cisToSect = {};
+  for (let i = 1; i < data.length; i++) {
+    const c = String(data[i][18] || '').trim();
+    const s = String(data[i][19] || '').trim();
+    if (c && s) cisToSect[c] = s;
+  }
+
+  // slotMap : clé = "Secteur||YYYY-MM-DD||HH:MM" → Set de matricules
+  const slotMap = {};
+
+  for (let i = 1; i < data.length; i++) {
+    const mat = normalizeMat(data[i][C_TEMPS_MAT_AST]);
+    if (!mat) continue;
+    const cis = String(data[i][13] || '').trim();
+    if (!cis) continue;
+    const sect = cisToSect[cis];
+    if (!sect) continue;
+    const dt = coerceToDateTime_(data[i][C_TEMPS_DATE_AST]);
+    if (!dt) continue;
+
+    const mm = dt.getMinutes() < 30 ? '00' : '30';
+    const key = `${sect}||${dt.getFullYear()}-${dt.getMonth()}-${dt.getDate()}||${dt.getHours()}:${mm}`;
+
+    if (!slotMap[key]) slotMap[key] = { sect: sect, mats: new Set() };
+    slotMap[key].mats.add(mat);
+  }
+
+  const sectH2 = {}, sectH3 = {};
+  for (const key in slotMap) {
+    const s = slotMap[key];
+    if (s.mats.size >= 2) sectH2[s.sect] = (sectH2[s.sect] || 0) + 0.5;
+    if (s.mats.size >= 3) sectH3[s.sect] = (sectH3[s.sect] || 0) + 0.5;
+  }
+
+  const allSect = new Set([...Object.keys(sectH2), ...Object.keys(sectH3)]);
+  return [...allSect].sort().map(name => ({
+    name: name,
+    h2: Math.round((sectH2[name] || 0) * 2) / 2,
+    h3: Math.round((sectH3[name] || 0) * 2) / 2
+  }));
 }
 
 /**
@@ -3537,8 +4029,6 @@ function getCisDoubleIspHours() {
  */
 function getMailingData() {
     const ss = getSS_();
-    const dash = ss.getSheetByName(DASHBOARD_SHEET_NAME);
-    const rawAgents = dash.getRange("S3:AQ79").getValues();
 
     // Normalise un nom ou un nom de CIS : MAJUSCULES sans accents (pour matching fiable)
     const normNom = n => String(n||'').trim().toUpperCase()
@@ -3583,23 +4073,21 @@ function getMailingData() {
       'CASTANY ELISE':          { cis1: 'VINCA',          cis2: 'PERPIGNAN NORD' },
     };
 
+    const activeAgentsMailing = getActiveAgents_(ss);
     const agentMap = {};
-    for (let i = 0; i < rawAgents.length; i++) {
-        const mat = normalizeMat(rawAgents[i][1]);
-        const nom = String(rawAgents[i][0]).trim();
-        if (!mat) continue;
-        const aff = AFFECTATIONS[normNom(nom)];
-        agentMap[mat] = {
-            nom:         nom,
-            mat:         mat,
-            cis1:        aff !== undefined ? aff.cis1 : null,  // null = vote-majority
+    for (const a of activeAgentsMailing) {
+        const aff = AFFECTATIONS[normNom(a.nom)];
+        agentMap[a.mat] = {
+            nom:         a.nom,
+            mat:         a.mat,
+            cis1:        aff !== undefined ? aff.cis1 : null,
             cis2:        aff ? (aff.cis2 || null) : null,
             suffix:      '',
             hidden:      aff ? (aff.hidden || false) : false,
             cisVotes:    {},
-            mAst:        new Array(12).fill(0),  // heures dispo/astreinte par mois (total agent)
-            mInterByCis: {},                      // heures dispo/astreinte par CIS par mois
-            mInterAppByCis: {}                   // nb interventions APP par CIS par mois
+            mAst:        new Array(12).fill(0),
+            mInterByCis: {},
+            mInterAppByCis: {}
         };
     }
 
@@ -4322,4 +4810,149 @@ function _applyRestoredByIdMap(ss, shApp, shAlex, shEve, chefMap, analyseMap, ac
               (nMiss > 0 ? nMiss + ' IDs non trouvés dans le spreadsheet actuel.' : '');
   Logger.log(msg);
   SpreadsheetApp.getUi().alert(msg);
+}
+
+// ============================================================
+// ENTRETIENS INDIVIDUELS — lecture croisée pour la vue ISP
+// ============================================================
+
+const ENTRETIENS_SS_ID     = '1dIcgZnEJ2R6psxdhBBSVv4jE7M0vd5Gs6OpBqPv0Ytw';
+const ENTRETIENS_COL_DATE  = 0;
+const ENTRETIENS_COL_AGENT = 2;
+const ENTRETIENS_COL_START = 3;
+const ENTRETIENS_COL_GROUP = 31;
+const ENTRETIENS_COL_RESUME= 32;
+const ENTRETIENS_MANUAL    = 'Entretiens manuels';
+const ENTRETIENS_DELETIONS = 'Deletions';
+
+/**
+ * Retourne les entretiens individuels pour l'ISP identifié par son token.
+ * Utilisé par IspView.html pour afficher l'historique des entretiens en bas de page.
+ */
+function getEntretiensForIsp(token) {
+  try {
+    const decoded = _decodeIspToken_(token);
+    if (!decoded) return { error: 'Token invalide.' };
+
+    // Retrouver le nom de l'agent depuis la liste active
+    const ss = getSS_();
+    const activeAgents = getActiveAgents_(ss);
+    const agent = activeAgents.find(function(a) {
+      return a.mat === decoded.mat.trim().toUpperCase();
+    });
+    if (!agent) return { entretiens: [], agentNom: '' };
+
+    const entretiensSS = SpreadsheetApp.openById(ENTRETIENS_SS_ID);
+
+    // Charger les IDs supprimés (feuille Deletions du classeur entretiens)
+    const deletedIds = [];
+    try {
+      const delSheet = entretiensSS.getSheetByName(ENTRETIENS_DELETIONS);
+      if (delSheet && delSheet.getLastRow() >= 1) {
+        delSheet.getRange(1, 1, delSheet.getLastRow(), 1).getValues().forEach(function(r) {
+          const v = String(r[0]).trim();
+          if (v) deletedIds.push(v);
+        });
+      }
+    } catch(ed) { Logger.log('deletions: ' + ed); }
+
+    const result = [];
+    const tz = 'Europe/Paris';
+
+    // ── Entretiens formulaire (premier onglet) ──
+    try {
+      const formSheet = entretiensSS.getSheets()[0];
+      if (formSheet.getLastRow() >= 2) {
+        const data = formSheet.getDataRange().getValues();
+        const headers = data[0];
+        for (let i = 1; i < data.length; i++) {
+          const eid = 'f_' + i;
+          if (deletedIds.indexOf(eid) !== -1) continue;
+          const rowAgent = String(data[i][ENTRETIENS_COL_AGENT] || '').trim();
+          if (!rowAgent || !_entretienNomMatches_(agent.nom, rowAgent)) continue;
+
+          const d = _entretienParseDate_(data[i][ENTRETIENS_COL_DATE]);
+          const summary = data[i].length > ENTRETIENS_COL_RESUME
+            ? String(data[i][ENTRETIENS_COL_RESUME] || '').trim() : '';
+
+          // Q&A (colonnes D+, hors groupement et résumé)
+          const answers = [];
+          for (let j = ENTRETIENS_COL_START; j < headers.length; j++) {
+            if (j === ENTRETIENS_COL_GROUP || j === ENTRETIENS_COL_RESUME) continue;
+            const q = String(headers[j] || '').trim();
+            if (!q) continue;
+            const v = data[i][j] !== null && data[i][j] !== undefined ? String(data[i][j]).trim() : '';
+            if (v) answers.push({ question: q, value: v });
+          }
+
+          result.push({
+            date: d ? Utilities.formatDate(d, tz, 'dd/MM/yyyy HH:mm') : '',
+            timestamp: d ? d.getTime() : 0,
+            type: 'Entretien individuel annuel',
+            summary: summary,
+            answers: answers
+          });
+        }
+      }
+    } catch(ef) { Logger.log('entretiens form: ' + ef); }
+
+    // ── Entretiens manuels ──
+    try {
+      const manualSheet = entretiensSS.getSheetByName(ENTRETIENS_MANUAL);
+      if (manualSheet && manualSheet.getLastRow() >= 2) {
+        const data = manualSheet.getDataRange().getValues();
+        for (let i = 1; i < data.length; i++) {
+          const mid = 'm_' + i;
+          if (deletedIds.indexOf(mid) !== -1) continue;
+          const rowAgent = String(data[i][1] || '').trim();
+          if (!rowAgent || !_entretienNomMatches_(agent.nom, rowAgent)) continue;
+
+          const d = _entretienParseDate_(data[i][0]);
+          result.push({
+            date: d ? Utilities.formatDate(d, tz, 'dd/MM/yyyy HH:mm') : '',
+            timestamp: d ? d.getTime() : 0,
+            type: String(data[i][2] || '').trim(),
+            summary: String(data[i][3] || '').trim(),
+            answers: []
+          });
+        }
+      }
+    } catch(em) { Logger.log('entretiens manual: ' + em); }
+
+    result.sort(function(a, b) { return b.timestamp - a.timestamp; });
+    return { entretiens: result, agentNom: agent.nom };
+
+  } catch(e) {
+    Logger.log('getEntretiensForIsp error: ' + e);
+    return { error: e.message };
+  }
+}
+
+function _entretienNomMatches_(ispNom, formNom) {
+  const norm = function(s) {
+    return (s || '').toLowerCase()
+      .normalize('NFD').replace(/[̀-ͯ]/g, '')
+      .replace(/-/g, ' ').replace(/[^a-z\s]/g, '').trim();
+  };
+  const a = norm(ispNom).split(/\s+/).filter(function(w) { return w.length >= 3; });
+  const b = norm(formNom).split(/\s+/).filter(function(w) { return w.length >= 3; });
+  if (!a.length || !b.length) return false;
+  const nb = norm(formNom);
+  const na = norm(ispNom);
+  const inB = a.every(function(w) { return nb.indexOf(w) !== -1; });
+  const inA = b.every(function(w) { return na.indexOf(w) !== -1; });
+  return inB || inA;
+}
+
+function _entretienParseDate_(raw) {
+  if (!raw) return null;
+  if (raw instanceof Date) return isNaN(raw.getTime()) ? null : raw;
+  const m = raw.toString().trim()
+    .match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+  if (m) {
+    const d = new Date(+m[3], +m[2]-1, +m[1], +(m[4]||0), +(m[5]||0), +(m[6]||0));
+    return isNaN(d.getTime()) ? null : d;
+  }
+  const d2 = new Date(raw);
+  return isNaN(d2.getTime()) ? null : d2;
 }
