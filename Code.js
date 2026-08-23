@@ -14,7 +14,8 @@ const ID_SS_RH   = "1lwQJ6xTET3qpr9-cPGBngdih_bmfrVRMOYcMgMkUVP0";
 const ID_PROTOCOLES_CORRESP = "12-7VNgPo7PsoKoRHzm_y24a-2OoDiCvJIyJFTdC9l7c"; 
 const ID_SS_ASTREINTE_DEPT = "1XPyV7-Ulno1f4-TgrtsCprL8c6cs3NU7jt1UNST3oXE"; 
 const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbxcBF8FoEHFtRuWF5wMEcyLJuIukj44fg2zCIstkev5FMUw_vc4IjkSCDJLU8Rgpfqe/exec";
-const APP_VERSION = "v1.84";
+const FIREBASE_APP_URL = "https://sdis66-analyse-operationnelle.web.app"; // webapp "full web" — pages liées à partager (fiches non traitées, etc.)
+const APP_VERSION = "v1.85";
 
 function getWebAppUrl_() {
   try { return ScriptApp.getService().getUrl(); } catch(e) { return WEBAPP_URL; }
@@ -23,7 +24,33 @@ function getWebAppUrl_() {
 const DASH_LASTDATE_CELL = "D2";
 const DASH_PSUD_2026_CELL = "B3";
 const DASH_TOTAL_2026_CELL = "B2";
-const DASH_ASTREINTES_2026_CELL = "O30"; 
+const DASH_ASTREINTES_2026_CELL = "O30";
+
+// Date de la dernière donnée réelle, calculée depuis "Temps travail" plutôt que lue dans
+// Dashboard!D2 (cellule pas toujours à jour). Centralisé ici car auparavant seule
+// getStats2026() faisait ce calcul correctement — getStats2025/getAdminData/getIspStats/
+// _bulkPreCacheAllIsp lisaient D2 directement et pouvaient utiliser une date de coupure
+// périmée (confirmé lors de l'audit du 2026-08-05).
+function _computeLastDataDate_(ss, dash) {
+  let lastDate = null;
+  try {
+    const shTempsCheck = ss.getSheetByName(TEMPS_SHEET_NAME);
+    if (shTempsCheck) {
+      const dCheck = shTempsCheck.getDataRange().getValues();
+      for (let i = 1; i < dCheck.length; i++) {
+        const dA = coerceToDateTime_(dCheck[i][C_TEMPS_DATE_AST]);
+        if (dA && (!lastDate || dA > lastDate)) lastDate = dA;
+        const dG = coerceToDateTime_(dCheck[i][C_TEMPS_DATE_GARDE]);
+        if (dG && (!lastDate || dG > lastDate)) lastDate = dG;
+      }
+    }
+  } catch (eLD) {}
+  if (!lastDate) {
+    const lastDateRaw = dash.getRange(DASH_LASTDATE_CELL).getValue();
+    lastDate = coerceToDate_(lastDateRaw) || new Date();
+  }
+  return lastDate;
+}
 
 // 2025
 const EXT_TEMPS_COL_DATE_AST = 14; 
@@ -63,8 +90,8 @@ const C_BILAN_KO = 63;
 const C_PISU_OK = 64;  
 const C_PISU_KO = 65;  
 const C_BM_SURV_TRANSPORT = 66; // BM: Surveillance transport (checkbox)
-const C_TXTBILAN_KO = 67;   // BN: Motif bilan incomplet (texte)
-const C_TXTPISU_KO = 68;    // BO: Motif pisu pas ok (texte)
+const C_TXTBILAN_KO = 67;   // BP: Motif bilan incomplet (texte)
+const C_TXTPISU_KO = 68;    // BQ: Motif pisu pas ok (texte)
 const C_BP_CLOSE = 69;      // BP: Case clôturée (ne plus afficher dans APP)
 const C_BQ_PUI_COMMANDEE = 70; // BQ: PUI commandée (checkbox)
 const C_BS_PROBLEM = 72; // Signaler problème à Brice (checkbox)
@@ -74,6 +101,26 @@ const C_APP_INFO_T = 19;  // Colonne T: information supplémentaire (lecture seu
 const C_COMM_CHEF = 75;   // BX: Commentaire chefferie ancré par ID d'intervention
 const C_COMM_MED = 76;    // BY: Analyse médecin cheffe ancrée par ID
 const C_ACTION_MED = 77;  // BZ: Action requise médecin cheffe ancrée par ID
+
+// Horodatages "Stats pratique analyse" (2026-08-06, demandé par Brice) — ancrés sur APP (jamais
+// réordonné) comme BX/BY/BZ, posés une seule fois (1er passage) pour mesurer le délai entre la
+// date de l'intervention et chaque étape de traitement. Ne couvrent que les fiches traitées à
+// partir de leur mise en place — aucune donnée rétroactive possible, l'information n'existait
+// pas avant.
+const C_TS_ISP_ANALYSE = 78;  // CA: 1er enregistrement Accès APP (saveCase)
+const C_TS_APP_CHEF = 79;     // CB: 1er enregistrement APP Chefferie (saveAppChefferie)
+const C_TS_MED_CHEF = 80;     // CC: 1ère analyse médecin cheffe (saveMedecinAnalyse)
+const C_TS_ACTION_CHEF = 81;  // CD: 1ère clôture action chefferie (saveActionChefferie)
+
+// Pose un horodatage sur APP (par numéro de ligne) uniquement s'il n'y en a pas déjà un — pour
+// mesurer un délai de PREMIER traitement, pas la date du dernier passage.
+function _stampFirstTimestamp_(shApp, rowApp, col) {
+  try {
+    if (!rowApp || rowApp < 2) return;
+    const cell = shApp.getRange(rowApp, col + 1);
+    if (!cell.getValue()) cell.setValue(new Date());
+  } catch (e) { Logger.log('_stampFirstTimestamp_ error: ' + e); }
+}
 
 // === HELPER FUNCTIONS ===
 
@@ -195,7 +242,11 @@ function appendOrReplaceTag_(commentaire, prefix, id, legacyPrefixes) {
  * via migrateAppAlexToStatic().
  */
 function ensureAppAlexSynced_(ss) {
+  const lock = LockService.getScriptLock();
   try {
+    // Deux soumissions Accès APP simultanées ne doivent pas pouvoir toutes les deux lire
+    // "dernière ligne = X" et écrire à X+1 en même temps (la seconde écraserait la première).
+    lock.waitLock(10000);
     const shApp = ss.getSheetByName(APP_SHEET_NAME);
     const shAlex = ss.getSheetByName("APP Alex");
     if (!shApp || !shAlex) return;
@@ -235,6 +286,7 @@ function ensureAppAlexSynced_(ss) {
       shAlex.getRange(startRow, 1, newRows.length, 7).setValues(newRows);
     }
   } catch (e) { Logger.log("ensureAppAlexSynced_ error: " + e); }
+  finally { lock.releaseLock(); }
 }
 
 /**
@@ -244,6 +296,26 @@ function ensureAppAlexSynced_(ss) {
  * Ne touche à AUCUNE valeur : capture l'état actuel puis le réécrit identique,
  * juste sans formule. Crée un backup du classeur avant toute opération.
  */
+// Le backup (backupClasseur, dans _backup_utils.js) utilise DriveApp, mais Apps Script exige
+// que l'API Drive avancée soit activée côté GCP dès qu'elle est déclarée dans le manifeste
+// (elle l'est, pour l'outil de récupération d'historique) — même si CE backup n'en a pas
+// besoin. Si ce n'est pas activé côté Cloud Console, on prévient sans bloquer la migration
+// elle-même (qui, elle, ne touche qu'au classeur et ne dépend d'aucune API externe).
+function _backupClasseurSafe_() {
+  try {
+    backupClasseur();
+    return true;
+  } catch (e) {
+    Logger.log('_backupClasseurSafe_ error: ' + e);
+    SpreadsheetApp.getUi().alert(
+      "⚠️ Backup impossible (API Drive non activée sur le projet Google Cloud) : " + e +
+      "\n\nLa migration va continuer SANS backup automatique. Pense à faire Fichier > Créer une copie manuellement avant si tu veux une sécurité.\n\n" +
+      "Pour activer l'API Drive définitivement : dans l'éditeur Apps Script, menu Services (icône +) > si 'Drive API' y figure déjà, clique dessus puis sur le lien 'Google Cloud Platform API Dashboard' et active l'API Drive."
+    );
+    return false;
+  }
+}
+
 function migrateAppAlexToStatic() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const shAlex = ss.getSheetByName("APP Alex");
@@ -257,12 +329,12 @@ function migrateAppAlexToStatic() {
 
   const confirm = SpreadsheetApp.getUi().alert(
     "Migration APP Alex",
-    "Ceci va figer la formule FILTER de A2 en valeurs statiques (aucune donnée modifiée), après avoir créé un backup du classeur. Continuer ?",
+    "Ceci va figer la formule FILTER de A2 en valeurs statiques (aucune donnée modifiée), après avoir tenté un backup du classeur. Continuer ?",
     SpreadsheetApp.getUi().ButtonSet.YES_NO
   );
   if (confirm !== SpreadsheetApp.getUi().Button.YES) return;
 
-  backupClasseur();
+  _backupClasseurSafe_();
 
   const lastRow = shAlex.getLastRow();
   const lastCol = Math.max(7, shAlex.getLastColumn());
@@ -276,15 +348,62 @@ function migrateAppAlexToStatic() {
   SpreadsheetApp.getUi().alert("Migration terminée : " + values.length + " ligne(s) figée(s) en valeurs statiques. APP Alex n'utilise plus de formule volatile.");
 }
 
+/**
+ * MIGRATION UNIQUE (menu ADMIN) : même opération que migrateAppAlexToStatic() mais pour
+ * APP Eve, dont A2 contient (au 2026-08, confirmé par Brice) =FILTER('APP Alex'!A:N;
+ * 'APP Alex'!L:L = VRAI). Tant que cette formule reste active, TOUTE la feuille APP Eve se
+ * redistribue dès qu'une case "Erreur Grave" change ailleurs dans APP Alex — exactement la
+ * cause du décalage de commentaires déjà corrigé une fois sur APP Alex. saveActionChefferie
+ * a été durci pour retrouver sa ligne par ID (donc l'écriture elle-même est sûre même si
+ * A2 reste une formule), mais figer APP Eve supprime la cause racine au lieu de simplement
+ * la contourner. Ne touche à AUCUNE valeur : capture l'état actuel puis le réécrit identique.
+ */
+function migrateAppEveToStatic() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const shEve = ss.getSheetByName("APP Eve");
+  if (!shEve) { SpreadsheetApp.getUi().alert("Onglet APP Eve introuvable."); return; }
+
+  const formulaA2 = shEve.getRange(2, 1).getFormula();
+  if (!formulaA2) {
+    SpreadsheetApp.getUi().alert("A2 ne contient déjà plus de formule. Migration déjà effectuée ?");
+    return;
+  }
+
+  const confirm = SpreadsheetApp.getUi().alert(
+    "Migration APP Eve",
+    "Ceci va figer la formule FILTER de A2 en valeurs statiques (aucune donnée modifiée), après avoir tenté un backup du classeur. Continuer ?",
+    SpreadsheetApp.getUi().ButtonSet.YES_NO
+  );
+  if (confirm !== SpreadsheetApp.getUi().Button.YES) return;
+
+  _backupClasseurSafe_();
+
+  const lastRow = shEve.getLastRow();
+  const lastCol = Math.max(19, shEve.getLastColumn());
+  if (lastRow < 2) { SpreadsheetApp.getUi().alert("APP Eve n'a aucune ligne de données."); return; }
+
+  const values = shEve.getRange(2, 1, lastRow - 1, lastCol).getValues();
+
+  shEve.getRange(2, 1).clearContent();
+  shEve.getRange(2, 1, values.length, lastCol).setValues(values);
+
+  SpreadsheetApp.getUi().alert("Migration terminée : " + values.length + " ligne(s) figée(s) en valeurs statiques. APP Eve n'utilise plus de formule volatile.");
+}
+
 function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu('⚡ ADMIN')
     .addItem('💾 Créer backup du classeur', 'backupClasseur')
     .addItem('🏷️ Taguer commentaires existants', 'taguerCommentairesExistants')
     .addItem('🔧 Migrer APP Alex (FILTER → statique)', 'migrateAppAlexToStatic')
+    .addItem('🔧 Migrer APP Eve (FILTER → statique)', 'migrateAppEveToStatic')
     .addSeparator()
     .addItem('Installer Trigger Cache (2h)', 'installCacheTrigger')
     .addItem('Mettre à jour Cache', 'updateHistoryCache')
+    .addSeparator()
+    .addItem('📧 Installer Trigger Import Temps Travail (mail ~7h)', 'menuInstallTempsTravailTrigger')
+    .addItem('▶️ Importer Temps Travail maintenant (test)', 'menuImportTempsTravailNow')
+    .addItem('🧹 Nettoyer doublons de triggers', 'menuCleanupDuplicateTriggers')
     .addSeparator()
     .addItem('1. Diagnostiquer décalages commentaires', 'diagnosisDecalageCommentaires')
     .addItem('2. Réparer décalages (après diagnostic)', 'repairDecalageCommentaires')
@@ -299,6 +418,12 @@ function onOpen() {
     // Supprimer les anciens triggers preCacheAllData
     triggers.forEach(t => {
       if(t.getHandlerFunction() === "preCacheAllData") {
+        ScriptApp.deleteTrigger(t);
+      }
+    });
+    // Import auto des interventions désactivé (apport manuel désormais) : purger le trigger résiduel
+    triggers.forEach(t => {
+      if(t.getHandlerFunction() === "importAutoInterFromMail") {
         ScriptApp.deleteTrigger(t);
       }
     });
@@ -323,16 +448,51 @@ function doGet(e) {
     t.ispToken  = e.parameter.ispToken;
     return t.evaluate().setTitle("SDIS 66 - Mon espace ISP").setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   }
-  // Vue admin URLs ISP : ?page=isp-admin
+  // Vue admin URLs ISP : ?page=isp-admin&pwd=0007
+  // Correctif sécurité 2026-08-04 : cette page listait les liens personnels (et donc les dates
+  // de naissance décodables) de tous les ISP sans aucune protection. Mot de passe désormais
+  // vérifié côté serveur (même mot de passe que les autres fonctions admin de ce fichier).
   if (e && e.parameter && e.parameter.page === "isp-admin") {
-    return HtmlService.createHtmlOutputFromFile("IspUrlsAdmin")
+    const pwd_ = String(e.parameter.pwd || "").trim();
+    if (pwd_ !== "0007") {
+      return HtmlService.createHtmlOutput("<p style='font-family:sans-serif; padding:40px; text-align:center;'>Accès refusé — mot de passe requis (paramètre <code>pwd</code>).</p>")
+        .setTitle("Accès refusé").setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+    }
+    const tAdmin_ = HtmlService.createTemplateFromFile("IspUrlsAdmin");
+    tAdmin_.pwd = pwd_;
+    return tAdmin_.evaluate()
       .setTitle("URLs ISP").setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  }
+  // Outil admin temporaire (2026-08-06) : réparation du décalage historique APP Eve
+  if (e && e.parameter && e.parameter.eveReview) {
+    const pwdEve_ = String(e.parameter.pwd || "").trim();
+    if (pwdEve_ !== "0007") {
+      return HtmlService.createHtmlOutput("<p style='font-family:sans-serif; padding:40px; text-align:center;'>Accès refusé — mot de passe requis (paramètre <code>pwd</code>).</p>")
+        .setTitle("Accès refusé").setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+    }
+    const tEve_ = HtmlService.createTemplateFromFile("EveReview");
+    tEve_.pwd = pwdEve_;
+    return tEve_.evaluate()
+      .setTitle("Correction des commentaires").setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  }
+  // Outil admin (2026-08-06) : réassignation ISP sur une intervention
+  if (e && e.parameter && e.parameter.ispReassign) {
+    const pwdIspR_ = String(e.parameter.pwd || "").trim();
+    if (pwdIspR_ !== "0007") {
+      return HtmlService.createHtmlOutput("<p style='font-family:sans-serif; padding:40px; text-align:center;'>Accès refusé — mot de passe requis (paramètre <code>pwd</code>).</p>")
+        .setTitle("Accès refusé").setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+    }
+    const tIspR_ = HtmlService.createTemplateFromFile("IspReassign");
+    tIspR_.pwd = pwdIspR_;
+    return tIspR_.evaluate()
+      .setTitle("Réassignation ISP").setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   }
   // Vue dédiée action de correction : ?correctionId=X
   if (e && e.parameter && e.parameter.correctionId) {
     const t2 = HtmlService.createTemplateFromFile("ActionCorrection");
     t2.scriptUrl = getWebAppUrl_();
     t2.correctionId = e.parameter.correctionId;
+    t2.token = e.parameter.token || '';
     return t2.evaluate()
       .setTitle("SDIS 66 - Action de correction #" + e.parameter.correctionId)
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
@@ -383,6 +543,18 @@ function getIspPublicData(token) {
   }
 }
 
+// Équivalent léger de getIspPublicData pour la web app Firebase : décode juste le token, sans
+// lancer le calcul lourd (voir authIspLite plus haut pour le détail du raisonnement).
+function authIspLiteFromToken(token) {
+  try {
+    const decoded = _decodeIspToken_(token);
+    if (!decoded) return { error: "Token invalide." };
+    return authIspLite(decoded.mat, decoded.dob);
+  } catch(e) {
+    return { error: e.message };
+  }
+}
+
 /**
  * Retourne l'URL du BPV (col D de APP) pour une intervention donnée, après validation du token ISP.
  * Appelé par IspView.html quand l'ISP clique sur une ligne de son tableau de bilans.
@@ -419,7 +591,11 @@ function getBpvPdfDataByToken(token, interId) {
  * Retourne la liste des ISPs avec leur URL personnalisée (pour IspUrlsAdmin.html).
  * Les DOBs sont lus depuis le spreadsheet RH (ID_SS_RH), pas depuis le Dashboard.
  */
-function getIspUrlsForAdmin() {
+function getIspUrlsForAdmin(password) {
+  // Correctif sécurité 2026-08-04 : cette fonction est appelable directement par n'importe qui
+  // connaissant l'URL du script (google.script.run ignore la protection de la page doGet) — elle
+  // renvoyait noms + tokens (donc dates de naissance décodables) de tout le monde sans vérification.
+  if (String(password || "").trim() !== "0007") throw new Error("Mot de passe incorrect.");
   const ss      = getSS_();
   const baseUrl = getWebAppUrl_();
   // Lire la liste active depuis Config Agents (crée depuis Dashboard si absent)
@@ -518,6 +694,93 @@ function getActiveAgents_(ss) {
   return result;
 }
 
+// ============================================================
+// RÉASSIGNATION ISP — outil admin (2026-08-06, demandé par Brice)
+// Corrige l'infirmier assigné à une intervention (colonnes I=matricule / J=nom d'APP) en cas
+// d'erreur de saisie à l'import. APP!B (id) et APP!J (nom) sont la source fiable, jamais
+// réordonnée — c'est le seul endroit où corriger l'attribution. Toutes les stats ISP sont
+// calculées EN DIRECT depuis la colonne I à chaque lecture (aucune table dupliquée par ISP à
+// mettre à jour) : changer I ici change immédiatement à qui l'intervention est comptée.
+// Les commentaires déjà ancrés par ID (BX/BY/BZ, Alex M, Eve O/Q/R) restent attachés à la
+// bonne intervention sans rien à faire — l'ancrage est par ID, jamais par nom/matricule.
+// ============================================================
+
+function searchFicheForReassign(password, ficheId) {
+  if (String(password || "").trim() !== "0007") return { error: "Mot de passe incorrect." };
+  try {
+    const ss = getSS_();
+    const shApp = ss.getSheetByName(APP_SHEET_NAME);
+    const data = shApp.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][C_APP_ID]).trim() === String(ficheId).trim()) {
+        return {
+          found: true,
+          id: data[i][C_APP_ID],
+          date: formatDateHeureFR_(data[i][C_APP_DATE]),
+          motif: String(data[i][C_APP_MOTIF] || '').trim(),
+          engin: String(data[i][C_APP_ENGIN] || '').trim(),
+          currentMat: normalizeMat(data[i][C_APP_MAT]),
+          currentNom: String(data[i][C_APP_NOM] || '').trim(),
+          pdf: data[i][C_APP_PDF] || ''
+        };
+      }
+    }
+    return { found: false };
+  } catch (e) {
+    return { error: e.toString() };
+  }
+}
+
+function getActiveIspListForReassign(password) {
+  if (String(password || "").trim() !== "0007") return { error: "Mot de passe incorrect." };
+  try { return getActiveAgents_(getSS_()); } catch (e) { return { error: e.toString() }; }
+}
+
+/**
+ * Réattribue une intervention à un autre ISP actif : écrit APP!I (matricule) et APP!J (nom).
+ * N'a AUCUN effet sur les commentaires déjà saisis (ancrés par ID d'intervention, pas par ISP) —
+ * seules les stats agrégées par ISP (calculées en direct depuis la colonne I) sont impactées,
+ * pour l'ancien ET le nouvel ISP, dès la prochaine lecture.
+ */
+function reassignFicheIsp(password, ficheId, newMat) {
+  if (String(password || "").trim() !== "0007") return { success: false, error: "Mot de passe incorrect." };
+  try {
+    const ss = getSS_();
+    const shApp = ss.getSheetByName(APP_SHEET_NAME);
+    const agents = getActiveAgents_(ss);
+    const target = agents.find(function (a) { return a.mat === normalizeMat(newMat); });
+    if (!target) return { success: false, error: "Matricule inconnu ou agent inactif." };
+
+    const data = shApp.getDataRange().getValues();
+    let row = -1, oldMat = '', oldNom = '';
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][C_APP_ID]).trim() === String(ficheId).trim()) {
+        row = i + 1; oldMat = normalizeMat(data[i][C_APP_MAT]); oldNom = String(data[i][C_APP_NOM] || '').trim();
+        break;
+      }
+    }
+    if (row === -1) return { success: false, error: "Fiche introuvable." };
+    if (oldMat === target.mat) return { success: false, error: "Cette fiche est déjà attribuée à cet ISP." };
+
+    shApp.getRange(row, C_APP_MAT + 1).setValue(target.mat);
+    shApp.getRange(row, C_APP_NOM + 1).setValue(target.nom);
+
+    Logger.log('reassignFicheIsp: fiche ' + ficheId + ' : ' + oldNom + ' (' + oldMat + ') -> ' + target.nom + ' (' + target.mat + ')');
+
+    const cache_ = CacheService.getScriptCache();
+    [oldMat, target.mat].forEach(function (m) {
+      if (m) { cache_.remove('isp_v4_' + m); cache_.remove('isp_detail_' + m); sheetCacheRemove('isp_v4_' + m); sheetCacheRemove('isp_detail_' + m); }
+    });
+    cache_.remove('all_isp_error_stats'); sheetCacheRemove('all_isp_error_stats');
+
+    try { pushAppRowById_(String(ficheId)); } catch (fsErr) { Logger.log('reassignFicheIsp push: ' + fsErr); }
+
+    return { success: true, oldMat: oldMat, oldNom: oldNom, newMat: target.mat, newNom: target.nom };
+  } catch (e) {
+    return { success: false, error: e.toString() };
+  }
+}
+
 /** Retourne la liste complète des agents (actifs et inactifs) pour l'admin. */
 function getAgentsListAdmin(password) {
   if (String(password).trim() !== "0007") throw new Error("Mot de passe incorrect.");
@@ -545,6 +808,7 @@ function setAgentActiveAdmin(password, mat, actif) {
     if (normalizeMat(data[i][1]) === normMat) {
       sh.getRange(i + 1, 3).setValue(actif === true || actif === "true");
       _clearAdminCaches_();
+      try { pushConfigAgentByMat_(normMat); } catch (fsErr) { Logger.log('setAgentActiveAdmin push: ' + fsErr); }
       return { success: true };
     }
   }
@@ -574,6 +838,7 @@ function addAgentAdmin(password, nom, mat) {
   const rule = SpreadsheetApp.newDataValidation().requireCheckbox().build();
   sh.getRange(lastRow + 1, 3, 1, 1).setDataValidation(rule);
   _clearAdminCaches_();
+  try { pushConfigAgentByMat_(normNew); } catch (fsErr) { Logger.log('addAgentAdmin push: ' + fsErr); }
   return { success: true };
 }
 
@@ -581,8 +846,8 @@ function addAgentAdmin(password, nom, mat) {
 function _clearAdminCaches_() {
   try {
     const cache = CacheService.getScriptCache();
-    cache.remove("admin_data_full_v2");
-    sheetCacheRemove("admin_data_full_v2");
+    cache.remove("admin_data_full_v6");
+    sheetCacheRemove("admin_data_full_v6");
   } catch(e) {}
 }
 
@@ -590,7 +855,7 @@ function _clearAdminCaches_() {
 function getStats2026() {
   // === CHERCHER CACHE ===
   const _cache26 = CacheService.getScriptCache();
-  const _ck26 = "stats2026_v11";
+  const _ck26 = "stats2026_v12";
   try {
     const _c26 = _cache26.get(_ck26);
     if(_c26) return JSON.parse(_c26);
@@ -610,24 +875,7 @@ function getStats2026() {
   const astreintes2026 = Math.ceil(Number(dash.getRange(DASH_ASTREINTES_2026_CELL).getValue())||0);
   const secteur2026 = total2026 - psud2026;
   
-  // Calculer la dernière date réelle depuis la feuille Temps travail (ne pas dépendre de D2)
-  let lastDate = null;
-  try {
-    const shTempsCheck = ss.getSheetByName(TEMPS_SHEET_NAME);
-    if(shTempsCheck) {
-      const dCheck = shTempsCheck.getDataRange().getValues();
-      for(let i=1; i<dCheck.length; i++) {
-        const dA = coerceToDateTime_(dCheck[i][C_TEMPS_DATE_AST]);
-        if(dA && (!lastDate || dA > lastDate)) lastDate = dA;
-        const dG = coerceToDateTime_(dCheck[i][C_TEMPS_DATE_GARDE]);
-        if(dG && (!lastDate || dG > lastDate)) lastDate = dG;
-      }
-    }
-  } catch(eLD) {}
-  if(!lastDate) {
-    const lastDateRaw = dash.getRange(DASH_LASTDATE_CELL).getValue();
-    lastDate = coerceToDate_(lastDateRaw) || new Date();
-  }
+  const lastDate = _computeLastDataDate_(ss, dash);
 
   const cisNames = dash.getRange("E17:E47").getDisplayValues().flat();
   const cisCounts2026 = dash.getRange("F17:F47").getValues().flat();
@@ -642,6 +890,7 @@ function getStats2026() {
   let countApp = 0;
     let ssoTotal = 0;
     const ssoByCisMap = {};
+    let lastAppDate = null; // dernière intervention réelle dans APP (indépendant de Temps travail)
   try {
      const shApp = ss.getSheetByName(APP_SHEET_NAME);
      const data = shApp.getDataRange().getValues();
@@ -656,6 +905,9 @@ function getStats2026() {
          const cis = rawCis === 'SD SSSM' ? 'Garde PSud' : (rawCis || 'Non défini');
          ssoByCisMap[cis] = (ssoByCisMap[cis] || 0) + 1;
        }
+
+       const dAppRow = coerceToDateTime_(data[i][C_APP_DATE]);
+       if (dAppRow && (!lastAppDate || dAppRow > lastAppDate)) lastAppDate = dAppRow;
      }
   } catch(e){}
 
@@ -769,6 +1021,7 @@ function getStats2026() {
 
   const _result26 = {
     date: formatDateFR_(lastDate),
+    dateApp: lastAppDate ? formatDateFR_(lastAppDate) : formatDateFR_(lastDate),
     psud: psud2026, total: total2026, sect: secteur2026, ast: astreintes2026,
     cis: cisNames.map((n, i) => ({ name:n, v26:Number(cisCounts2026[i])||0, v25:Number(cisCounts2025ytd[i])||0, v25tot:Number(cisTotals2025[i])||0 })),
     secteurs: sectNames.map((n, i) => ({ name:n, v26:Number(sectCounts2026[i])||0, v25:Number(sectCounts2025ytd[i])||0, v25tot:Number(sectTotals2025[i])||0 })),
@@ -785,8 +1038,103 @@ function getStats2026() {
   return _result26;
   } catch(e) {
     Logger.log("getStats2026 ERROR: " + e + " | stack: " + (e.stack || ""));
-    return { error: "Erreur chargement: " + (e.message || e), date: "", psud: 0, total: 0, sect: 0, ast: 0, cis: [], secteurs: [], cntApp: 0, ssoTotal: 0, ssoByCis: [], cntIspG: 0, cntMed: 0, cntAction: 0, bilanOkPct: "—", pisuOkPct: "—", topMotifs: [], nbPisu: "0", protoAdulte: [], protoEnfant: [], tempsCis: [], tempsSect: [], doubleIspCis: [], doubleIspSect: [] };
+    return { error: "Erreur chargement: " + (e.message || e), date: "", dateApp: "", psud: 0, total: 0, sect: 0, ast: 0, cis: [], secteurs: [], cntApp: 0, ssoTotal: 0, ssoByCis: [], cntIspG: 0, cntMed: 0, cntAction: 0, bilanOkPct: "—", pisuOkPct: "—", topMotifs: [], nbPisu: "0", protoAdulte: [], protoEnfant: [], tempsCis: [], tempsSect: [], doubleIspCis: [], doubleIspSect: [] };
   }
+}
+
+/* --- COMPARATIF MENSUEL INTERVENTIONS 2026 vs 2025 (mini-graphiques Synthèse) --- */
+function getMonthlyInterventionComparison() {
+  const MOIS_ABBR = ["Jan","Fév","Mar","Avr","Mai","Juin","Juil","Août","Sep","Oct","Nov","Déc"];
+  const cache = CacheService.getScriptCache();
+  const cacheKey = "monthly_inter_compare_v1";
+  const cached = cache.get(cacheKey);
+  if (cached) return JSON.parse(cached);
+  const shCached = sheetCacheGet(cacheKey);
+  if (shCached) { try { cache.put(cacheKey, JSON.stringify(shCached), 7200); } catch(e){} return shCached; }
+
+  const psud26 = new Array(12).fill(0), sect26 = new Array(12).fill(0), total26 = new Array(12).fill(0);
+  const psud25 = new Array(12).fill(0), sect25 = new Array(12).fill(0), total25 = new Array(12).fill(0);
+
+  try {
+    const ss = getSS_();
+    const shApp = ss.getSheetByName(APP_SHEET_NAME);
+    if (shApp) {
+      const data = shApp.getDataRange().getValues();
+      for (let i = 1; i < data.length; i++) {
+        const d = coerceToDateTime_(data[i][C_APP_DATE]);
+        if (!d) continue;
+        const m = d.getMonth();
+        total26[m]++;
+        const cis = String(data[i][C_APP_CIS] || "").trim();
+        if (cis === "SD SSSM") psud26[m]++; else sect26[m]++;
+      }
+    }
+  } catch(e) { Logger.log("getMonthlyInterventionComparison 2026 error: " + e); }
+
+  try {
+    const ss25 = SpreadsheetApp.openById(ID_SS_2025);
+    const shApp25 = ss25.getSheetByName("APP");
+    if (shApp25) {
+      const data = shApp25.getDataRange().getValues();
+      for (let i = 1; i < data.length; i++) {
+        const d = coerceToDateTime_(data[i][EXT_APP_COL_DATE]);
+        if (!d) continue;
+        const m = d.getMonth();
+        total25[m]++;
+        const cis = String(data[i][EXT_APP_COL_CENTRE] || "").trim();
+        if (cis === "SD SSSM") psud25[m]++; else sect25[m]++;
+      }
+    }
+  } catch(e) { Logger.log("getMonthlyInterventionComparison 2025 error: " + e); }
+
+  const result = { months: MOIS_ABBR, psud26, sect26, total26, psud25, sect25, total25 };
+  cache.put(cacheKey, JSON.stringify(result), 7200);
+  sheetCachePut(cacheKey, result, 7200);
+  return result;
+}
+
+/* --- COMPARATIF MENSUEL ASTREINTES / DISPO 2026 vs 2025 (mini-graphique Synthèse) --- */
+function getMonthlyAstreinteComparison() {
+  const MOIS_ABBR = ["Jan","Fév","Mar","Avr","Mai","Juin","Juil","Août","Sep","Oct","Nov","Déc"];
+  const cache = CacheService.getScriptCache();
+  const cacheKey = "monthly_ast_compare_v1";
+  const cached = cache.get(cacheKey);
+  if (cached) return JSON.parse(cached);
+  const shCached = sheetCacheGet(cacheKey);
+  if (shCached) { try { cache.put(cacheKey, JSON.stringify(shCached), 7200); } catch(e){} return shCached; }
+
+  const ast26 = new Array(12).fill(0);
+  const ast25 = new Array(12).fill(0);
+
+  try {
+    const ss = getSS_();
+    const shTemps = ss.getSheetByName(TEMPS_SHEET_NAME);
+    if (shTemps) {
+      const data = shTemps.getDataRange().getValues();
+      for (let i = 1; i < data.length; i++) {
+        const d = coerceToDateTime_(data[i][C_TEMPS_DATE_AST]);
+        if (d) ast26[d.getMonth()] += 0.5;
+      }
+    }
+  } catch(e) { Logger.log("getMonthlyAstreinteComparison 2026 error: " + e); }
+
+  try {
+    const ss25 = SpreadsheetApp.openById(ID_SS_2025);
+    const shTemps25 = ss25.getSheetByName("Temps travail");
+    if (shTemps25) {
+      const data = shTemps25.getDataRange().getValues();
+      for (let i = 1; i < data.length; i++) {
+        const d = coerceToDateTime_(data[i][EXT_TEMPS_COL_DATE_AST]);
+        if (d) ast25[d.getMonth()] += 0.5;
+      }
+    }
+  } catch(e) { Logger.log("getMonthlyAstreinteComparison 2025 error: " + e); }
+
+  const round5 = v => Math.round(v * 2) / 2;
+  const result = { months: MOIS_ABBR, ast26: ast26.map(round5), ast25: ast25.map(round5) };
+  cache.put(cacheKey, JSON.stringify(result), 7200);
+  sheetCachePut(cacheKey, result, 7200);
+  return result;
 }
 
 /* --- 2. STATS 2025 (CACHE) --- */
@@ -802,8 +1150,7 @@ function getStats2025() {
 
   const ss = getSS_();
   const dash = ss.getSheetByName(DASHBOARD_SHEET_NAME);
-  const lastDateRaw = dash.getRange(DASH_LASTDATE_CELL).getValue();
-  const lastDate = coerceToDate_(lastDateRaw) || new Date();
+  const lastDate = _computeLastDataDate_(ss, dash);
   const cutoffCode = (lastDate.getMonth() + 1) * 100 + lastDate.getDate();
 
   let psud2025_ytd = 0, total2025_ytd = 0, astreintes2025_ytd = 0;
@@ -907,20 +1254,720 @@ function clearIspCache(mat) {
 }
 
 /* --- ADMIN --- */
+// Vérification rapide du mot de passe admin, SANS lancer le calcul lourd de getAdminData —
+// la web app Firebase a déjà stats/adminData synchronisé depuis Firestore, donc n'a besoin
+// que de vérifier "0007" pour déverrouiller son propre affichage (même principe qu'authIspLite).
+// Diagnostic temporaire (2026-08-06) : Brice signale que le bandeau de dates (APP / Temps
+// travail) affiche la même date fausse (03/08) pour les deux, alors que le classeur montre
+// 29/07 pour APP et 05/08 pour Temps travail. À supprimer une fois le bug identifié.
+function debugDateComputation(password) {
+  if (String(password || "").trim() !== "0007") return { error: "Mot de passe incorrect." };
+  try {
+    const ss = getSS_();
+    const dash = ss.getSheetByName(DASHBOARD_SHEET_NAME);
+    const computedLastDate = _computeLastDataDate_(ss, dash);
+    const d2Raw = dash.getRange(DASH_LASTDATE_CELL).getValue();
+
+    const shTemps = ss.getSheetByName(TEMPS_SHEET_NAME);
+    const dataTemps = shTemps.getDataRange().getValues();
+    let maxAst = null, maxGarde = null;
+    for (let i = 1; i < dataTemps.length; i++) {
+      const dA = coerceToDateTime_(dataTemps[i][C_TEMPS_DATE_AST]);
+      if (dA && (!maxAst || dA > maxAst)) maxAst = dA;
+      const dG = coerceToDateTime_(dataTemps[i][C_TEMPS_DATE_GARDE]);
+      if (dG && (!maxGarde || dG > maxGarde)) maxGarde = dG;
+    }
+    const lastTempsRowsRaw = dataTemps.slice(-5).map(function (r) {
+      return { ast_raw: String(r[C_TEMPS_DATE_AST]), garde_raw: String(r[C_TEMPS_DATE_GARDE]) };
+    });
+
+    const shApp = ss.getSheetByName(APP_SHEET_NAME);
+    const dataApp = shApp.getDataRange().getValues();
+    let maxApp = null;
+    for (let i = 1; i < dataApp.length; i++) {
+      const d = coerceToDateTime_(dataApp[i][C_APP_DATE]);
+      if (d && (!maxApp || d > maxApp)) maxApp = d;
+    }
+    const lastAppRowsRaw = dataApp.slice(-5).map(function (r) { return { date_raw: String(r[C_APP_DATE]) }; });
+
+    return {
+      computedLastDate: formatDateFR_(computedLastDate),
+      d2Raw: String(d2Raw),
+      tempsRowCount: dataTemps.length,
+      maxAst: maxAst ? formatDateFR_(maxAst) : null,
+      maxGarde: maxGarde ? formatDateFR_(maxGarde) : null,
+      lastTempsRowsRaw: lastTempsRowsRaw,
+      appRowCount: dataApp.length,
+      maxApp: maxApp ? formatDateFR_(maxApp) : null,
+      lastAppRowsRaw: lastAppRowsRaw
+    };
+  } catch (e) {
+    return { error: e.toString() };
+  }
+}
+
+// Diagnostic temporaire (2026-08-06) : lire ce qui est RÉELLEMENT stocké dans Firestore
+// stats/main, pour distinguer un bug de calcul d'un bug de propagation/cache client.
+function debugReadStatsMainFirestore(password) {
+  if (String(password || "").trim() !== "0007") return { error: "Mot de passe incorrect." };
+  try {
+    const res = UrlFetchApp.fetch(FIRESTORE_BASE_URL_AO + '/stats/main', { method: 'get', headers: fsHeaders_(), muteHttpExceptions: true });
+    const txt = res.getContentText();
+    const idx = txt.indexOf('"date"');
+    return { code: res.getResponseCode(), dateFieldsExcerpt: idx >= 0 ? txt.slice(idx, idx + 400) : 'CHAMP "date" INTROUVABLE', totalLen: txt.length };
+  } catch (e) {
+    return { error: e.toString() };
+  }
+}
+
+// Diagnostic temporaire (2026-08-06) : comparer le calcul brut (sans cache) au résultat
+// de getStats2026() (avec son cache 2h) dans le MÊME appel, pour trancher si le problème est
+// un cache qui ne s'invalide pas ou autre chose plus en aval.
+function debugDateCacheCompare(password) {
+  if (String(password || "").trim() !== "0007") return { error: "Mot de passe incorrect." };
+  try {
+    const ss = getSS_();
+    const dash = ss.getSheetByName(DASHBOARD_SHEET_NAME);
+    const freshDate = formatDateFR_(_computeLastDataDate_(ss, dash));
+
+    const cache = CacheService.getScriptCache();
+    const cacheRaw = cache.get("stats2026_v12");
+    const sheetCacheRaw = sheetCacheGet("stats2026_v12");
+
+    const fullResult = getStats2026();
+
+    return {
+      freshComputeNoCaching: freshDate,
+      cacheServiceHasEntry: !!cacheRaw,
+      cacheServiceDateValue: cacheRaw ? JSON.parse(cacheRaw).date : null,
+      sheetCacheHasEntry: !!sheetCacheRaw,
+      sheetCacheDateValue: sheetCacheRaw ? sheetCacheRaw.date : null,
+      getStats2026DateNow: fullResult.date,
+      getStats2026DateAppNow: fullResult.dateApp
+    };
+  } catch (e) {
+    return { error: e.toString() };
+  }
+}
+
+/**
+ * "Stats pratique analyse" (2026-08-06, demandé par Brice) : délais min/moyen/max entre la
+ * date de l'intervention et chaque étape de traitement (analyse ISP, APP chefferie, médecin
+ * cheffe, action chefferie), + délais intervention→création d'action de correction et
+ * création→réalisation de l'action. Les 4 premiers délais reposent sur les horodatages
+ * C_TS_* posés à partir du 2026-08-06 — aucune donnée avant cette date (l'info n'existait pas).
+ * Les 2 derniers utilisent les dates déjà présentes dans "Actions Correction" (disponibles
+ * rétroactivement).
+ */
+function getDelayStats() {
+  try {
+    const ss = getSS_();
+    const shApp = ss.getSheetByName(APP_SHEET_NAME);
+    const data = shApp.getDataRange().getValues();
+
+    const delays = { isp: [], appChef: [], medChef: [], actionChef: [] };
+    const appDateById = {};
+    for (let i = 1; i < data.length; i++) {
+      const interDate = coerceToDateTime_(data[i][C_APP_DATE]);
+      const id = String(data[i][C_APP_ID]).trim();
+      if (id && interDate) appDateById[id] = interDate;
+      if (!interDate) continue;
+
+      // Chaque délai est mesuré ENTRE DEUX ÉTAPES CONSÉCUTIVES du circuit (pas toujours depuis
+      // l'intervention) — confirmé par Brice le 2026-08-10 : analyse ISP > APP chefferie >
+      // analyse médecin cheffe > réaliser actions chefferie. Les deux horodatages requis
+      // doivent exister pour compter (sinon l'étape précédente n'est pas passée par ce circuit).
+      const tsIsp = data[i][C_TS_ISP_ANALYSE];
+      const tsAppChef = data[i][C_TS_APP_CHEF];
+      const tsMedChef = data[i][C_TS_MED_CHEF];
+      const tsActionChef = data[i][C_TS_ACTION_CHEF];
+      if (tsIsp instanceof Date) delays.isp.push((tsIsp - interDate) / 3600000);
+      if (tsAppChef instanceof Date && tsIsp instanceof Date) delays.appChef.push((tsAppChef - tsIsp) / 3600000);
+      if (tsMedChef instanceof Date && tsAppChef instanceof Date) delays.medChef.push((tsMedChef - tsAppChef) / 3600000);
+      if (tsActionChef instanceof Date && tsMedChef instanceof Date) delays.actionChef.push((tsActionChef - tsMedChef) / 3600000);
+    }
+
+    function stats(arr) {
+      if (!arr.length) return { count: 0 };
+      const clean = arr.filter(function (v) { return v >= 0; }); // ignore les horodatages incohérents (antérieurs à l'intervention)
+      if (!clean.length) return { count: 0 };
+      const sum = clean.reduce(function (a, b) { return a + b; }, 0);
+      return { count: clean.length, min: Math.min.apply(null, clean), max: Math.max.apply(null, clean), avg: sum / clean.length };
+    }
+
+    // Compteurs globaux (toutes ISP confondues, cumul à date) — APP Alex H/I/J/K/L.
+    // "Erreur Grave" (L) écrase tout, comme partout ailleurs dans l'appli (une fiche gardée
+    // grave n'est pas aussi comptée en légère). Dédoublonnée par ID (des lignes en double
+    // peuvent exister dans APP Alex, cf. formule FILTER — cf. getIspErrorStats).
+    const shAlex = ss.getSheetByName("APP Alex");
+    const dAlex = shAlex ? shAlex.getDataRange().getValues() : [];
+    let errGraveTotal = 0, errLegereBilanTotal = 0, errLegerePisuTotal = 0;
+    const seenAlexIds = new Set();
+    for (let i = 1; i < dAlex.length; i++) {
+      const id = String(dAlex[i][0]).trim();
+      if (!id || seenAlexIds.has(id)) continue;
+      seenAlexIds.add(id);
+      if (isCheckboxChecked(dAlex[i][11])) { errGraveTotal++; continue; } // L
+      if (isCheckboxChecked(dAlex[i][9])) errLegereBilanTotal++;  // J
+      if (isCheckboxChecked(dAlex[i][10])) errLegerePisuTotal++;  // K
+    }
+
+    // Délais liés aux actions de correction (données déjà existantes, rétroactives).
+    // "Intervention → réalisation" est mesuré depuis la DATE DE L'INTERVENTION (pas depuis la
+    // création de l'action) — confirmé par Brice le 2026-08-10.
+    const actions = getActionsCorrection();
+    const interToCreation = [], interToRealisation = [];
+    function parseFR(s) {
+      if (!s) return null;
+      const p = String(s).split('/');
+      if (p.length !== 3) return null;
+      const d = new Date(Number(p[2]), Number(p[1]) - 1, Number(p[0]));
+      return isNaN(d.getTime()) ? null : d;
+    }
+    actions.forEach(function (a) {
+      const dCreation = parseFR(a.dateCreation);
+      if (dCreation) {
+        (a.ficheIds || []).forEach(function (fid) {
+          const dInter = appDateById[String(fid)];
+          if (dInter) interToCreation.push((dCreation - dInter) / 86400000);
+        });
+      }
+      if (a.cloture && a.dateAction) {
+        const dAction = parseFR(a.dateAction);
+        if (dAction) {
+          (a.ficheIds || []).forEach(function (fid) {
+            const dInter = appDateById[String(fid)];
+            if (dInter) interToRealisation.push((dAction - dInter) / 86400000);
+          });
+        }
+      }
+    });
+
+    return {
+      ispAnalyse: stats(delays.isp),
+      appChefferie: stats(delays.appChef),
+      medecinCheffe: stats(delays.medChef),
+      actionChefferie: stats(delays.actionChef),
+      interventionToCorrection: stats(interToCreation),
+      interventionToRealisation: stats(interToRealisation),
+      counters: {
+        errGrave: errGraveTotal,
+        errLegereBilan: errLegereBilanTotal,
+        errLegerePisu: errLegerePisuTotal,
+        actionsDemarrees: actions.length,
+        actionsCloturees: actions.filter(function (a) { return a.cloture; }).length
+      }
+    };
+  } catch (e) {
+    return { error: e.toString() };
+  }
+}
+
+// Diagnostic temporaire (2026-08-07) : voir le VRAI message d'erreur Firestore sur une écriture
+// qui échoue (jusqu'ici on ne voyait que le code retour, jamais le texte de l'erreur).
+function debugRawWriteError(password) {
+  if (String(password || '').trim() !== '0007') return { error: 'Mot de passe incorrect.' };
+  try {
+    const res = UrlFetchApp.fetch(FIRESTORE_BASE_URL_AO + '/stats/_debugWrite', {
+      method: 'patch', headers: fsHeaders_(), contentType: 'application/json',
+      payload: JSON.stringify({ fields: fsToFields_({ test: new Date().toISOString() }) }),
+      muteHttpExceptions: true
+    });
+    return { code: res.getResponseCode(), body: res.getContentText().slice(0, 1000) };
+  } catch (e) {
+    return { error: e.toString() };
+  }
+}
+
+function checkAdminPassword(password) {
+  if (String(password || "").trim() !== "0007") return { success: false, error: "Mot de passe incorrect." };
+  return { success: true };
+}
+
+// ============================================================
+// RÉPARATION APP EVE — décalage historique (2026-08-06)
+// Avant hier, APP Eve!A2 était une formule FILTER volatile : ses lignes A:N se
+// redistribuaient à chaque reclassification "Erreur Grave" ailleurs, alors que les colonnes
+// O/Q/R (commentaire médecin, action requise, retour chefferie) étaient écrites directement
+// sur le numéro de ligne du moment. Résultat : d'anciens commentaires se sont retrouvés
+// "collés" sur la mauvaise intervention. Chaque commentaire garde heureusement son vrai ID
+// dans un tag [PREFIX id], ce qui permet de retrouver et réparer le décalage sans ambiguïté
+// dans la quasi-totalité des cas (voir getEveConflictPlan_/applyEveMismatchFix).
+// ============================================================
+
+function extractEveTagId_(s) {
+  const m = String(s || '').match(/\[(?:COM MED CHEF|COM CHEF ISP|COM CHEF|ACTION CHEF)\s+([^\]]+)\]/);
+  return m ? m[1].trim() : null;
+}
+
+// Colonnes surveillées, sur les DEUX tables (APP Alex ET APP Eve) qui ont pu être remplies
+// à l'époque où elles étaient encore des formules FILTER volatiles : le commentaire chefferie
+// ISP (Alex!M) souffre potentiellement du même décalage historique que les colonnes O/Q/R
+// d'APP Eve (confirmé par Brice le 2026-08-06 — APP Alex a été figée avant APP Eve, donc a
+// connu la même fenêtre de risque).
+const DRIFT_COLS = [
+  { sheet: 'alex', sheetName: 'APP Alex', col: 'M', idx: 12, sheetCol: 13, anchorField: 'commChef', anchorCol: C_COMM_CHEF + 1 },
+  { sheet: 'eve', sheetName: 'APP Eve', col: 'O', idx: 14, sheetCol: 15, anchorField: 'commMed', anchorCol: C_COMM_MED + 1 },
+  { sheet: 'eve', sheetName: 'APP Eve', col: 'Q', idx: 16, sheetCol: 17, anchorField: 'actionMed', anchorCol: C_ACTION_MED + 1 },
+  { sheet: 'eve', sheetName: 'APP Eve', col: 'R', idx: 17, sheetCol: 18, anchorField: null, anchorCol: null }
+];
+
+/**
+ * Calcule un plan de réparation à partir de l'état LIVE du classeur (rejoué à chaque appel,
+ * jamais mis en cache — ces données changent au fur et à mesure que Brice valide des items).
+ * Couvre APP Alex!M et APP Eve!O/Q/R. Renvoie 3 catégories :
+ *  - duplicates : le bon contenu existe déjà ailleurs (ligne propre ou ancrage APP) → simple
+ *    nettoyage de la copie égarée, sans risque.
+ *  - ready : une seule copie candidate, destination vide → prêt à être déplacé.
+ *  - conflicts : 2+ textes différents tagués pour le même (id, colonne) → arbitrage humain.
+ */
+function getEveConflictPlan(password) {
+  if (String(password || "").trim() !== "0007") return { error: "Mot de passe incorrect." };
+  try {
+    const ss = getSS_();
+    const shByKey = { alex: ss.getSheetByName("APP Alex"), eve: ss.getSheetByName("APP Eve") };
+    const dataByKey = { alex: shByKey.alex.getDataRange().getValues(), eve: shByKey.eve.getDataRange().getValues() };
+    const shApp = ss.getSheetByName(APP_SHEET_NAME);
+    const dataApp = shApp.getDataRange().getValues();
+
+    const appById = {};
+    for (let i = 1; i < dataApp.length; i++) {
+      const id = String(dataApp[i][C_APP_ID]).trim();
+      if (id && !appById[id]) {
+        appById[id] = {
+          row: i + 1, commChef: dataApp[i][C_COMM_CHEF], commMed: dataApp[i][C_COMM_MED], actionMed: dataApp[i][C_ACTION_MED],
+          nom: dataApp[i][C_APP_NOM], date: dataApp[i][C_APP_DATE], motif: dataApp[i][C_APP_MOTIF], pdf: dataApp[i][C_APP_PDF]
+        };
+      }
+    }
+    const rowByIdByKey = { alex: {}, eve: {} };
+    ['alex', 'eve'].forEach(function (key) {
+      const data = dataByKey[key];
+      for (let i = 1; i < data.length; i++) {
+        const id = String(data[i][0]).trim();
+        if (id && rowByIdByKey[key][id] === undefined) rowByIdByKey[key][id] = i + 1;
+      }
+    });
+
+    // Regrouper toutes les cellules mal taguées par (sheet, targetId, colonne)
+    const groups = {};
+    DRIFT_COLS.forEach(function (spec) {
+      const data = dataByKey[spec.sheet];
+      for (let i = 1; i < data.length; i++) {
+        const rowId = String(data[i][0]).trim();
+        if (!rowId) continue;
+        const val = String(data[i][spec.idx] || '').trim();
+        if (!val) continue;
+        const taggedId = extractEveTagId_(val);
+        if (!taggedId || taggedId === rowId) continue;
+        const key = spec.sheet + '|' + taggedId + '|' + spec.col;
+        if (!groups[key]) groups[key] = { sheet: spec.sheet, targetId: taggedId, col: spec.col, spec: spec, sources: [] };
+        groups[key].sources.push({ row: i + 1, text: val, id: rowId });
+      }
+    });
+
+    const duplicates = [], readyRaw = [], conflicts = [];
+    Object.keys(groups).forEach(function (key) {
+      const g = groups[key];
+      const data = dataByKey[g.sheet];
+      const distinctTexts = [...new Set(g.sources.map(function (s) { return s.text; }))];
+      const destRow = rowByIdByKey[g.sheet][g.targetId] || null;
+      const destCurrent = destRow ? String(data[destRow - 1][g.spec.idx] || '').trim() : '';
+      const anchorCurrent = g.spec.anchorField && appById[g.targetId] ? String(appById[g.targetId][g.spec.anchorField] || '').trim() : '';
+      // La case (Alex/Eve) du vrai propriétaire peut elle-même être occupée par un AUTRE
+      // orphelin (tagué pour un tiers id) — dans ce cas ce n'est PAS "déjà résolu", juste
+      // bloqué en attendant que cet autre orphelin soit lui-même déplacé (ordonnancement plus
+      // bas). L'ancrage APP (BX/BY/BZ), lui, n'est jamais sujet au décalage : non vide = fiable.
+      const destTaggedId = destCurrent ? extractEveTagId_(destCurrent) : null;
+      const destIsForeignOrphan = !!(destTaggedId && destTaggedId !== g.targetId);
+      if (anchorCurrent || (destCurrent && !destIsForeignOrphan)) {
+        duplicates.push({ sheet: g.sheet, targetId: g.targetId, col: g.col, sources: g.sources, resolvedWhere: anchorCurrent ? 'ancrage APP' : (g.spec.sheetName + ' ligne ' + destRow), resolvedText: (anchorCurrent || destCurrent).slice(0, 200) });
+        return;
+      }
+      if (distinctTexts.length === 1) {
+        readyRaw.push({ sheet: g.sheet, sheetName: g.spec.sheetName, targetId: g.targetId, col: g.col, text: distinctTexts[0], sources: g.sources, destRow: destRow, anchorCol: g.spec.anchorCol });
+      } else {
+        conflicts.push({ sheet: g.sheet, sheetName: g.spec.sheetName, targetId: g.targetId, col: g.col, candidates: distinctTexts.map(function (t) { return { text: t, sources: g.sources.filter(function (s) { return s.text === t; }).map(function(s){return {row:s.row, id:s.id};}) }; }), destRow: destRow, anchorCol: g.spec.anchorCol });
+      }
+    });
+
+    // Ordonnancement UNIFIÉ ready + conflits, par (sheet, colonne) : un item (qu'il soit "ready"
+    // ou "conflit") est jouable dès que sa case destination n'est pas ELLE-MÊME la source
+    // (encore non traitée) d'un AUTRE item — ready OU conflit. Avant, seuls les "ready" étaient
+    // ordonnés entre eux : un conflit bloquant un ready (ou l'inverse) donnait un message opaque
+    // ("contenu non résolu") sans dire QUOI le bloque, et l'ordre affiché à l'écran ne reflétait
+    // pas les vraies dépendances (signalé par Brice le 2026-08-12 : "affiche-moi les conflits
+    // dans l'ordre où ils doivent être traités"). Le filtre sur la COLONNE est nécessaire : deux
+    // items sur la même ligne mais des colonnes différentes (ex. M et O) ne se bloquent jamais
+    // entre eux, ce sont des cellules indépendantes.
+    const items = [];
+    readyRaw.forEach(function (r) {
+      items.push({ kind: 'ready', sheet: r.sheet, col: r.col, targetId: r.targetId, destRow: r.destRow, sourceRows: r.sources.map(function (s) { return s.row; }), ref: r });
+    });
+    conflicts.forEach(function (c) {
+      const sourceRows = [];
+      c.candidates.forEach(function (cand) { cand.sources.forEach(function (s) { sourceRows.push(s.row); }); });
+      items.push({ kind: 'conflict', sheet: c.sheet, col: c.col, targetId: c.targetId, destRow: c.destRow, sourceRows: sourceRows, ref: c });
+    });
+
+    let seq = 1;
+    ['alex', 'eve'].forEach(function (key) {
+      const remaining = items.filter(function (it) { return it.sheet === key; });
+      let guard = 0;
+      while (remaining.length && guard++ < 100) {
+        let progressed = false;
+        for (let i = remaining.length - 1; i >= 0; i--) {
+          const item = remaining[i];
+          const blocker = item.destRow ? remaining.filter(function (other) {
+            return other !== item && other.col === item.col && other.sourceRows.indexOf(item.destRow) !== -1;
+          })[0] : null;
+          if (!blocker) {
+            item.ref.orderIndex = seq++;
+            item.ref.blocked = false;
+            remaining.splice(i, 1);
+            progressed = true;
+          }
+        }
+        if (!progressed) break; // dépendance circulaire (aucun cas observé) : on sort ce qui reste tel quel plus bas
+      }
+      // Ce qui reste après la boucle est réellement bloqué (dépend d'un item lui-même bloqué).
+      remaining.forEach(function (item) {
+        const blocker = items.filter(function (other) { return other !== item && other.col === item.col && other.sourceRows.indexOf(item.destRow) !== -1; })[0];
+        item.ref.blocked = true;
+        item.ref.orderIndex = seq++;
+        item.ref.blockedReason = blocker
+          ? ('En attente : la case destination contient ' + (blocker.kind === 'conflict' ? 'un conflit non arbitré' : 'un commentaire pas encore déplacé') + ' pour la fiche N°' + blocker.targetId + ' — traite-le d\'abord.')
+          : 'Bloqué (dépendance non résolue) — recharge la page.';
+      });
+    });
+
+    const ordered = readyRaw.slice().sort(function (a, b) { return a.orderIndex - b.orderIndex; });
+    conflicts.sort(function (a, b) { return a.orderIndex - b.orderIndex; });
+
+    return {
+      duplicateCount: duplicates.length, duplicates: duplicates,
+      readyCount: ordered.length, ready: ordered,
+      conflictCount: conflicts.length, conflicts: conflicts
+    };
+  } catch (e) {
+    return { error: e.toString() };
+  }
+}
+
+/**
+ * Applique UNE résolution (appelé une fois par item validé dans la page de révision).
+ * - kind "duplicate" : nettoie juste les cellules sources (rien à écrire, le bon contenu
+ *   existe déjà ailleurs).
+ * - kind "ready"/"conflict" : écrit `text` à la bonne place (ligne Alex/Eve du vrai
+ *   propriétaire, créée si besoin ; + ancrage APP pour M/O/Q) puis nettoie les sources.
+ */
+function applyEveMismatchFix(password, item) {
+  if (String(password || "").trim() !== "0007") return { success: false, error: "Mot de passe incorrect." };
+  try {
+    const ss = getSS_();
+    const sh = ss.getSheetByName(item.sheet === 'alex' ? 'APP Alex' : 'APP Eve');
+    const shApp = ss.getSheetByName(APP_SHEET_NAME);
+    const spec = DRIFT_COLS.filter(function (s) { return s.sheet === item.sheet && s.col === item.col; })[0];
+    if (!spec) return { success: false, error: "Colonne inconnue: " + item.sheet + '/' + item.col };
+
+    // Relecture fraîche juste avant d'agir : APP Alex/Eve!A peut être une formule FILTER
+    // volatile dont les lignes se redistribuent entre le calcul du plan (côté client, potentiellement
+    // périmé de plusieurs clics) et ce clic — écrire/effacer sur un numéro de ligne périmé a déjà fait
+    // perdre un commentaire "receveur" légitime (signalé par Brice le 2026-08-10). On revérifie donc
+    // CHAQUE ligne concernée avant d'y toucher, et on ignore silencieusement (sans écraser) celles qui
+    // ne correspondent plus à ce qui était prévu.
+    const dataNow = sh.getDataRange().getValues();
+    const dataAppNow = shApp.getDataRange().getValues();
+
+    if (item.kind === 'duplicate') {
+      // Revérifier que le "doublon" est toujours résolu ailleurs (ancrage APP ou ligne dédiée)
+      // avant de nettoyer les sources — sinon on effacerait la seule copie existante.
+      let anchorCurrent = '';
+      if (spec.anchorCol) {
+        for (let i = 1; i < dataAppNow.length; i++) {
+          if (String(dataAppNow[i][C_APP_ID]).trim() === String(item.targetId).trim()) { anchorCurrent = String(dataAppNow[i][spec.anchorCol - 1] || '').trim(); break; }
+        }
+      }
+      let destCurrent = '';
+      for (let i = 1; i < dataNow.length; i++) {
+        if (String(dataNow[i][0]).trim() === String(item.targetId).trim()) { destCurrent = String(dataNow[i][spec.idx] || '').trim(); break; }
+      }
+      if (!anchorCurrent && !destCurrent) {
+        return { success: false, blocked: true, error: "Le contenu n'est plus résolu ailleurs pour la fiche " + item.targetId + " (a changé depuis le calcul du plan) — recharge la page avant de continuer." };
+      }
+    }
+
+    if (item.kind !== 'duplicate' && item.text) {
+      let destRow = item.destRow;
+      if (destRow) {
+        // La ligne destRow doit toujours appartenir à targetId (redistribution possible entre-temps)
+        const rowIdNow = String(dataNow[destRow - 1] ? dataNow[destRow - 1][0] : '').trim();
+        if (rowIdNow !== String(item.targetId).trim()) {
+          return { success: false, blocked: true, error: "La ligne destination (" + spec.sheetName + " ligne " + destRow + ") ne correspond plus à la fiche " + item.targetId + " (les lignes se sont redistribuées) — recharge la page avant de continuer." };
+        }
+      }
+      if (!destRow) {
+        // Créer une nouvelle ligne pour cet ID (append-only, ne réordonne rien d'existant)
+        let appRow = null;
+        for (let i = 1; i < dataAppNow.length; i++) {
+          if (String(dataAppNow[i][C_APP_ID]).trim() === String(item.targetId).trim()) { appRow = dataAppNow[i]; break; }
+        }
+        destRow = sh.getLastRow() + 1;
+        sh.getRange(destRow, 1).setValue(item.targetId);
+        if (appRow) {
+          sh.getRange(destRow, 2).setValue(appRow[C_APP_MOTIF]);
+          sh.getRange(destRow, 3).setValue(appRow[C_APP_PDF]);
+          sh.getRange(destRow, 5).setValue(appRow[C_APP_NOM]);
+        }
+      } else {
+        // Vérifier que la case est bien libre avant d'écrire (sécurité anti-écrasement)
+        const current = String(dataNow[destRow - 1][spec.idx] || '').trim();
+        if (current && current !== item.text) {
+          return { success: false, blocked: true, error: "La case destination (" + spec.sheetName + " ligne " + destRow + ") contient déjà un autre contenu non résolu — traite d'abord les autres items puis réessaie." };
+        }
+      }
+      sh.getRange(destRow, spec.sheetCol).setValue(item.text);
+      if (spec.anchorCol) {
+        for (let i = 1; i < dataAppNow.length; i++) {
+          if (String(dataAppNow[i][C_APP_ID]).trim() === String(item.targetId).trim()) {
+            shApp.getRange(i + 1, spec.anchorCol).setValue(item.text);
+            break;
+          }
+        }
+      }
+      try {
+        if (item.sheet === 'alex') pushAppAlexRowByRowNum_(destRow); else pushAppEveRowByRowNum_(destRow);
+        pushAppRowById_(String(item.targetId));
+      } catch (fsErr) { Logger.log('applyEveMismatchFix push destRow: ' + fsErr); }
+    }
+
+    // Nettoyer les cellules sources listées — UNIQUEMENT si leur contenu correspond encore
+    // exactement à ce qui était prévu dans le plan (sinon la ligne a été redistribuée entre
+    // temps et il pourrait s'agir du commentaire d'une tout autre fiche : on ne l'efface pas).
+    const skipped = [];
+    (item.sources || []).forEach(function (s) {
+      const currentSrc = String((dataNow[s.row - 1] && dataNow[s.row - 1][spec.idx]) || '').trim();
+      if (currentSrc !== String(s.text || '').trim()) { skipped.push(s.row); return; }
+      sh.getRange(s.row, spec.sheetCol).setValue('');
+      try {
+        if (item.sheet === 'alex') pushAppAlexRowByRowNum_(s.row); else pushAppEveRowByRowNum_(s.row);
+      } catch (fsErr) { Logger.log('applyEveMismatchFix push source: ' + fsErr); }
+    });
+
+    return skipped.length ? { success: true, partial: true, skipped: skipped } : { success: true };
+  } catch (e) {
+    return { success: false, error: e.toString() };
+  }
+}
+
+// ============================================================
+// CORRECTION DE MASSE — commentaires SANS tag du tout (2026-08-06, demandé par Brice).
+// Différent du décalage traité par getEveConflictPlan/applyEveMismatchFix : ici, le texte n'a
+// JAMAIS été tagué (saisi avant la mise en place du système d'ancrage), donc rien ne permet de
+// savoir automatiquement à quelle intervention il appartient vraiment — nécessite un choix
+// humain. Pour chaque ligne qui a AU MOINS UN champ non tagué, on propose : (a) le confirmer tel
+// quel, (b) le remplacer par un autre texte non tagué trouvé ailleurs dans le classeur, ou
+// (c) saisir un texte libre — dans tous les cas le résultat est tagué automatiquement.
+// ============================================================
+
+const DRIFT_TAG_PREFIX = { M: 'COM CHEF ISP', O: 'COM MED CHEF', Q: 'COM MED CHEF', R: 'COM CHEF' };
+
+function getUntaggedCommentReview(password) {
+  if (String(password || '').trim() !== '0007') return { error: 'Mot de passe incorrect.' };
+  try {
+    const ss = getSS_();
+    const shByKey = { alex: ss.getSheetByName('APP Alex'), eve: ss.getSheetByName('APP Eve') };
+    const dataByKey = { alex: shByKey.alex.getDataRange().getValues(), eve: shByKey.eve.getDataRange().getValues() };
+    const shApp = ss.getSheetByName(APP_SHEET_NAME);
+    const dataApp = shApp.getDataRange().getValues();
+
+    const appById = {};
+    for (let i = 1; i < dataApp.length; i++) {
+      const id = String(dataApp[i][C_APP_ID]).trim();
+      if (id && !appById[id]) appById[id] = { nom: dataApp[i][C_APP_NOM], date: formatDateHeureFR_(dataApp[i][C_APP_DATE]), motif: dataApp[i][C_APP_MOTIF], pdf: dataApp[i][C_APP_PDF] };
+    }
+
+    // Pool des textes non tagués, par colonne (M/O/Q/R)
+    const pool = { M: [], O: [], Q: [], R: [] };
+    const byIdFields = {}; // id -> { M: {value,tagged}, O:.., Q:.., R:.. }
+
+    DRIFT_COLS.forEach(function (spec) {
+      const data = dataByKey[spec.sheet];
+      for (let i = 1; i < data.length; i++) {
+        const rowId = String(data[i][0]).trim();
+        if (!rowId) continue;
+        const val = String(data[i][spec.idx] || '').trim();
+        if (!byIdFields[rowId]) byIdFields[rowId] = {};
+        if (!val) continue;
+        const tagged = !!extractEveTagId_(val);
+        byIdFields[rowId][spec.col] = { value: val, tagged: tagged };
+        if (!tagged) pool[spec.col].push({ sheet: spec.sheet, row: i + 1, id: rowId, text: val });
+      }
+    });
+
+    // Ne proposer un candidat pour UNE AUTRE fiche que s'il est réellement disponible : si la
+    // fiche 3523 a déjà (elle-même) un commentaire à cet endroit, ne pas offrir "3523" comme
+    // candidat ailleurs — sinon on propose un commentaire qui est en réalité déjà chez lui,
+    // souvent une ligne en double physique du même ID (confirmé par Brice le 2026-08-10).
+    Object.keys(pool).forEach(function (col) {
+      pool[col] = pool[col].filter(function (p) {
+        const own = byIdFields[p.id] && byIdFields[p.id][col];
+        return own && own.value === p.text;
+      });
+    });
+
+    const rows = [];
+    Object.keys(byIdFields).forEach(function (id) {
+      const fields = byIdFields[id];
+      const hasUntagged = ['M', 'O', 'Q', 'R'].some(function (c) { return fields[c] && !fields[c].tagged; });
+      if (!hasUntagged) return;
+      const info = appById[id] || {};
+      rows.push({ id: id, nom: info.nom || '', date: info.date || '', motif: info.motif || '', pdf: info.pdf || '', fields: fields });
+    });
+    rows.sort(function (a, b) { return Number(a.id) - Number(b.id); });
+
+    return { rows: rows, pool: pool };
+  } catch (e) {
+    return { error: e.toString() };
+  }
+}
+
+/**
+ * Contexte complet (bilan PDF + les 4 champs M/O/Q/R, tagués ou non) pour UNE fiche donnée —
+ * utilisé par la popup de comparaison "ancienne fiche / nouvelle fiche" dans EveReview.html,
+ * pour que Brice voie de quoi il retourne avant d'appliquer une correction de décalage.
+ */
+function getFicheCommentContext(password, id) {
+  if (String(password || '').trim() !== '0007') return { error: 'Mot de passe incorrect.' };
+  id = String(id || '').trim();
+  if (!id) return { error: 'ID manquant.' };
+  try {
+    const ss = getSS_();
+    const shByKey = { alex: ss.getSheetByName('APP Alex'), eve: ss.getSheetByName('APP Eve') };
+    const dataByKey = { alex: shByKey.alex.getDataRange().getValues(), eve: shByKey.eve.getDataRange().getValues() };
+    const shApp = ss.getSheetByName(APP_SHEET_NAME);
+    const dataApp = shApp.getDataRange().getValues();
+
+    let info = null;
+    for (let i = 1; i < dataApp.length; i++) {
+      if (String(dataApp[i][C_APP_ID]).trim() === id) {
+        info = { nom: dataApp[i][C_APP_NOM], date: formatDateHeureFR_(dataApp[i][C_APP_DATE]), motif: dataApp[i][C_APP_MOTIF], pdf: dataApp[i][C_APP_PDF] };
+        break;
+      }
+    }
+
+    const fields = {};
+    DRIFT_COLS.forEach(function (spec) {
+      const data = dataByKey[spec.sheet];
+      for (let i = 1; i < data.length; i++) {
+        if (String(data[i][0]).trim() !== id) continue;
+        const val = String(data[i][spec.idx] || '').trim();
+        if (val) fields[spec.col] = { value: val, tagged: !!extractEveTagId_(val) };
+        break;
+      }
+    });
+
+    return { id: id, nom: (info && info.nom) || '', date: (info && info.date) || '', motif: (info && info.motif) || '', pdf: (info && info.pdf) || '', fields: fields, found: !!info };
+  } catch (e) {
+    return { error: e.toString() };
+  }
+}
+
+/**
+ * Assigne un texte (tagué automatiquement pour targetId) à un champ M/O/Q/R d'une intervention.
+ * sourceRef (optionnel) : {sheet, row} d'où provient le texte choisi dans le pool — nettoyé
+ * après écriture. Absent si texte saisi librement ou si on confirme la ligne telle quelle.
+ * expectedCurrent : valeur actuellement affichée côté client pour ce champ au moment où
+ * l'utilisateur a fait son choix — sécurité anti-écrasement (2026-08-06, demandé par Brice après
+ * avoir remarqué qu'un déplacement de commentaire taggé pourrait sinon écraser silencieusement
+ * un commentaire déjà présent, potentiellement lui-même sans tag). Si la case a changé entre
+ * temps (autre correction en cours en parallèle), on refuse plutôt que d'écraser.
+ */
+function assignCommentField(password, targetId, col, text, sourceRef, expectedCurrent) {
+  if (String(password || '').trim() !== '0007') return { success: false, error: 'Mot de passe incorrect.' };
+  try {
+    const ss = getSS_();
+    const spec = DRIFT_COLS.filter(function (s) { return s.col === col; })[0];
+    if (!spec) return { success: false, error: 'Colonne inconnue: ' + col };
+    const sh = ss.getSheetByName(spec.sheetName);
+    const id = String(targetId || '').trim();
+    if (!id) return { success: false, error: 'ID manquant.' };
+
+    const tagged = appendOrReplaceTag_(text, DRIFT_TAG_PREFIX[col], id, []);
+
+    const data = sh.getDataRange().getValues();
+    let destRow = null;
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim() === id) { destRow = i + 1; break; }
+    }
+    if (destRow) {
+      const currentNow = String(data[destRow - 1][spec.idx] || '').trim();
+      const expected = String(expectedCurrent || '').trim();
+      if (currentNow !== expected) {
+        return { success: false, blocked: true, error: 'La case a changé depuis le chargement de la page (peut-être corrigée entre temps) — recharge la page pour revoir l\'état actuel avant de continuer.', actualCurrent: currentNow };
+      }
+    }
+    if (!destRow) {
+      const shApp = ss.getSheetByName(APP_SHEET_NAME);
+      const dataApp = shApp.getDataRange().getValues();
+      let appRow = null;
+      for (let i = 1; i < dataApp.length; i++) {
+        if (String(dataApp[i][C_APP_ID]).trim() === id) { appRow = dataApp[i]; break; }
+      }
+      destRow = sh.getLastRow() + 1;
+      sh.getRange(destRow, 1).setValue(id);
+      if (appRow) {
+        sh.getRange(destRow, 2).setValue(appRow[C_APP_MOTIF]);
+        sh.getRange(destRow, 3).setValue(appRow[C_APP_PDF]);
+        sh.getRange(destRow, 5).setValue(appRow[C_APP_NOM]);
+      }
+    }
+    sh.getRange(destRow, spec.sheetCol).setValue(tagged);
+
+    if (spec.anchorCol) {
+      const shApp2 = ss.getSheetByName(APP_SHEET_NAME);
+      const dataApp2 = shApp2.getDataRange().getValues();
+      for (let i = 1; i < dataApp2.length; i++) {
+        if (String(dataApp2[i][C_APP_ID]).trim() === id) { shApp2.getRange(i + 1, spec.anchorCol).setValue(tagged); break; }
+      }
+    }
+
+    // Si le texte vient du pool (pas saisi librement) et que ce n'est pas la ligne elle-même,
+    // nettoyer la case d'origine pour ne pas laisser un doublon égaré.
+    if (sourceRef && sourceRef.row && !(sourceRef.sheet === spec.sheet && sourceRef.row === destRow)) {
+      const srcSheet = ss.getSheetByName(sourceRef.sheet === 'alex' ? 'APP Alex' : 'APP Eve');
+      const srcSpec = DRIFT_COLS.filter(function (s) { return s.sheet === sourceRef.sheet && s.col === col; })[0];
+      if (srcSpec) {
+        srcSheet.getRange(sourceRef.row, srcSpec.sheetCol).setValue('');
+        try { if (sourceRef.sheet === 'alex') pushAppAlexRowByRowNum_(sourceRef.row); else pushAppEveRowByRowNum_(sourceRef.row); } catch (e1) {}
+      }
+    }
+
+    try {
+      if (spec.sheet === 'alex') pushAppAlexRowByRowNum_(destRow); else pushAppEveRowByRowNum_(destRow);
+      pushAppRowById_(id);
+    } catch (fsErr) { Logger.log('assignCommentField push: ' + fsErr); }
+
+    return { success: true };
+  } catch (e) {
+    return { success: false, error: e.toString() };
+  }
+}
+
 function getAdminData(password) {
   if (password && String(password).trim() !== "0007") throw new Error("Mot de passe incorrect.");
   
   // === CHERCHER CACHE ===
   const cache = CacheService.getScriptCache();
-  const adminCached = cache.get("admin_data_full_v2");
+  const adminCached = cache.get("admin_data_full_v6");
   if(adminCached) {
     const result = JSON.parse(adminCached);
     result.fromCache = true;
     return result;
   }
   // Spreadsheet fallback
-  const shAdmin = sheetCacheGet("admin_data_full_v2");
-  if(shAdmin) { shAdmin.fromCache = true; try { cache.put("admin_data_full_v2", JSON.stringify(shAdmin), 7200); } catch(e){} return shAdmin; }
+  const shAdmin = sheetCacheGet("admin_data_full_v6");
+  if(shAdmin) { shAdmin.fromCache = true; try { cache.put("admin_data_full_v6", JSON.stringify(shAdmin), 7200); } catch(e){} return shAdmin; }
   
   const ss = getSS_();
   const dash = ss.getSheetByName(DASHBOARD_SHEET_NAME);
@@ -979,8 +2026,7 @@ function getAdminData(password) {
   }
 
   // 2025 YTD
-  const lastDateRaw = dash.getRange(DASH_LASTDATE_CELL).getValue();
-  const lastDate = coerceToDate_(lastDateRaw) || new Date();
+  const lastDate = _computeLastDataDate_(ss, dash);
   const cutoffCode = (lastDate.getMonth() + 1) * 100 + lastDate.getDate();
 
   try {
@@ -1038,42 +2084,350 @@ function getAdminData(password) {
   })).sort((a, b) => b.total - a.total);
 
   // === INÉLIGIBILITÉ À LA GARDE ===
-  // Mois précédent complet : si on est en juin (5), on prend mai (4)
+  // Inéligibilité pour le MOIS PROCHAIN, calculée sur les chiffres du dernier mois COMPLET
+  // (mois précédent) : du 1er au 31 juillet, on affiche l'inéligibilité d'août,
+  // en se basant sur les heures de juin (dernier mois entièrement clos).
   const now = new Date();
-  const prevMonthIdx = now.getMonth() === 0 ? 11 : now.getMonth() - 1;
-  const nbMoisPris = prevMonthIdx + 1; // nb de mois du 1er janvier au dernier jour du mois précédent
+  const curMonthIdx = now.getMonth();
+  const dataMonthIdx = curMonthIdx === 0 ? 11 : curMonthIdx - 1;    // dernier mois complet (ex: juin si on est en juillet)
+  const targetMonthIdx = curMonthIdx === 11 ? 0 : curMonthIdx + 1; // mois prochain (ex: août si on est en juillet)
+  const nbMoisPris = dataMonthIdx + 1; // nb de mois du 1er janvier au dernier mois complet (inclus)
   const MONTH_NAMES = ["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"];
-  const ineligibles = [];
+  // Éligibles = complément exact des inéligibles (agent actif éligible dès qu'AU MOINS un des
+  // deux critères passe) — même liste source (Object.values(agentMap), tous les agents actifs),
+  // donc chaque agent actif tombe dans l'une des deux listes, jamais aucune, jamais les deux
+  // (confirmé par Brice le 2026-08-06, bouton "Afficher éligibilité" à côté de l'inéligibilité).
+  // Astreinte/dispo UNIQUEMENT — les heures de garde déjà effectuées ne comptent pas comme
+  // condition d'éligibilité À la garde (ce serait circulaire). Confirmé par Brice le 2026-08-06
+  // sur le cas concret de BODE--FOUSSARD LINA : ses vraies heures (8,5h astreinte en juillet,
+  // 144,5h cumulées jan-juil) ne passaient aucun des deux critères une fois la garde retirée,
+  // alors que garde+astreinte combinées la faisaient passer à tort en éligible.
+  const ineligibles = [], eligibles = [];
   for (const s of Object.values(agentMap)) {
-    const derMois = (s.mAst[prevMonthIdx] || 0) + (s.mGarde[prevMonthIdx] || 0);
+    const derMois = s.mAst[dataMonthIdx] || 0;
     let totalAnnee = 0;
-    for (let m = 0; m <= prevMonthIdx; m++) totalAnnee += (s.mAst[m] || 0) + (s.mGarde[m] || 0);
+    for (let m = 0; m <= dataMonthIdx; m++) totalAnnee += (s.mAst[m] || 0);
     const moyenne = nbMoisPris > 0 ? totalAnnee / nbMoisPris : 0;
-    // Affiché uniquement si LES DEUX critères échouent (< 24h)
-    if (derMois < 24 && moyenne < 24) {
-      ineligibles.push({
-        nom: s.nom,
-        derMois: Math.round(derMois * 2) / 2,
-        totalAnnee: Math.round(totalAnnee * 2) / 2,
-        moyenne: Math.round(moyenne * 10) / 10,
-        nbMois: nbMoisPris
-      });
-    }
+    const entry = {
+      nom: s.nom,
+      derMois: Math.round(derMois * 2) / 2,
+      totalAnnee: Math.round(totalAnnee * 2) / 2,
+      moyenne: Math.round(moyenne * 10) / 10,
+      nbMois: nbMoisPris
+    };
+    // Inéligible uniquement si LES DEUX critères échouent (< 24h) ; éligible sinon.
+    if (derMois < 24 && moyenne < 24) ineligibles.push(entry);
+    else eligibles.push(entry);
   }
   ineligibles.sort((a, b) => a.nom.localeCompare(b.nom, "fr"));
+  eligibles.sort((a, b) => a.nom.localeCompare(b.nom, "fr"));
   const ineligibilite = {
-    prevMonthLabel: MONTH_NAMES[prevMonthIdx],
+    targetMonthLabel: MONTH_NAMES[targetMonthIdx], // mois pour lequel l'inéligibilité s'applique
+    dataMonthLabel: MONTH_NAMES[dataMonthIdx],     // mois dont les heures ont servi de base de calcul
     nbMois: nbMoisPris,
     refDate: Utilities.formatDate(now, "Europe/Paris", "dd/MM/yyyy"),
-    agents: ineligibles
+    agents: ineligibles,
+    eligibleAgents: eligibles
   };
 
   const result = { activity: stats, sollicitation: soll, monthly: monthly, ineligibilite: ineligibilite };
-  
+
   // === METTRE EN CACHE ===
-  cache.put("admin_data_full_v2", JSON.stringify(result), 7200);
-  sheetCachePut("admin_data_full_v2", result, 7200);
-  
+  cache.put("admin_data_full_v6", JSON.stringify(result), 7200);
+  sheetCachePut("admin_data_full_v6", result, 7200);
+
+  return result;
+}
+
+// ============================================================
+// SUIVI DU TOTAL HORAIRE — croisement avec l'app Gestion Événements
+// (2026-08-07, demandé par Brice) : heures d'astreinte/dispo (cette app)
+// + heures d'activité opérationnelle annexe / formation / médecine d'aptitude
+// (app "Gestion Événements", table "Temps annexe" calculée uniquement sur les
+// événements Validé=TRUE). Les deux apps ont des listes d'agents indépendantes
+// (formats de nom différents), donc on rapproche par nom normalisé (accents/
+// tirets/casse ignorés) — tout agent actif ici sans correspondance côté Gestion
+// Événements, ou tout agent côté Gestion Événements sans correspondance ici,
+// est remonté dans `unmatched` plutôt que deviné silencieusement.
+// ============================================================
+
+const GESTION_EVENEMENTS_URL = "https://script.google.com/macros/s/AKfycbzOOAiyc7Itsjd_VgjYU3ik2Gf-RlZ3VKl9h5EztNbSr6nU8W9SHvIvtRK87d4u2WXR-w/exec";
+const GESTION_EVENEMENTS_PWD = "0007";
+const DOMAINE_OPERATIONNEL = "Opérationnel";
+const DOMAINE_MEDECINE = "Médecine d'aptitude";
+const DOMAINE_FORMATION = "Action de formation";
+
+/** Alias confirmés par Brice le 2026-08-07 : le nom (normalisé) ne se rapproche pas automatiquement
+ *  entre les deux apps (nom de naissance, nom marital, variante de prénom...) mais c'est la même personne. */
+const AO_TO_GE_NAME_ALIAS_ = {
+  "DENIAU DANIELE": "DENIAU DANY",
+  "FRIEDERICH JOELLE": "FRIEDERICH ALLANIC JOELLE",
+  "GARCIA GIL CLAUDIA": "GARCIA CLAUDIA",
+  "RAYNAUD CINDY": "RAYNAUD VOIRIN CINDY",
+  "RIERA SAFYA": "RIERA ZAROURI SAFIA",
+  "TOUSTOU JEAN CHRISTOPHE": "TOUSTOU JEAN CLAUDE"
+};
+
+// Idem pour l'onglet "Heure VMA" (même classeur) — liste de noms saisie à la main,
+// indépendante des deux listes ci-dessus. Confirmés par Brice le 2026-08-08. Valeur = tableau
+// (pas juste un fallback) car un même agent peut apparaître sous plusieurs entrées VMA à
+// additionner — ex. BEJAT FLORIE a un doublon "BEJAT (copie 1) FLORIE" avec des heures propres,
+// les deux comptent.
+const AO_TO_VMA_NAME_ALIAS_ = {
+  "BEJAT FLORIE": ["BEJAT COPIE FLORIE"],
+  "WIEGAND RAYMOND CECILE": ["WIEGAND CECILE"],
+  "RAYNAUD CINDY": ["RAYNAUD CYNDY"],
+  "SOLEY ANAIS": ["PEREZ ANAIS"]
+};
+
+const VMA_SHEET_NAME = "Heure VMA";
+
+/** Heures de médecine d'aptitude (VMA) par agent et par mois, depuis l'onglet "Heure VMA"
+ *  (A=Date, B=Heure début, C=Heure fin, D=nom ISP saisi à la main). Lignes sans nom ignorées. */
+function computeVmaHoursByAgent_(ss, year) {
+  const result = {}; // normUpperName -> { mois:[12], rawNoms:{} }
+  const sh = ss.getSheetByName(VMA_SHEET_NAME);
+  if (!sh) return result;
+  const lastRow = sh.getLastRow();
+  if (lastRow < 2) return result;
+  const data = sh.getRange(2, 1, lastRow - 1, 4).getValues();
+  for (let i = 0; i < data.length; i++) {
+    const nomRaw = String(data[i][3] || "").trim();
+    if (!nomRaw) continue;
+    const dateVal = coerceToDateTime_(data[i][0]);
+    if (!dateVal || dateVal.getFullYear() !== year) continue;
+    const debut = data[i][1], fin = data[i][2];
+    if (!(debut instanceof Date) || !(fin instanceof Date)) continue;
+    let heures = (fin.getTime() - debut.getTime()) / 3600000;
+    if (heures < 0) heures += 24; // passage minuit
+    if (heures <= 0) continue;
+    const key = normalizeAgentName_(nomRaw);
+    if (!result[key]) result[key] = { mois: new Array(12).fill(0), rawNoms: {} };
+    result[key].mois[dateVal.getMonth()] += heures;
+    result[key].rawNoms[nomRaw] = true;
+  }
+  return result;
+}
+
+/** Normalise un nom d'agent pour rapprochement inter-apps : majuscules, sans accents, sans ponctuation. */
+function normalizeAgentName_(s) {
+  var noAccents = String(s || "").normalize("NFD").replace(/\p{Diacritic}/gu, "");
+  return noAccents
+    .toUpperCase()
+    .replace(/[^A-Z]+/g, " ")
+    .trim()
+    .replace(/\s+/g, " ");
+}
+
+/** Heures d'astreinte/dispo par agent actif et par mois (2026) — même source que getAdminData, isolée pour réutilisation. */
+function getAgentMonthlyAstreinteMap_(ss) {
+  const activeAgents = getActiveAgents_(ss);
+  const map = {};
+  activeAgents.forEach(a => { map[a.mat] = { nom: a.nom, mat: a.mat, mAst: new Array(12).fill(0) }; });
+  const shTemps26 = ss.getSheetByName(TEMPS_SHEET_NAME);
+  if (shTemps26) {
+    const data = shTemps26.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      const matAst = normalizeMat(data[i][C_TEMPS_MAT_AST]);
+      if (matAst && map[matAst]) {
+        const dA = coerceToDateTime_(data[i][C_TEMPS_DATE_AST]);
+        if (dA) map[matAst].mAst[dA.getMonth()] += 0.5;
+      }
+    }
+  }
+  return map;
+}
+
+function fetchTempsAnnexeFromGestionEvenements_(year) {
+  const resp = UrlFetchApp.fetch(GESTION_EVENEMENTS_URL, {
+    method: "post",
+    contentType: "application/json",
+    payload: JSON.stringify({ action: "getTempsAnnexeAllDomaines", pwd: GESTION_EVENEMENTS_PWD, year: year }),
+    muteHttpExceptions: true,
+    followRedirects: true
+  });
+  const code = resp.getResponseCode();
+  const text = resp.getContentText();
+  let json;
+  try { json = JSON.parse(text); }
+  catch (e) { throw new Error("HTTP " + code + " — reponse non-JSON: " + text.substring(0, 200)); }
+  if (json.error) throw new Error("Gestion Événements: " + json.error);
+  return json.result; // { year, domaines, agents:[{nom, parDomaine:{...}}] }
+}
+
+/** Debug (0007) — cherche un matricule dans Config Agents et renvoie la ligne trouvée. */
+function debugFindAgentByMat(password, mat) {
+  if (String(password || '').trim() !== '0007') throw new Error('Mot de passe incorrect.');
+  const ss = getSS_();
+  const sh = getOrCreateAgentsSheet_(ss);
+  const data = sh.getDataRange().getValues();
+  const norm = normalizeMat(mat);
+  for (let i = 1; i < data.length; i++) {
+    if (normalizeMat(data[i][1]) === norm) {
+      return { row: i + 1, nom: data[i][0], mat: data[i][1], actif: data[i][2] };
+    }
+  }
+  return { found: false };
+}
+
+/** Debug (0007) — liste les onglets du classeur + un aperçu des 5 premières lignes d'un onglet donné. */
+function debugListSheets(password, sheetName) {
+  if (String(password || '').trim() !== '0007') throw new Error('Mot de passe incorrect.');
+  const ss = getSS_();
+  const names = ss.getSheets().map(function(s) { return s.getName(); });
+  let preview = null;
+  if (sheetName) {
+    const sh = ss.getSheetByName(sheetName);
+    if (sh) {
+      const lastRow = Math.min(sh.getLastRow(), 6);
+      const lastCol = Math.min(sh.getLastColumn(), 8);
+      preview = lastRow > 0 ? sh.getRange(1, 1, lastRow, lastCol).getValues() : [];
+    }
+  }
+  return { sheetNames: names, preview: preview };
+}
+
+/** Debug (0007) — inspecte brut la réponse de l'appel UrlFetchApp vers Gestion Événements. */
+function debugFetchGestionEvenements(password) {
+  if (String(password || "").trim() !== "0007") throw new Error("Mot de passe incorrect.");
+  const resp = UrlFetchApp.fetch(GESTION_EVENEMENTS_URL, {
+    method: "post",
+    contentType: "application/json",
+    payload: JSON.stringify({ action: "getTempsAnnexeAllDomaines", pwd: GESTION_EVENEMENTS_PWD, year: 2026 }),
+    muteHttpExceptions: true,
+    followRedirects: true
+  });
+  return {
+    code: resp.getResponseCode(),
+    bodyLen: resp.getContentText().length,
+    bodyStart: resp.getContentText().substring(0, 800)
+  };
+}
+
+function getSuiviHoraireGlobal(password) {
+  if (String(password || "").trim() !== "0007") throw new Error("Mot de passe incorrect.");
+
+  const cache = CacheService.getScriptCache();
+  const cacheKey = "suivi_horaire_global_v5";
+  const cached = cache.get(cacheKey);
+  if (cached) { const r = JSON.parse(cached); r.fromCache = true; return r; }
+  const shCached = sheetCacheGet(cacheKey);
+  if (shCached) { shCached.fromCache = true; try { cache.put(cacheKey, JSON.stringify(shCached), 7200); } catch(e){} return shCached; }
+
+  const ss = getSS_();
+  const year = new Date().getFullYear();
+  const astreinteMap = getAgentMonthlyAstreinteMap_(ss);
+  const activeAgents = getActiveAgents_(ss).sort((a, b) => a.nom.localeCompare(b.nom, "fr"));
+
+  let annexe, fetchError = null;
+  try {
+    annexe = fetchTempsAnnexeFromGestionEvenements_(year);
+  } catch (e) {
+    fetchError = e.toString();
+    annexe = { agents: [] };
+  }
+
+  const geByNorm = {};
+  annexe.agents.forEach(a => { geByNorm[normalizeAgentName_(a.nom)] = a; });
+  const geMatched = {};
+
+  const vmaByNorm = computeVmaHoursByAgent_(ss, year);
+  const vmaMatched = {};
+
+  const MONTH_NAMES = ["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"];
+  const now = new Date();
+  const curMonthIdx = now.getMonth();
+  const dataMonthIdx = curMonthIdx === 0 ? 11 : curMonthIdx - 1;
+  const nbMoisPris = dataMonthIdx + 1;
+  const round1 = v => Math.round(v * 10) / 10;
+  const zero12 = () => new Array(12).fill(0);
+
+  const rowsOperationnel = [], rowsFormation = [], rowsMedecine = [], rowsAnnexeTotal = [], rowsSuivi = [];
+  const aoSansCorrespondance = [];
+
+  activeAgents.forEach(agent => {
+    const key = normalizeAgentName_(agent.nom);
+    const matchedKey = geByNorm[key] ? key : (geByNorm[AO_TO_GE_NAME_ALIAS_[key]] ? AO_TO_GE_NAME_ALIAS_[key] : null);
+    const ge = matchedKey ? geByNorm[matchedKey] : null;
+    if (ge) geMatched[matchedKey] = true; else aoSansCorrespondance.push(agent.nom);
+
+    // Pas de "sans correspondance VMA" listé ici : contrairement aux heures annexes (où quasi
+    // tout le monde a un événement tôt ou tard), la VMA ne concerne qu'une partie des ISP —
+    // 0h VMA est un état normal, pas une anomalie. Seuls les noms VMA non rattachés (probable
+    // typo/doublon) sont remontés, via vmaNonRattaches plus bas.
+    // Toutes les entrées VMA correspondantes sont ADDITIONNÉES (pas juste la première trouvée) —
+    // un agent peut avoir un doublon de saisie (ex. BEJAT FLORIE / BEJAT (copie 1) FLORIE) dont
+    // les heures doivent toutes compter.
+    const vmaKeys = [key].concat(AO_TO_VMA_NAME_ALIAS_[key] || []);
+    let medVmaM = zero12();
+    vmaKeys.forEach(function (k) {
+      if (vmaByNorm[k]) {
+        vmaMatched[k] = true;
+        medVmaM = medVmaM.map(function (v, i) { return v + vmaByNorm[k].mois[i]; });
+      }
+    });
+
+    const opeM = ge ? ge.parDomaine[DOMAINE_OPERATIONNEL] : zero12();
+    const forM = ge ? ge.parDomaine[DOMAINE_FORMATION] : zero12();
+    const medGeM = ge ? ge.parDomaine[DOMAINE_MEDECINE] : zero12();
+    const medM = medGeM.map((v, i) => v + (medVmaM[i] || 0));
+    const annexeM = opeM.map((v, i) => v + forM[i] + medM[i]);
+    const astM = (astreinteMap[agent.mat] && astreinteMap[agent.mat].mAst) || zero12();
+    const totalM = annexeM.map((v, i) => v + astM[i]);
+
+    rowsOperationnel.push({ nom: agent.nom, months: opeM.map(round1), total: round1(opeM.reduce((a, b) => a + b, 0)) });
+    rowsFormation.push({ nom: agent.nom, months: forM.map(round1), total: round1(forM.reduce((a, b) => a + b, 0)) });
+    rowsMedecine.push({ nom: agent.nom, months: medM.map(round1), total: round1(medM.reduce((a, b) => a + b, 0)) });
+    rowsAnnexeTotal.push({ nom: agent.nom, months: annexeM.map(round1), total: round1(annexeM.reduce((a, b) => a + b, 0)) });
+
+    // Objectif : (astreinte>=24h ET autre>=12h) OU astreinte>=36h, sur le dernier mois complet,
+    // sinon sur la moyenne des mois écoulés depuis janvier (même fenêtre que l'inéligibilité garde).
+    const derMoisAst = astM[dataMonthIdx] || 0;
+    const derMoisAutre = annexeM[dataMonthIdx] || 0;
+    const metLastMonth = (derMoisAst >= 24 && derMoisAutre >= 12) || derMoisAst >= 36;
+
+    let totalAstAnnee = 0, totalAutreAnnee = 0;
+    for (let m = 0; m <= dataMonthIdx; m++) { totalAstAnnee += (astM[m] || 0); totalAutreAnnee += (annexeM[m] || 0); }
+    const moyAst = nbMoisPris > 0 ? totalAstAnnee / nbMoisPris : 0;
+    const moyAutre = nbMoisPris > 0 ? totalAutreAnnee / nbMoisPris : 0;
+    const metAverage = (moyAst >= 24 && moyAutre >= 12) || moyAst >= 36;
+
+    rowsSuivi.push({
+      nom: agent.nom,
+      months: totalM.map(round1),
+      total: round1(totalM.reduce((a, b) => a + b, 0)),
+      objectifAtteint: metLastMonth || metAverage,
+      derMoisAst: round1(derMoisAst), derMoisAutre: round1(derMoisAutre),
+      moyAst: round1(moyAst), moyAutre: round1(moyAutre)
+    });
+  });
+
+  const geNonRattaches = annexe.agents.filter(a => !geMatched[normalizeAgentName_(a.nom)]).map(a => a.nom);
+  const vmaNonRattaches = [];
+  Object.keys(vmaByNorm).forEach(function (k) {
+    if (!vmaMatched[k]) Object.keys(vmaByNorm[k].rawNoms).forEach(function (raw) { vmaNonRattaches.push(raw); });
+  });
+
+  const result = {
+    year: year,
+    monthLabels: MONTH_NAMES,
+    dataMonthLabel: MONTH_NAMES[dataMonthIdx],
+    nbMois: nbMoisPris,
+    tables: { operationnel: rowsOperationnel, formation: rowsFormation, medecine: rowsMedecine, annexeTotal: rowsAnnexeTotal },
+    suiviHoraire: rowsSuivi,
+    unmatched: { aoSansCorrespondance: aoSansCorrespondance, geNonRattaches: geNonRattaches, vmaNonRattaches: vmaNonRattaches },
+    fetchError: fetchError
+  };
+
+  // Ne pas mettre en cache un échec de récupération (sinon l'erreur transitoire reste affichée
+  // jusqu'à 2h) — seul un résultat avec des données Gestion Événements valides est mis en cache.
+  if (!fetchError) {
+    try {
+      cache.put(cacheKey, JSON.stringify(result), 7200);
+      sheetCachePut(cacheKey, result, 7200);
+    } catch (e) {}
+  }
+
   return result;
 }
 
@@ -1116,28 +2470,33 @@ function getHistoriqueTempsTravailAdmin() {
 function getAstreinteISPP() {
   const NOMS_ISPP = ["Dubrey", "Bois", "Piguillem", "Le Roy"];
   const MOIS_NOMS = ["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"];
-  const COL_H = 7; // colonne H (Infirmier astreinte) = index 7 (0-based)
-  
+
   // Vérifier le cache
   const cache = CacheService.getScriptCache();
-  const cached = cache.get("astreinte_dept_ispp_v3");
+  const cached = cache.get("astreinte_dept_ispp_v4");
   if (cached) return JSON.parse(cached);
-  const shCachedIspp = sheetCacheGet("astreinte_dept_ispp_v3");
-  if(shCachedIspp) { try { cache.put("astreinte_dept_ispp_v3", JSON.stringify(shCachedIspp), 7200); } catch(e){} return shCachedIspp; }
-  
+  const shCachedIspp = sheetCacheGet("astreinte_dept_ispp_v4");
+  if(shCachedIspp) { try { cache.put("astreinte_dept_ispp_v4", JSON.stringify(shCachedIspp), 7200); } catch(e){} return shCachedIspp; }
+
   const ss = SpreadsheetApp.openById(ID_SS_ASTREINTE_DEPT);
-  
+
   // Initialiser compteurs : { nom: [jan, fev, mar, ...] }
   const compteurs = {};
   NOMS_ISPP.forEach(n => compteurs[n] = new Array(12).fill(0));
-  
+
   for (let m = 0; m < 12; m++) {
     const sheetName = MOIS_NOMS[m] + " 2026";
     const sh = ss.getSheetByName(sheetName);
     if (!sh) continue;
     const lastRow = sh.getLastRow();
-    if (lastRow < 2) continue;
-    const colData = sh.getRange(2, COL_H + 1, lastRow - 1, 1).getValues();
+    const lastCol = sh.getLastColumn();
+    if (lastRow < 2 || lastCol < 1) continue;
+    // La colonne IAD n'est pas à une position fixe selon les mois : on la retrouve
+    // à chaque fois via son en-tête (ligne 1), plutôt que de se fier à une colonne figée.
+    const headers = sh.getRange(1, 1, 1, lastCol).getValues()[0];
+    const colIAD0 = headers.findIndex(h => String(h).trim().toUpperCase() === "IAD");
+    if (colIAD0 === -1) continue; // pas de colonne IAD trouvée sur ce mois
+    const colData = sh.getRange(2, colIAD0 + 1, lastRow - 1, 1).getValues();
     for (let i = 0; i < colData.length; i++) {
       const val = String(colData[i][0]).trim();
       if (!val) continue;
@@ -1156,8 +2515,8 @@ function getAstreinteISPP() {
     total: compteurs[nom].reduce((a, b) => a + b, 0)
   }));
   
-  cache.put("astreinte_dept_ispp_v3", JSON.stringify(result), 7200);
-  sheetCachePut("astreinte_dept_ispp_v3", result, 7200);
+  cache.put("astreinte_dept_ispp_v4", JSON.stringify(result), 7200);
+  sheetCachePut("astreinte_dept_ispp_v4", result, 7200);
   return result;
 }
 
@@ -1171,7 +2530,9 @@ function getPlanningMois(moisParam) {
   const todayMonth = today.getMonth();
   
   const ss = SpreadsheetApp.openById(ID_SS_ASTREINTE_DEPT);
-  const sheetName = moisNom + " 2026";
+  // Année calculée dynamiquement (pas figée à "2026") pour que le planning continue de
+  // fonctionner sans intervention manuelle après le changement d'année civile.
+  const sheetName = moisNom + " " + today.getFullYear();
   const sh = ss.getSheetByName(sheetName);
   
   if (!sh) return null;
@@ -1265,6 +2626,28 @@ function getPlanningMois(moisParam) {
   };
 }
 
+/* --- Authentification ISP légère (web app Firebase) : vérifie juste matricule+DOB et renvoie le
+   nom de l'agent, SANS faire tourner tout le calcul lourd de getIspStats (Temps travail/APP/APP
+   Alex/spreadsheet 2025 externe) — ces chiffres sont déjà synchronisés dans Firestore (stats/adminData,
+   stats/ispErrors) et recalculés côté client pour un affichage instantané. */
+function authIspLite(matriculeInput, dobInput) {
+  try {
+    const mat = normalizeMat(matriculeInput);
+    if (!checkAuth_(mat, dobInput)) return { error: "Date de naissance incorrecte." };
+    const ss = getSS_();
+    const allAgentsSh = getOrCreateAgentsSheet_(ss).getDataRange().getValues();
+    const foundAgentRow = allAgentsSh.slice(1).find(r => normalizeMat(r[1]) === mat);
+    if (!foundAgentRow) return { error: "Matricule non trouvé." };
+    // Un agent désactivé n'a plus accès à l'appli — son historique reste dans le spreadsheet
+    // mais n'est plus consultable via la web app (choix explicite de Brice, 2026-08-05).
+    const actif = foundAgentRow[2] === true || String(foundAgentRow[2]).toUpperCase() === "TRUE";
+    if (!actif) return { error: "Ce matricule n'est plus actif — accès désactivé." };
+    return { success: true, mat: mat, nom: String(foundAgentRow[0]).trim() };
+  } catch (e) {
+    return { error: String(e) };
+  }
+}
+
 /* --- ISP DATA --- */
 function getIspStats(matriculeInput, dobInput, forceRefresh) {
   try {
@@ -1274,7 +2657,10 @@ function getIspStats(matriculeInput, dobInput, forceRefresh) {
     if(!checkAuth_(mat, dobInput)) throw new Error("Date de naissance incorrecte.");
     
     const cache = CacheService.getScriptCache();
-    const cacheKey = "isp_v4_" + mat;
+    // v5 (2026-08-16) : version bumpee suite a un bug ou un cache ecrit avant l'ajout du champ
+    // "details" (fiches bilan ISP) etait encore servi (TTL 2h) apres deploiement du nouveau code,
+    // laissant la page ISP sans aucune fiche affichee malgre des donnees presentes cote serveur.
+    const cacheKey = "isp_v5_" + mat;
     if(!forceRefresh) {
       // 1. CacheService (rapide, <100Ko)
       const cached = cache.get(cacheKey);
@@ -1369,8 +2755,7 @@ function getIspStats(matriculeInput, dobInput, forceRefresh) {
 
     // 2025
     let hAst25_tot=0, hGarde25_tot=0, interHg25_tot=0, hAst25_ytd=0, hGarde25_ytd=0, interHg25_ytd=0;
-    const lastDateRaw = dash.getRange(DASH_LASTDATE_CELL).getValue();
-    const lastDate = coerceToDate_(lastDateRaw) || new Date();
+    const lastDate = _computeLastDataDate_(ss, dash);
     const cutoffCode = (lastDate.getMonth() + 1) * 100 + lastDate.getDate();
 
     try {
@@ -1378,12 +2763,15 @@ function getIspStats(matriculeInput, dobInput, forceRefresh) {
         const dash25 = ss25.getSheetByName("Dashboard");
         const lr = dash25.getLastRow();
         if(lr >= 3) {
-            const data25 = dash25.getRange(3, 1, lr-2, 40).getValues(); 
+            const data25 = dash25.getRange(3, 1, lr-2, 40).getValues();
+            // Dashboard (classeur 2025) : matricule en T (19), total inter hors garde en W (22),
+            // total heures astreinte en AL (37), total heures garde en AM (38) — confirmé par
+            // Brice le 2026-08-05 (l'ancien code lisait B/C/D, qui ne correspond plus à rien).
             for(let i=0; i<data25.length; i++) {
-                if(normalizeMat(data25[i][1]) === mat) {
-                    interHg25_tot = Number(data25[i][1]) || 0; 
-                    hAst25_tot = Number(data25[i][2]) || 0;
-                    hGarde25_tot = Number(data25[i][3]) || 0;
+                if(normalizeMat(data25[i][19]) === mat) {
+                    interHg25_tot = Number(data25[i][22]) || 0;
+                    hAst25_tot = Number(data25[i][37]) || 0;
+                    hGarde25_tot = Number(data25[i][38]) || 0;
                     break;
                 }
             }
@@ -1806,6 +3194,70 @@ function getNextAppChefferie() {
 }
 
 /**
+ * Équivalent rapide de getNextAppChefferie() pour la web app Firebase : le client connaît déjà,
+ * via Firestore, une fiche candidate (bilanKo/pisuKo, pas encore clôturée dans Alex) et son
+ * numéro de ligne APP — on lit donc CETTE ligne précise (au lieu de scanner ~3000 lignes) et on
+ * revérifie son éligibilité. Si la vérification échoue (état différent de ce que le client
+ * croyait), le client retente une autre candidate puis se rabat sur getNextAppChefferie().
+ */
+function claimAppChefferieByRowApp(rowApp, interId) {
+    try {
+        const ss = getSS_();
+        const shApp = ss.getSheetByName(APP_SHEET_NAME);
+        const shAlex = ss.getSheetByName("APP Alex");
+        if (!rowApp || rowApp < 2) return { claimFailed: true };
+
+        const appRow = shApp.getRange(rowApp, 1, 1, C_ACTION_MED + 1).getValues()[0];
+        const id = String(appRow[C_APP_ID]).trim();
+        if (id !== String(interId).trim()) return { claimFailed: true };
+
+        const bilanKo = isCheckboxChecked(appRow[C_BILAN_KO]);
+        const pisuKo = isCheckboxChecked(appRow[C_PISU_KO]);
+        if (!(bilanKo || pisuKo)) return { claimFailed: true };
+
+        const dataAlex = shAlex.getDataRange().getValues();
+        let alexData = null, alexRow = -1;
+        for (let j = 1; j < dataAlex.length; j++) {
+            if (String(dataAlex[j][0]).trim() === id) { alexData = dataAlex[j]; alexRow = j; break; }
+        }
+        if (alexData && isCheckboxChecked(alexData[13])) return { claimFailed: true };
+
+        const cis = String(appRow[C_APP_CIS] || "").trim();
+        const commChef = String(appRow[C_COMM_CHEF] || "").trim() || (alexData ? String(alexData[12] || "").trim() : "");
+
+        return {
+            found: true,
+            rowApp: rowApp,
+            rowAlex: alexRow + 1,
+            info: {
+                interId: id,
+                date: formatDateHeureFR_(appRow[C_APP_DATE]),
+                infName: appRow[C_APP_NOM],
+                motif: appRow[C_APP_MOTIF],
+                engin: String(appRow[C_APP_ENGIN] || "").trim(),
+                pdf: appRow[C_APP_PDF],
+                status: (cis === "SD SSSM") ? "De Garde" : "Astreinte / Dispo",
+                motifBilan: appRow[C_TXTBILAN_KO] || "",
+                motifPisu: appRow[C_TXTPISU_KO] || "",
+                bilanKo: bilanKo,
+                pisuKo: pisuKo,
+                infoT: String(appRow[C_APP_INFO_T] || "").trim()
+            },
+            checks: {
+                H: alexData ? isCheckboxChecked(alexData[7]) : false,
+                I: alexData ? isCheckboxChecked(alexData[8]) : false,
+                J: alexData ? isCheckboxChecked(alexData[9]) : false,
+                K: alexData ? isCheckboxChecked(alexData[10]) : false,
+                L: alexData ? isCheckboxChecked(alexData[11]) : false
+            },
+            commentChef: commChef
+        };
+    } catch (e) {
+        return { claimFailed: true, error: String(e) };
+    }
+}
+
+/**
  * Mode 2: Analyse Médecin Cheffe - Fiches avec L=1 (Erreur Grave) dans APP Alex
  */
 function getNextMedecinChef() {
@@ -1876,6 +3328,73 @@ function getNextMedecinChef() {
 }
 
 /**
+ * Équivalent rapide de getNextMedecinChef() : le client connaît déjà, via Firestore, une fiche
+ * grave (errGrave côté APP Alex) pas encore analysée. On revérifie directement par ID (APP Alex
+ * et APP Eve sont de petites tables, un scan complet reste rapide) et on lit la ligne APP par son
+ * numéro connu au lieu de rescanner ~3000 lignes.
+ */
+function claimMedecinChefByInterId(interId, rowApp) {
+    try {
+        const ss = getSS_();
+        const shAlex = ss.getSheetByName("APP Alex");
+        const shApp = ss.getSheetByName(APP_SHEET_NAME);
+        const shEve = ss.getSheetByName("APP Eve");
+        const id = String(interId || "").trim();
+        if (!id) return { claimFailed: true };
+
+        const dataAlex = shAlex.getDataRange().getValues();
+        let alexData = null, alexRow = -1;
+        for (let i = 1; i < dataAlex.length; i++) {
+            if (String(dataAlex[i][0]).trim() === id) { alexData = dataAlex[i]; alexRow = i; break; }
+        }
+        if (!alexData || !isCheckboxChecked(alexData[11])) return { claimFailed: true }; // plus grave / introuvable
+
+        const dataEve = shEve ? shEve.getDataRange().getValues() : [];
+        for (let j = 1; j < dataEve.length; j++) {
+            if (String(dataEve[j][0]).trim() === id && (dataEve[j][14] || dataEve[j][16])) return { claimFailed: true }; // déjà traité
+        }
+
+        let appInfo = null;
+        if (rowApp && rowApp >= 2) {
+            const candidate = shApp.getRange(rowApp, 1, 1, C_ACTION_MED + 1).getValues()[0];
+            if (String(candidate[C_APP_ID]).trim() === id) appInfo = candidate;
+        }
+        if (!appInfo) {
+            const dataApp = shApp.getDataRange().getValues();
+            for (let j = 1; j < dataApp.length; j++) {
+                if (String(dataApp[j][C_APP_ID]).trim() === id) { appInfo = dataApp[j]; break; }
+            }
+        }
+
+        const cis = appInfo ? String(appInfo[C_APP_CIS] || "").trim() : "";
+        const status = (cis === "SD SSSM") ? "De Garde" : "Astreinte / Dispo";
+        const commChefAnc = appInfo ? String(appInfo[C_COMM_CHEF] || "").trim() : "";
+        const commChefAlex = String(alexData[12] || "").trim();
+        const motifBilan = appInfo ? String(appInfo[C_TXTBILAN_KO] || "").trim() : "";
+        const motifPisu = appInfo ? String(appInfo[C_TXTPISU_KO] || "").trim() : "";
+
+        return {
+            found: true,
+            rowAlex: alexRow + 1,
+            info: {
+                interId: id,
+                date: appInfo ? formatDateHeureFR_(appInfo[C_APP_DATE]) : "",
+                infName: appInfo ? appInfo[C_APP_NOM] : alexData[4],
+                motif: appInfo ? appInfo[C_APP_MOTIF] : "",
+                engin: appInfo ? String(appInfo[C_APP_ENGIN] || "").trim() : "",
+                pdf: appInfo ? appInfo[C_APP_PDF] : alexData[2],
+                status: status,
+                commentISP: [motifBilan, motifPisu].filter(Boolean).join("\n"),
+                commentChef: commChefAnc || commChefAlex,
+                infoT: appInfo ? String(appInfo[C_APP_INFO_T] || "").trim() : ""
+            }
+        };
+    } catch (e) {
+        return { claimFailed: true, error: String(e) };
+    }
+}
+
+/**
  * Sauvegarder APP Chefferie
  */
 function saveAppChefferie(form) {
@@ -1886,15 +3405,22 @@ function saveAppChefferie(form) {
 
         // Toujours re-résoudre la ligne par ID d'intervention (jamais faire confiance à form.rowAlex,
         // qui peut être périmé si APP Alex a bougé entre l'ouverture de la fiche et l'enregistrement).
-        const dataAlex = shAlex.getDataRange().getValues();
+        // Verrou autour de la lecture+création : sans lui, deux chefs enregistrant deux NOUVELLES
+        // fiches en même temps pourraient tous les deux calculer "dernière ligne + 1" identique et
+        // s'écraser mutuellement (même risque que celui déjà corrigé pour actions_correction).
+        const lockAlex = LockService.getScriptLock();
+        lockAlex.waitLock(10000);
         let row = -1;
-        for(let i=1; i<dataAlex.length; i++) {
-            if(String(dataAlex[i][0]).trim() === interId) { row = i+1; break; }
-        }
-        if(row === -1) {
-            row = dataAlex.length + 1;
-            shAlex.getRange(row, 1).setValue(form.interId);
-        }
+        try {
+            const dataAlex = shAlex.getDataRange().getValues();
+            for(let i=1; i<dataAlex.length; i++) {
+                if(String(dataAlex[i][0]).trim() === interId) { row = i+1; break; }
+            }
+            if(row === -1) {
+                row = dataAlex.length + 1;
+                shAlex.getRange(row, 1).setValue(form.interId);
+            }
+        } finally { lockAlex.releaseLock(); }
 
         // Sauvegarder les checkboxes H, I, J, K, L
         shAlex.getRange(row, 8).setValue(form.checks.H ? true : false);  // H
@@ -1914,11 +3440,12 @@ function saveAppChefferie(form) {
         // Résistant aux décalages de formules FILTER dans APP Alex
         try {
             const shAppRef = ss.getSheetByName(APP_SHEET_NAME);
-            if (shAppRef && form.commentChef) {
+            if (shAppRef) {
                 const appData = shAppRef.getDataRange().getValues();
                 for (let j = 1; j < appData.length; j++) {
                     if (String(appData[j][C_APP_ID]).trim() === interId) {
-                        shAppRef.getRange(j + 1, C_COMM_CHEF + 1).setValue(taggedComment);
+                        if (form.commentChef) shAppRef.getRange(j + 1, C_COMM_CHEF + 1).setValue(taggedComment);
+                        _stampFirstTimestamp_(shAppRef, j + 1, C_TS_APP_CHEF);
                         break;
                     }
                 }
@@ -1932,6 +3459,8 @@ function saveAppChefferie(form) {
         sheetCacheRemove("all_isp_error_stats");
         const mat_ = _getMat_(ss, interId);
         if(mat_) { cache_.remove("isp_v4_" + mat_); cache_.remove("isp_detail_" + mat_); sheetCacheRemove("isp_v4_" + mat_); sheetCacheRemove("isp_detail_" + mat_); }
+
+        try { pushAppAlexRowById_(interId); pushAppRowById_(interId); } catch (fsErr) { Logger.log('Firestore sync (saveAppChefferie) non-fatal: ' + fsErr); }
 
         return { success: true };
     } catch(e) {
@@ -1948,22 +3477,27 @@ function saveMedecinAnalyse(form) {
         const ss = getSS_();
         const shEve = ss.getSheetByName("APP Eve");
         
-        // Chercher la ligne avec cet ID
-        const dataEve = shEve.getDataRange().getValues();
+        // Chercher la ligne avec cet ID — verrou autour de la lecture+création : sans lui, deux
+        // médecins enregistrant deux nouvelles fiches en même temps pourraient calculer la même
+        // "dernière ligne + 1" et s'écraser mutuellement.
+        const lockEve1 = LockService.getScriptLock();
+        lockEve1.waitLock(10000);
         let row = -1;
-        for(let i=1; i<dataEve.length; i++) {
-            if(String(dataEve[i][0]).trim() === form.interId) {
-                row = i+1;
-                break;
+        try {
+            const dataEve = shEve.getDataRange().getValues();
+            for(let i=1; i<dataEve.length; i++) {
+                if(String(dataEve[i][0]).trim() === form.interId) {
+                    row = i+1;
+                    break;
+                }
             }
-        }
-        
-        // Si pas trouvé, créer nouvelle ligne
-        if(row === -1) {
-            row = dataEve.length + 1;
-            shEve.getRange(row, 1).setValue(form.interId);
-        }
-        
+            // Si pas trouvé, créer nouvelle ligne
+            if(row === -1) {
+                row = dataEve.length + 1;
+                shEve.getRange(row, 1).setValue(form.interId);
+            }
+        } finally { lockEve1.releaseLock(); }
+
         // Analyse Médecin (colonne O = 15), taguée [COM MED CHEF id] pour sécuriser le circuit
         const interIdTrim = String(form.interId).trim();
         const taggedAnalyse = appendOrReplaceTag_(form.analyse, "COM MED CHEF", interIdTrim, ["COM CHEF"]);
@@ -1982,6 +3516,7 @@ function saveMedecinAnalyse(form) {
                     if (String(appData[j][C_APP_ID]).trim() === interIdTrim) {
                         if (form.analyse) shAppRef.getRange(j + 1, C_COMM_MED + 1).setValue(taggedAnalyse);
                         if (form.action)  shAppRef.getRange(j + 1, C_ACTION_MED + 1).setValue(taggedAction);
+                        _stampFirstTimestamp_(shAppRef, j + 1, C_TS_MED_CHEF);
                         break;
                     }
                 }
@@ -1995,6 +3530,8 @@ function saveMedecinAnalyse(form) {
         sheetCacheRemove("all_isp_error_stats");
         const mat_ = _getMat_(ss, interIdTrim);
         if(mat_) { cache_.remove("isp_v4_" + mat_); cache_.remove("isp_detail_" + mat_); sheetCacheRemove("isp_v4_" + mat_); sheetCacheRemove("isp_detail_" + mat_); }
+
+        try { pushAppEveRowById_(interIdTrim); pushAppRowById_(interIdTrim); } catch (fsErr) { Logger.log('Firestore sync (saveMedecinAnalyse) non-fatal: ' + fsErr); }
 
         return { success: true };
     } catch(e) {
@@ -2048,13 +3585,55 @@ function getNextCase(specificRow) {
     }
     
     if(rowToProcess === -1) return { done: true, message: "Tous les dossiers sont traités." };
-    
+
     // Écrire le timestamp de lock
     shApp.getRange(rowToProcess, C_BU_LOCK + 1).setValue(new Date());
-    
+
     const rowIdx = rowToProcess - 1;
     const row = data[rowIdx];
-    
+    const built = _buildCaseSchema_(row, shApp);
+
+    // Compter les fiches restantes (avec PDF valides, non clôturées, non lockées)
+    let remaining = 0;
+    const now = new Date();
+    const lockTimeoutMinutes = 30;
+    for(let i=rowToProcess; i<data.length; i++) {
+        const pdfVal = String(data[i][C_APP_PDF]).trim();
+        const isClosed = data[i][C_BP_CLOSE];
+        const lockTimestamp = data[i][C_BU_LOCK];
+
+        let isLocked = false;
+        if(lockTimestamp) {
+            const lockDate = new Date(lockTimestamp);
+            const diffMinutes = (now - lockDate) / (1000 * 60);
+            if(diffMinutes < lockTimeoutMinutes) {
+                isLocked = true;
+            }
+        }
+
+        if(pdfVal && pdfVal !== "#N/A" && !pdfVal.includes("#N/A") && !isClosed && !isLocked) {
+            remaining++;
+        }
+    }
+
+    return {
+        done: false,
+        rowNumber: rowToProcess,
+        info: built.info,
+        url: row[C_APP_PDF],
+        schema: built.schema,
+        ispList: built.ispList,
+        remaining: remaining
+    };
+}
+
+/**
+ * Construit {info, schema, ispList} pour une ligne APP donnée — extrait de getNextCase() pour
+ * être réutilisé par claimCaseByRowNum() (web app Firebase : le client connaît déjà la ligne
+ * candidate via Firestore, donc pas besoin de rescanner toute la feuille pour la trouver ;
+ * seule l'écriture du verrou + la lecture de CETTE ligne restent côté serveur).
+ */
+function _buildCaseSchema_(row, shApp) {
     // Récupérer les correspondances de protocoles depuis le fichier externe
     // Mapping des protocoles (colonne 0-indexed => label)
     // === MIGRATION: Ancien système (col 21-48) → Nouveau système (col 21-50) ===
@@ -2075,7 +3654,7 @@ function getNextCase(specificRow) {
         43: "Douleur aigue (6E)", 44: "ACR (8E)", 45: "Anaphylaxie (9E)", 46: "Asthme/BPCO (10E)",
         47: "Intox fumée (12E)", 48: "Convulsion (13E)", 49: "Nouveau Né (14E)", 50: "Hors Protocole (HPE)"
     };
-    
+
     // Construire la liste des protocoles depuis colonnes V à AW
     const protoList = [];
     for(let colIdx = C_PROTO_START; colIdx <= C_PROTO_END; colIdx++) {
@@ -2083,18 +3662,18 @@ function getNextCase(specificRow) {
         if(label) {
             // Charger l'état réel de la case depuis la feuille
             const isChecked = isCheckboxChecked(row[colIdx]);
-            protoList.push({ 
-                colIdx: colIdx, 
-                label: label, 
-                checked: isChecked 
+            protoList.push({
+                colIdx: colIdx,
+                label: label,
+                checked: isChecked
             });
         }
     }
-    
+
     // Séparer adultes (V-AL = 21-37) et pédiatriques (AM-AW = 38-48)
     const protoAdult = protoList.filter(p => p.colIdx <= 38);
     const protoPedia = protoList.filter(p => p.colIdx >= 39);
-    
+
     // Récupérer les critères et résultats
     const info = {
         interId: row[C_APP_ID],
@@ -2104,7 +3683,7 @@ function getNextCase(specificRow) {
         motif: String(row[C_APP_MOTIF]||"").trim(),
         engin: String(row[C_APP_ENGIN]||"").trim()
     };
-    
+
     const criteres = {
         ax: { label: "AKIM", opts: getDropdownList_(shApp, C_AKIM), val: row[C_AKIM] },
         ay: { label: "SMUR", opts: getDropdownList_(shApp, C_SMUR), val: row[C_SMUR] },
@@ -2114,7 +3693,7 @@ function getNextCase(specificRow) {
         bc: { label: "NB VICTIMES", opts: [], val: row[C_NBVICTIMES] },
         bg: { label: "Examen clinique", opts: getDropdownList_(shApp, C_BG_EXAM), val: row[C_BG_EXAM] }
     };
-    
+
     const resultats = {
         bg: { label: "Examen clinique", opts: getDropdownList_(shApp, C_BG_EXAM), val: row[C_BG_EXAM] },
         checksBiBm: [
@@ -2126,10 +3705,10 @@ function getNextCase(specificRow) {
             { id: "bm", label: "Absence de traçabilité de la surveillance pendant transport", checked: isCheckboxChecked(row[C_BM_SURV_TRANSPORT]), color: null, colIdx: C_BM_SURV_TRANSPORT }
         ]
     };
-    
+
     // Récupérer l'ISP Analyse
     const ispList = getDropdownList_(shApp, C_ISP_ANALYSE);
-    
+
     const schema = {
         ispVal: row[C_ISP_ANALYSE],
         infoT: String(row[C_APP_INFO_T] || "").trim(),
@@ -2142,39 +3721,56 @@ function getNextCase(specificRow) {
         pbCheck: row[C_BS_PROBLEM],
         pbTxt: row[C_BT_PROBLEM_TXT]||""
     };
-    
-    // Compter les fiches restantes (avec PDF valides, non clôturées, non lockées)
-    let remaining = 0;
-    const now = new Date();
-    const lockTimeoutMinutes = 30;
-    for(let i=rowToProcess; i<data.length; i++) {
-        const pdfVal = String(data[i][C_APP_PDF]).trim();
-        const isClosed = data[i][C_BP_CLOSE];
-        const lockTimestamp = data[i][C_BU_LOCK];
-        
+
+    return { info: info, schema: schema, ispList: ispList };
+}
+
+/**
+ * Équivalent rapide de getNextCase() pour la web app Firebase : le client a déjà trouvé, à partir
+ * des données Firestore déjà synchronisées, une fiche candidate non clôturée (donc pas besoin de
+ * rescanner ~3000 lignes) — cette fonction ne fait que RE-VÉRIFIER cette ligne précise (pas encore
+ * clôturée, pas verrouillée par quelqu'un d'autre), poser le verrou, et renvoyer son formulaire.
+ * Si la vérification échoue (quelqu'un d'autre vient de la prendre / elle vient d'être clôturée),
+ * le client retente avec une autre candidate, puis se rabat sur getNextCase() classique en dernier
+ * recours — donc aucune perte de sûreté par rapport à l'ancien système.
+ */
+function claimCaseByRowNum(rowNum) {
+    try {
+        const ss = getSS_();
+        const shApp = ss.getSheetByName(APP_SHEET_NAME);
+        if (!shApp) return { done: true, message: "Aucune feuille APP trouvée." };
+        if (!rowNum || rowNum < 2) return { claimFailed: true };
+
+        const row = shApp.getRange(rowNum, 1, 1, C_ACTION_MED + 1).getValues()[0];
+        const pdfVal = String(row[C_APP_PDF]);
+        const isClosed = row[C_BP_CLOSE];
+        const lockTimestamp = row[C_BU_LOCK];
+
         let isLocked = false;
-        if(lockTimestamp) {
-            const lockDate = new Date(lockTimestamp);
-            const diffMinutes = (now - lockDate) / (1000 * 60);
-            if(diffMinutes < lockTimeoutMinutes) {
-                isLocked = true;
-            }
+        if (lockTimestamp) {
+            const diffMinutes = (new Date() - new Date(lockTimestamp)) / (1000 * 60);
+            if (diffMinutes < 30) isLocked = true;
         }
-        
-        if(pdfVal && pdfVal !== "#N/A" && !pdfVal.includes("#N/A") && !isClosed && !isLocked) {
-            remaining++;
+
+        if (!pdfVal || pdfVal === "#N/A" || pdfVal.includes("#N/A") || isClosed || isLocked) {
+            return { claimFailed: true };
         }
+
+        shApp.getRange(rowNum, C_BU_LOCK + 1).setValue(new Date());
+        const built = _buildCaseSchema_(row, shApp);
+
+        return {
+            done: false,
+            rowNumber: rowNum,
+            info: built.info,
+            url: row[C_APP_PDF],
+            schema: built.schema,
+            ispList: built.ispList,
+            remaining: null // calculé côté client depuis les données déjà synchronisées
+        };
+    } catch (e) {
+        return { claimFailed: true, error: String(e) };
     }
-    
-    return {
-        done: false,
-        rowNumber: rowToProcess,
-        info: info,
-        url: row[C_APP_PDF],
-        schema: schema,
-        ispList: ispList,
-        remaining: remaining
-    };
 }
 
 function saveCase(form) {
@@ -2182,8 +3778,9 @@ function saveCase(form) {
         const ss = getSS_();
         const shApp = ss.getSheetByName(APP_SHEET_NAME);
         if(!shApp) return { success: false, error: "Sheet not found" };
-        
+
         const row = form.rowNumber;
+        const interId = String(shApp.getRange(row, C_APP_ID + 1).getValue()).trim();
         const updates = [];
         
         // ISP Analyse
@@ -2213,9 +3810,10 @@ function saveCase(form) {
         updates.push([row, C_BH_ABS + 1, form.resultats.bh ? true : false]);
         updates.push([row, C_BM_SURV_TRANSPORT + 1, form.resultats.bm ? true : false]);
         
-        // Textes
-        updates.push([row, C_TXTBILAN_KO + 1, form.txtBn]);
-        updates.push([row, C_TXTPISU_KO + 1, form.txtBo]);
+        // Textes — tagués [COM BILAN id] / [COM PISU id] pour ancrer chaque commentaire à son
+        // numéro d'intervention (même logique que saveAppChefferie/saveMedecinAnalyse/etc.)
+        updates.push([row, C_TXTBILAN_KO + 1, appendOrReplaceTag_(form.txtBn, "COM BILAN", interId)]);
+        updates.push([row, C_TXTPISU_KO + 1, appendOrReplaceTag_(form.txtBo, "COM PISU", interId)]);
         
         // Clôture
         updates.push([row, C_BP_CLOSE + 1, true]);
@@ -2228,6 +3826,8 @@ function saveCase(form) {
         updates.forEach(u => {
             shApp.getRange(u[0], u[1]).setValue(u[2]);
         });
+
+        _stampFirstTimestamp_(shApp, row, C_TS_ISP_ANALYSE);
 
         // Si bilan/pisu pas ok, faire apparaître la fiche dans APP Alex (sans jamais réordonner les lignes existantes)
         if(form.resultats.bj || form.resultats.bl) ensureAppAlexSynced_(ss);
@@ -2251,7 +3851,9 @@ function saveCase(form) {
             console.log("Cache ISP vidé pour: " + ispMat);
           }
         } catch(ce) { console.log("Erreur vidage cache ISP: " + ce); }
-        
+
+        try { pushAppRowByRowNum_(row); } catch (fsErr) { Logger.log('Firestore sync (saveCase) non-fatal: ' + fsErr); }
+
         return { success: true, message: "Fiche enregistrée et clôturée" };
     } catch(e) {
         console.log("saveCase error: " + e.toString());
@@ -2494,7 +4096,12 @@ function getNextActionChefferie(skipRows) {
         if((hasAnalyse || hasAction) && !isClosed) {
             if(skip.indexOf(i+1) >= 0) continue;
             const id = String(dataEve[i][0]).trim();
-            
+            // Ligne fantôme : la formule FILTER volatile d'APP Eve!A peut laisser une ligne avec
+            // O/Q déjà remplis mais A momentanément vide pendant qu'elle se redistribue ailleurs
+            // (cf. commentaire saveActionChefferie) — sans ID on ne peut rien sauvegarder dessus,
+            // on l'ignore plutôt que de planter avec "interId manquant" au clic Clôturer.
+            if(!id) continue;
+
             // Chercher infos dans APP
             let appInfo = null;
             let appRowIdx = -1;
@@ -2556,10 +4163,22 @@ function saveActionChefferie(form) {
         const ss = getSS_();
         const shEve = ss.getSheetByName("APP Eve");
 
-        const row = form.rowEve;
-        if(!row || row < 2) return { success: false, error: "Ligne invalide" };
-
-        const interId = String(shEve.getRange(row, 1).getValue()).trim();
+        // IMPORTANT : APP Eve!A2 est (au 2026-08) une formule volatile
+        // =FILTER('APP Alex'!A:N; 'APP Alex'!L:L = VRAI) — donc les lignes de APP Eve se
+        // redistribuent dès qu'une classification "Erreur Grave" change ailleurs (y compris via
+        // _setAlexClassification plus bas dans cette même fonction). Un form.rowEve capturé au
+        // moment où le client a chargé la fiche peut donc pointer sur une AUTRE intervention au
+        // moment où l'utilisateur clique "Clôturer" quelques instants/minutes plus tard. On
+        // retrouve donc TOUJOURS la ligne par interId, jamais par le numéro de ligne du client —
+        // même principe que saveAppChefferie/saveMedecinAnalyse.
+        const interId = String(form.interId || "").trim();
+        if (!interId) return { success: false, error: "interId manquant" };
+        const dataEve = shEve.getDataRange().getValues();
+        let row = -1;
+        for (let i = 1; i < dataEve.length; i++) {
+            if (String(dataEve[i][0]).trim() === interId) { row = i + 1; break; }
+        }
+        if (row === -1) return { success: false, error: "Fiche introuvable dans APP Eve (id=" + interId + ") — la ligne a peut-être bougé, réessayez." };
 
         // Action faite (colonne R = 18), taguée [COM CHEF id] pour sécuriser le circuit
         const taggedActionFaite = appendOrReplaceTag_(form.actionFaite, "COM CHEF", interId, ["ACTION REALISEE"]);
@@ -2572,6 +4191,7 @@ function saveActionChefferie(form) {
         if(form.rowApp && form.rowApp >= 2) {
             const shApp = ss.getSheetByName(APP_SHEET_NAME);
             if(shApp) {
+                _stampFirstTimestamp_(shApp, form.rowApp, C_TS_ACTION_CHEF);
                 if(form.bilanOk) {
                     shApp.getRange(form.rowApp, C_BILAN_OK+1).setValue(true);
                     shApp.getRange(form.rowApp, C_BILAN_KO+1).setValue(false);
@@ -2603,6 +4223,8 @@ function saveActionChefferie(form) {
         const mat_ = _getMat_(ss, interId);
         if(mat_) { cache_.remove("isp_v4_" + mat_); cache_.remove("isp_detail_" + mat_); sheetCacheRemove("isp_v4_" + mat_); sheetCacheRemove("isp_detail_" + mat_); }
 
+        try { pushAppEveRowByRowNum_(row); pushAppAlexRowById_(interId); pushAppRowById_(interId); } catch (fsErr) { Logger.log('Firestore sync (saveActionChefferie) non-fatal: ' + fsErr); }
+
         return { success: true };
     } catch(e) {
         return { success: false, error: e.toString() };
@@ -2620,9 +4242,14 @@ function _getMat_(ss, interId) {
 }
 
 /**
- * Met à jour les checkboxes de classification dans APP Alex (H/I/J/K) pour l'ID donné,
- * et retire systématiquement le flag Erreur Grave (col L) puisqu'une reclassification
- * vers OK ou erreur légère signifie que ce n'est plus une erreur grave.
+ * Met à jour les checkboxes de classification dans APP Alex (H/I/J/K/L) pour l'ID donné.
+ * Le flag Erreur Grave (col L) n'est TOUCHÉ QUE si explicitement fourni dans flags.L — une
+ * fiche grave sur le bilan ET/OU le pisu reste grave même si on ne reclassifie qu'un seul
+ * axe (confirmé par Brice, 2026-08-05 : "si y'a un truc grave ou deux, on classera l'inter
+ * indifféremment en grave quand même" — jamais de repassage automatique en normal).
+ * Avant ce correctif, l'absence de L dans flags forçait col L à false par défaut, ce qui
+ * effaçait silencieusement une Erreur Grave venant de l'autre axe lors d'un clic Passe 3
+ * ne concernant qu'un seul des deux (bilan OU pisu).
  */
 function _setAlexClassification(ss, interId, flags) {
     try {
@@ -2637,8 +4264,7 @@ function _setAlexClassification(ss, interId, flags) {
                 if ('I' in flags) shAlex.getRange(r, 9).setValue(!!flags.I);  // col I
                 if ('J' in flags) shAlex.getRange(r, 10).setValue(!!flags.J); // col J
                 if ('K' in flags) shAlex.getRange(r, 11).setValue(!!flags.K); // col K
-                if ('L' in flags) shAlex.getRange(r, 12).setValue(!!flags.L); // col L — optionnel
-                else shAlex.getRange(r, 12).setValue(false); // col L = erreur grave, retirée par défaut
+                if ('L' in flags) shAlex.getRange(r, 12).setValue(!!flags.L); // col L — jamais touchée si absente
                 break;
             }
         }
@@ -2680,6 +4306,7 @@ function getAllActionsChefferie() {
         if((!hasAnalyse && !hasAction) || isClosed) continue;
 
         const id = String(dataEve[i][0]).trim();
+        if(!id) continue; // ligne fantôme (formule FILTER volatile, cf. getNextActionChefferie)
         const appInfo = appMap[id] || null;
         const commChefAnc  = appInfo ? String(appInfo[C_COMM_CHEF]  || "").trim() : "";
         const analyseAnc   = appInfo ? String(appInfo[C_COMM_MED]   || "").trim() : "";
@@ -2790,8 +4417,22 @@ function getArchivedActions() {
 
 // HELPERS
 function getInterventionDetails(interId) {
-  const ss = getSS_();
   const id = String(interId).trim();
+  const cacheKey = "inter_detail_" + id;
+  const INTER_DETAIL_TTL = 300; // 5 min : assez court pour rester à jour après une modification
+  const cache = CacheService.getScriptCache();
+  const cached = cache.get(cacheKey);
+  if (cached) return JSON.parse(cached);
+  const shCached = sheetCacheGet(cacheKey);
+  if (shCached) { try { cache.put(cacheKey, JSON.stringify(shCached), INTER_DETAIL_TTL); } catch(e){} return shCached; }
+
+  const result = _computeInterventionDetails_(id);
+  try { cache.put(cacheKey, JSON.stringify(result), INTER_DETAIL_TTL); sheetCachePut(cacheKey, result, INTER_DETAIL_TTL); } catch(e){}
+  return result;
+}
+
+function _computeInterventionDetails_(id) {
+  const ss = getSS_();
   let pdfUrl="", commentChefferie="", analyseMed="", centre="", engin="",
       nom="", date="", motif="",
       commentISP="", commentMedAction="", actionFaite="",
@@ -2936,6 +4577,8 @@ function recategoriserIntervention(form) {
     sheetCacheRemove("all_isp_error_stats");
     const mat_ = _getMat_(ss, id);
     if(mat_) { cache.remove("isp_v4_" + mat_); cache.remove("isp_detail_" + mat_); sheetCacheRemove("isp_v4_" + mat_); sheetCacheRemove("isp_detail_" + mat_); }
+    cache.remove("inter_detail_" + id);
+    sheetCacheRemove("inter_detail_" + id);
 
     return { success: true };
   } catch(e) {
@@ -2945,9 +4588,8 @@ function recategoriserIntervention(form) {
 
 function calcTrend(c,p) { if(!p) return {val:(c>0?"+100%":"0%"), color:"gray", arrow:"="}; const d = ((c-p)/p)*100; return { val: (d>0?"+":"")+d.toFixed(1)+"%", color: d>=0?"#39ff14":"#ff4d4d", arrow: d>=0?"▲":"▼" }; }
 function normalizeMat(v) { return String(v||"").trim().toUpperCase(); }
-function checkAuth_(m, d) { 
-  if(d==="admin_override") return true; 
-  try { 
+function checkAuth_(m, d) {
+  try {
     const s = SpreadsheetApp.openById(ID_SS_RH).getSheets()[0]; 
     const data = s.getDataRange().getValues(); 
     const inputDob = String(d).trim(); // JJ/MM/AAAA
@@ -3034,9 +4676,17 @@ function _bulkPreCacheAllIsp() {
     if (dob) agents.push({ mat: a.mat, dob, nom: a.nom, nomLower: a.nom.toLowerCase() });
   }
   Logger.log("Bulk ISP: " + agents.length + " agents à pré-cacher");
-  
-  const lastDateRaw = dash.getRange(DASH_LASTDATE_CELL).getValue();
-  const lastDate = coerceToDate_(lastDateRaw) || new Date();
+
+  // txSoll (taux de sollicitation) par matricule, lu une seule fois (même plage que getAdminData)
+  const txSollMapBulk = {};
+  try {
+    dash.getRange("S3:AQ79").getValues().forEach(r => {
+      const m = normalizeMat(r[1]);
+      if (m) txSollMapBulk[m] = Number(r[24]) || 0;
+    });
+  } catch(eTxSoll) { Logger.log("_bulkPreCacheAllIsp txSoll error: " + eTxSoll); }
+
+  const lastDate = _computeLastDataDate_(ss, dash);
   const cutoffCode = (lastDate.getMonth() + 1) * 100 + lastDate.getDate();
   
   // Temps travail 2026
@@ -3108,8 +4758,9 @@ function _bulkPreCacheAllIsp() {
   // Index 2025 par mat
   const dash25ByMat = {};
   for(let i=0; i<dashData25.length; i++) {
-    const m = normalizeMat(dashData25[i][1]);
-    if(m) dash25ByMat[m] = { inter: Number(dashData25[i][1])||0, ast: Number(dashData25[i][2])||0, garde: Number(dashData25[i][3])||0 };
+    // Mêmes colonnes que getIspStats : matricule T(19), inter hors garde W(22), astreinte AL(37), garde AM(38).
+    const m = normalizeMat(dashData25[i][19]);
+    if(m) dash25ByMat[m] = { inter: Number(dashData25[i][22])||0, ast: Number(dashData25[i][37])||0, garde: Number(dashData25[i][38])||0 };
   }
   
   // === 3. CALCULER POUR CHAQUE AGENT ===
@@ -3218,7 +4869,7 @@ function _bulkPreCacheAllIsp() {
       }
       
       // txSoll depuis le Dashboard
-      const txSoll = Number(rawAgents[agent.idx][24]) || 0;
+      const txSoll = txSollMapBulk[mat] || 0;
       // histTempsTravail - chercher par nom dans les données historique
       let histTempsTravail = null;
       if(histRows && histRows.length) {
@@ -3376,7 +5027,7 @@ function clearAllCaches() {
     const cache = CacheService.getScriptCache();
 
     // 1) Clés globales connues
-    cache.removeAll(["admin_data_full_v2", "astreinte_dept_ispp_v3", "cache_status", "history_cache_v2", "historique_temps_travail_v1", "stats2026_v4", "stats2026_v6", "stats2026_v7", "stats2026_v8", "stats2026_v9", "stats2026_v11", "stats2025_vStable", "chefferie_counts_v4", "all_isp_error_stats", "stats2026_v3"]);
+    cache.removeAll(["admin_data_full_v6", "admin_data_full_v4", "astreinte_dept_ispp_v4", "monthly_inter_compare_v1", "monthly_ast_compare_v1", "cache_status", "history_cache_v2", "historique_temps_travail_v1", "stats2026_v4", "stats2026_v6", "stats2026_v7", "stats2026_v8", "stats2026_v9", "stats2026_v11", "stats2025_vStable", "chefferie_counts_v4", "all_isp_error_stats", "stats2026_v3", "suivi_horaire_global_v3", "suivi_horaire_global_v4", "suivi_horaire_global_v5"]);
 
     // 2) Clés par agent : isp_v4_MAT et isp_detail_MAT
     // CacheService.removeAll() ne supporte pas les wildcards — on lit la liste des
@@ -3387,6 +5038,7 @@ function clearAllCaches() {
       const agentKeys = [];
       allAgents.forEach(function(a) {
         agentKeys.push("isp_v4_" + a.mat);
+        agentKeys.push("isp_v5_" + a.mat);
         agentKeys.push("isp_detail_" + a.mat);
       });
       if(agentKeys.length) cache.removeAll(agentKeys);
@@ -3411,6 +5063,33 @@ function clearAllCaches() {
   }
 }
 function getDashboardData(){ return getStats2026(); }
+
+/**
+ * "Recalculer tout" (Super Admin, 2026-08-07) — vide les caches GAS puis relance manuellement,
+ * tout de suite, une resynchro complète APP/Alex/Eve/Agents/ActionsCorrection vers Firestore
+ * (runFirestoreFullSyncAO), qui tourne par ailleurs automatiquement 2x/jour (4h + 23h) en
+ * rattrapage. À utiliser en cas de besoin ponctuel immédiat (ne pas attendre le prochain
+ * passage) — le temps réel courant est déjà couvert par les push individuels à chaque
+ * enregistrement.
+ */
+function recalculerToutAdmin(password) {
+  if (String(password || '').trim() !== 'Perpignan66!') return { success: false, error: 'Mot de passe incorrect.' };
+  const cacheMsg = clearAllCaches();
+  let syncResult = null;
+  try {
+    syncResult = runFirestoreFullSyncAO();
+    // Un seul passage peut ne couvrir qu'un lot si le classeur est volumineux (repris au
+    // prochain appel) — on relance jusqu'à ce que done=true ou 5 passages, pour que "Recalculer
+    // tout" fasse vraiment tout en un clic dans le cas normal.
+    let guard = 0;
+    while (syncResult && syncResult.success && !syncResult.done && guard++ < 5) {
+      syncResult = runFirestoreFullSyncAO();
+    }
+  } catch (e) {
+    return { success: false, error: 'Cache vidé, mais échec resynchro : ' + e.toString(), cacheMsg: cacheMsg };
+  }
+  return { success: true, cacheMsg: cacheMsg, syncResult: syncResult };
+}
 
 /**
  * MIGRATION PROTOCOLES — À exécuter UNE SEULE FOIS
@@ -3892,6 +5571,24 @@ function installAllMailTriggers() {
     return { ok: true, status: getMailTriggerStatus() };
   } catch(e) {
     return { ok: false, error: e.toString() };
+  }
+}
+
+/**
+ * Supprime un déclencheur "orphelin" par nom de fonction (ex: sendBilanHebdo, qui n'existe
+ * plus dans le code mais dont le trigger était resté actif — trouvé lors de l'audit du
+ * 2026-08-06). Gate Perpignan66! comme le reste des outils techniques.
+ */
+function removeNamedTrigger(password, handlerName) {
+  if (String(password || '') !== 'Perpignan66!') return { error: 'Mot de passe incorrect.' };
+  try {
+    let removed = 0;
+    ScriptApp.getProjectTriggers().forEach(function (t) {
+      if (t.getHandlerFunction() === handlerName) { ScriptApp.deleteTrigger(t); removed++; }
+    });
+    return { success: true, removed: removed };
+  } catch (e) {
+    return { success: false, error: e.toString() };
   }
 }
 
